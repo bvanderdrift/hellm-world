@@ -12,3 +12,17 @@ export const dotProduct = (v1: number[], v2: number[]) => {
 
 export const exp = (x: number) => Math.pow(Math.E, x);
 export const ln = (x: number) => Math.log(x);
+
+export const softmax = (logits: number[]) => {
+  const biggestLogit = Math.max(...logits);
+  // To prevent overflows. Logits are still related the same since they all subtract the same value
+  const adjustedLogits = logits.map((logit) => logit - biggestLogit);
+
+  const sumExponentials = adjustedLogits.reduce((sum, logit) => {
+    const exponential = exp(logit);
+
+    return sum + exponential;
+  }, 0);
+
+  return adjustedLogits.map((logit) => exp(logit) / sumExponentials);
+};
