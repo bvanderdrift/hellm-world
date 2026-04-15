@@ -5,9 +5,9 @@ import {
   unembeddingsMatrix,
 } from "./weights.ts";
 import { softmax } from "./math.ts";
-import { multiplyMatrices, validateSize } from "./matrices.ts";
+import { addMatrices, multiplyMatrices, validateSize } from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
-import { runMultilayerPerceptronOnMatrix } from "./mlp.ts";
+import { getMultilayerPerceptronUpdateMatrix } from "./mlp.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
@@ -30,11 +30,14 @@ export const runLlm = (input: string) => {
     // TODO: residual connection
 
     // TODO: normalization
-  
-    intermediateState = runMultilayerPerceptronOnMatrix(
+
+    const mlpUpdateMatrix = getMultilayerPerceptronUpdateMatrix(
       intermediateState,
       transformer.multilayerPerceptron,
     );
+
+    // Apply updated knowledge
+    intermediateState = addMatrices(intermediateState, mlpUpdateMatrix);
   }
 
   // TODO: Final normalization

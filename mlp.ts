@@ -2,16 +2,16 @@ import { relu } from "./math.ts";
 import { addVectors, multiplyMatrices, validateSize } from "./matrices.ts";
 import { type MultilayerPerceptronWeights } from "./weights.ts";
 
-export const runMultilayerPerceptronOnMatrix = (
+export const getMultilayerPerceptronUpdateMatrix = (
   encoding: number[][],
   perceptron: MultilayerPerceptronWeights,
 ) => {
   return encoding.map((vector) =>
-    runMultilayerPerceptronOnVector(vector, perceptron),
+    getMultilayerPerceptronUpdateVector(vector, perceptron),
   );
 };
 
-export const runMultilayerPerceptronOnVector = (
+export const getMultilayerPerceptronUpdateVector = (
   encodingVector: number[],
   perceptron: MultilayerPerceptronWeights,
 ) => {
@@ -42,6 +42,5 @@ export const runMultilayerPerceptronOnVector = (
   // Not sure what this bias does
   const downedBiased = addVectors(downed[0]!, perceptron.wDown.biasVector);
 
-  // We enrich the incoming knowledge with the new knowledge
-  return addVectors(encodingVector, downedBiased);
+  return downedBiased;
 };

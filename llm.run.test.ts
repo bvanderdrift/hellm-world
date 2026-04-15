@@ -4,46 +4,40 @@ afterEach(() => {
   vi.resetModules();
   vi.restoreAllMocks();
   vi.doUnmock("./matrices.ts");
-  vi.doUnmock("./transform.ts");
+  vi.doUnmock("./mlp.ts");
 });
 
 describe("runLlm wiring", () => {
-  it("unembeds the transformed hidden state and uses the last context position for next-token prediction", async () => {
+  it("adds the MLP update back into the residual stream before unembedding", async () => {
+    const mlpUpdateMatrix = [[10], [98]];
     const transformedState = [[11], [99]];
-    const runMultilayerPerceptronOnMatrix = vi.fn(() => transformedState);
-
-    const multiplyMatrices = vi.fn((state: number[][]) => {
-      if (state === transformedState) {
-        return [
-          [100, 0, 0, 0, 0, 0],
-          [0, 0, 0, 0, 100, 0],
-        ];
-      }
-
-      return [
-        [0, 0, 0, 0, 0, 100],
-        [100, 0, 0, 0, 0, 0],
-      ];
-    });
+    const getMultilayerPerceptronUpdateMatrix = vi.fn(() => mlpUpdateMatrix);
+    const addMatrices = vi.fn(() => transformedState);
+    const multiplyMatrices = vi.fn(() => [
+      [100, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 100, 0],
+    ]);
 
     vi.doMock("./matrices.ts", () => ({
       validateSize: () => {},
+      addMatrices,
       multiplyMatrices,
     }));
-    vi.doMock("./transform.ts", () => ({
-      runMultilayerPerceptronOnMatrix,
+    vi.doMock("./mlp.ts", () => ({
+      getMultilayerPerceptronUpdateMatrix,
     }));
 
     const { runLlm } = await import("./llm.ts");
     const predictedToken = runLlm("hello world");
 
-    expect(runMultilayerPerceptronOnMatrix).toHaveBeenCalledWith(
+    expect(getMultilayerPerceptronUpdateMatrix).toHaveBeenCalledWith(
       [[1], [1]],
       expect.objectContaining({
         wUp: expect.any(Object),
         wDown: expect.any(Object),
       }),
     );
+    expect(addMatrices).toHaveBeenCalledWith([[1], [1]], mlpUpdateMatrix);
     expect(multiplyMatrices).toHaveBeenCalledWith(
       transformedState,
       expect.any(Array),
@@ -52,10 +46,12 @@ describe("runLlm wiring", () => {
   });
 
   it("maps the winning logit index to the vocabulary, not the prompt position", async () => {
-    const runMultilayerPerceptronOnMatrix = vi.fn((state: number[][]) => state);
+    const getMultilayerPerceptronUpdateMatrix = vi.fn(() => [[0], [0]]);
+    const addMatrices = vi.fn((state: number[][]) => state);
 
     vi.doMock("./matrices.ts", () => ({
       validateSize: () => {},
+      addMatrices,
       multiplyMatrices: () => {
         return [
           [0, 0, 0, 0, 100, 0],
@@ -63,12 +59,13 @@ describe("runLlm wiring", () => {
         ];
       },
     }));
-    vi.doMock("./transform.ts", () => ({
-      runMultilayerPerceptronOnMatrix,
+    vi.doMock("./mlp.ts", () => ({
+      getMultilayerPerceptronUpdateMatrix,
     }));
 
     const { runLlm } = await import("./llm.ts");
 
     expect(runLlm("hello world")).toBe("is");
+    expect(addMatrices).toHaveBeenCalledWith([[1], [1]], [[0], [0]]);
   });
 });
