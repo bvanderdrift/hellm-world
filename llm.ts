@@ -8,19 +8,25 @@ import { softmax } from "./math.ts";
 import { addMatrices, multiplyMatrices, validateSize } from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "./mlp.ts";
+import { getPositionEncoding } from "./position-encoding.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
 
-  const embeddedState = inputTokens.map((t) => embeddings[t]);
+  let intermediateState = inputTokens.map((t) => embeddings[t]);
 
   const CONTEXT_SIZE = inputTokens.length;
 
-  validateSize(embeddedState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
+  validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
-  let intermediateState = embeddedState;
+  const positionalEncoding = getPositionEncoding(
+    CONTEXT_SIZE,
+    HIDDEN_DIMENSIONS_SIZE,
+  );
 
-  // TODO: Encode positional information
+  intermediateState = addMatrices(intermediateState, positionalEncoding);
+
+  validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
   for (const transformer of transformers) {
     // TODO: normalization
