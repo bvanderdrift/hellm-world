@@ -20,14 +20,24 @@ export const runLlm = (input: string) => {
 
   let intermediateState = embeddedState;
 
-  for (const transformer of transformers) {
-    // TODO attention
+  // TODO: Encode positional information
 
+  for (const transformer of transformers) {
+    // TODO: normalization
+
+    // TODO: attention processing
+
+    // TODO: residual connection
+
+    // TODO: normalization
+  
     intermediateState = runMultilayerPerceptronOnMatrix(
       intermediateState,
       transformer.multilayerPerceptron,
     );
   }
+
+  // TODO: Final normalization
 
   const unembeddedState = multiplyMatrices(
     intermediateState,
