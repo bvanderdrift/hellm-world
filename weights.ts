@@ -24,3 +24,71 @@ for (const [token, vector] of Object.entries(embeddings)) {
 export const unembeddingsMatrix: number[][] = [[1, 1, 1, 1, 1, 1]];
 
 validateSize(unembeddingsMatrix, HIDDEN_DIMENSIONS_SIZE, VOCAB_SIZE);
+
+export interface AttentionHeadWeights {
+  Q: number[][];
+  K: number[][];
+  V: number[][];
+}
+
+export interface AttentionWeights {
+  heads: AttentionHeadWeights[];
+}
+
+export interface MultilayerPerceptronWeights {
+  wUp: {
+    weightsMatrix: number[][];
+    biasVector: number[];
+  };
+  wDown: {
+    weightsMatrix: number[][];
+    biasVector: number[];
+  };
+}
+
+interface TransformerWeights {
+  attention: AttentionWeights;
+  multilayerPerceptron: MultilayerPerceptronWeights;
+}
+
+export const transformers: TransformerWeights[] = [
+  {
+    attention: {
+      heads: [
+        {
+          Q: [],
+          K: [],
+          V: [],
+        },
+      ],
+    },
+    multilayerPerceptron: {
+      wUp: { weightsMatrix: [[1, 1, 1, 1]], biasVector: [1, 1, 1, 1] },
+      wDown: { weightsMatrix: [[1], [1], [1], [1]], biasVector: [1] },
+    },
+  },
+];
+
+for (const transformer of transformers) {
+  validateSize(
+    transformer.multilayerPerceptron.wUp.weightsMatrix,
+    HIDDEN_DIMENSIONS_SIZE,
+    HIDDEN_DIMENSIONS_SIZE * 4,
+  );
+  validateSize(
+    [transformer.multilayerPerceptron.wUp.biasVector],
+    1,
+    HIDDEN_DIMENSIONS_SIZE * 4,
+  );
+
+  validateSize(
+    transformer.multilayerPerceptron.wDown.weightsMatrix,
+    HIDDEN_DIMENSIONS_SIZE * 4,
+    HIDDEN_DIMENSIONS_SIZE,
+  );
+  validateSize(
+    [transformer.multilayerPerceptron.wDown.biasVector],
+    1,
+    HIDDEN_DIMENSIONS_SIZE,
+  );
+}
