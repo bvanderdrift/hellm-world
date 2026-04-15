@@ -1,7 +1,19 @@
-export const validateSize = (m: number[][], x: number) => {
-  if (m.length !== x) {
+export const validateSize = (m: number[][], rows: number, columns?: number) => {
+  if (m.length !== rows) {
     throw new Error(
-      `matrix length (${m.length}) doesn't match expected length ${x}`,
+      `matrix row count (${m.length}) doesn't match expected length ${rows}`,
+    );
+  }
+
+  const firstRow = m[0];
+
+  if (!firstRow) {
+    throw new Error(`m is empty`);
+  }
+
+  if (columns !== undefined && firstRow.length !== columns) {
+    throw new Error(
+      `m has unexpected column size ${firstRow.length}, expected ${columns}`,
     );
   }
 
@@ -39,15 +51,29 @@ export const multiplyMatrices = (
 
   const m2ColumnCount = m2FirstVector.length;
 
-  validateSize(m1, m2ColumnCount);
-
   const m1RowCount = m1.length;
+  const m1ColumnsCount = m1[0]!.length;
 
-  return new Array(m1RowCount).fill(0).map((_, rowM3) => {
+  validateSize(m2, m1ColumnsCount);
+
+  const m3 = new Array(m1RowCount).fill(0).map((_, rowM3) => {
     return new Array(m2ColumnCount).fill(0).map((_, columnM3) => {
       return m1[rowM3]!.reduce((sum, e, columnM1) => {
         return sum + e * m2[columnM1]![columnM3]!;
       }, 0);
+    });
+  });
+
+  return m3;
+};
+
+export const flipMatrix = (matrix: number[][]): number[][] => {
+  const rows = matrix.length;
+  const columns = matrix[0]!.length;
+
+  return new Array(columns).fill(0).map((_, newRowIndex) => {
+    return new Array(rows).fill(0).map((_, newColumnIndex) => {
+      return matrix[newColumnIndex]![newRowIndex]!;
     });
   });
 };

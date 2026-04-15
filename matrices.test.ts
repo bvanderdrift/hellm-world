@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { multiplyMatrices } from "./matrices.ts";
+import { flipMatrix, multiplyMatrices } from "./matrices.ts";
 
 describe("multiplyMatrices", () => {
   it("multiplies two 1x1 matrices", () => {
@@ -75,5 +75,38 @@ describe("multiplyMatrices", () => {
 
   it("throws when the second matrix is empty", () => {
     expect(() => multiplyMatrices([[1, 2]], [])).toThrow("m2 is empty");
+  });
+
+  it("handles 1x1 with 1x2 matrix", () => {
+    const out = multiplyMatrices([[2]], [[1, 1]]);
+
+    expect(out).toEqual([[2, 2]]);
+  });
+});
+
+describe("flipMatrix", () => {
+  it("should flip square matrix", () => {
+    const flipped = flipMatrix([
+      [1, 2],
+      [3, 4],
+    ]);
+
+    expect(flipped).toEqual([
+      [1, 3],
+      [2, 4],
+    ]);
+  });
+
+  it("should flip non-square matrix", () => {
+    const flipped = flipMatrix([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+
+    expect(flipped).toEqual([
+      [1, 4],
+      [2, 5],
+      [3, 6],
+    ]);
   });
 });
