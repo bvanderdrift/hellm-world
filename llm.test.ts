@@ -36,7 +36,7 @@ describe("llm pipeline contracts", () => {
     const embeddedState = inputTokens.map((token) => embeddings[token]);
     const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
 
-    validateSize(unembeddedState, inputTokens.length, HIDDEN_DIMENSIONS_SIZE);
+    validateSize(unembeddedState, inputTokens.length, VOCAB_SIZE);
   });
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
