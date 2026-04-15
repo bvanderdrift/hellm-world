@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dotProduct, softmax } from "./math.ts";
+import { dotProduct, relu, softmax } from "./math.ts";
 
 describe("dotProduct", () => {
   it("multiplies matching vector entries and sums them", () => {
@@ -24,5 +24,13 @@ describe("softmax", () => {
 
     expect(probabilities[0]).toBeGreaterThan(probabilities[1] ?? -Infinity);
     expect(probabilities[1]).toBeGreaterThan(probabilities[2] ?? -Infinity);
+  });
+});
+
+describe("relu", () => {
+  it("limits at or above 0", () => {
+    const output = relu([-1, 5, -33.2, 0, 12]);
+
+    expect(output).toEqual([0, 5, 0, 0, 12]);
   });
 });

@@ -26,3 +26,7 @@ export const softmax = (logits: number[]) => {
 
   return adjustedLogits.map((logit) => exp(logit) / sumExponentials);
 };
+
+/** Rectified Linear Unit */
+export const relu = (values: number[]) =>
+  values.map((value) => Math.max(value, 0));
