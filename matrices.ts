@@ -1,39 +1,43 @@
-export const validateSize = (m: number[][], rows: number, columns?: number) => {
-  if (m.length !== rows) {
+export const validateSize = (
+  matrix: number[][],
+  expectedVectorCount: number,
+  expectedDepth?: number,
+) => {
+  if (matrix.length !== expectedVectorCount) {
     throw new Error(
-      `matrix row count (${m.length}) doesn't match expected length ${rows}`,
+      `matrix vector count (${matrix.length}) doesn't match expected vector count ${expectedVectorCount}`,
     );
   }
 
-  const firstRow = m[0];
+  const firstVector = matrix[0];
 
-  if (!firstRow) {
-    throw new Error(`m is empty`);
+  if (!firstVector) {
+    throw new Error(`matrix has no vectors`);
   }
 
-  if (columns !== undefined && firstRow.length !== columns) {
+  if (expectedDepth !== undefined && firstVector.length !== expectedDepth) {
     throw new Error(
-      `m has unexpected column size ${firstRow.length}, expected ${columns}`,
+      `m has unexpected vector depth ${firstVector.length}, expected ${expectedDepth}`,
     );
   }
 
-  validateConsistentNestedArrayLength(m);
+  validateConsistentNestedArrayLength(matrix);
 };
 
-export const validateConsistentNestedArrayLength = (m: number[][]) => {
-  const firstVector = m[0];
+export const validateConsistentNestedArrayLength = (matrix: number[][]) => {
+  const firstVector = matrix[0];
 
   if (!firstVector) {
     // empty, is valid
     return;
   }
 
-  const baseLength = firstVector.length;
+  const vectorDepth = firstVector.length;
 
-  for (const [index, vector] of Object.entries(m)) {
-    if (vector.length !== baseLength) {
+  for (const [index, vector] of Object.entries(matrix)) {
+    if (vector.length !== vectorDepth) {
       throw new Error(
-        `Vector at index ${index} has unexpected length ${vector.length} (expected ${baseLength})`,
+        `Vector at index ${index} has unexpected depth ${vector.length} (expected ${vectorDepth})`,
       );
     }
   }
@@ -49,17 +53,17 @@ export const multiplyMatrices = (
     throw new Error(`m2 is empty`);
   }
 
-  const m2ColumnCount = m2FirstVector.length;
+  const m2DepthCount = m2FirstVector.length;
 
-  const m1RowCount = m1.length;
-  const m1ColumnsCount = m1[0]!.length;
+  const m1VectorCount = m1.length;
+  const m1DepthCount = m1[0]!.length;
 
-  validateSize(m2, m1ColumnsCount);
+  validateSize(m2, m1DepthCount);
 
-  const m3 = new Array(m1RowCount).fill(0).map((_, rowM3) => {
-    return new Array(m2ColumnCount).fill(0).map((_, columnM3) => {
-      return m1[rowM3]!.reduce((sum, e, columnM1) => {
-        return sum + e * m2[columnM1]![columnM3]!;
+  const m3 = new Array(m1VectorCount).fill(0).map((_, vectorIndexM3) => {
+    return new Array(m2DepthCount).fill(0).map((_, depthIndexM3) => {
+      return m1[vectorIndexM3]!.reduce((sum, e, vectorIndexM1) => {
+        return sum + e * m2[vectorIndexM1]![depthIndexM3]!;
       }, 0);
     });
   });
@@ -68,12 +72,12 @@ export const multiplyMatrices = (
 };
 
 export const flipMatrix = (matrix: number[][]): number[][] => {
-  const rows = matrix.length;
-  const columns = matrix[0]!.length;
+  const vectors = matrix.length;
+  const depth = matrix[0]!.length;
 
-  return new Array(columns).fill(0).map((_, newRowIndex) => {
-    return new Array(rows).fill(0).map((_, newColumnIndex) => {
-      return matrix[newColumnIndex]![newRowIndex]!;
+  return new Array(depth).fill(0).map((_, newVectorIndex) => {
+    return new Array(vectors).fill(0).map((_, newDepthIndex) => {
+      return matrix[newDepthIndex]![newVectorIndex]!;
     });
   });
 };

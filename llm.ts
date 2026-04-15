@@ -19,6 +19,8 @@ export const runLlm = (input: string) => {
   // TODO the actual shizzle
 
   const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
+
+  // Last vector is probability logits
   const logits = unembeddedState[CONTEXT_SIZE - 1];
 
   if (!logits) {
