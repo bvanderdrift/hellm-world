@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   runMultilayerPerceptronOnMatrix,
   runMultilayerPerceptronOnVector,
-} from "./transform.ts";
+} from "./mlp.ts";
 import type { MultilayerPerceptronWeights } from "./weights.ts";
 
 const twoDimPerceptron: MultilayerPerceptronWeights = {
@@ -58,9 +58,9 @@ const threeDimPerceptron: MultilayerPerceptronWeights = {
 
 describe("runMultilayerPerceptronOnVector", () => {
   it("supports hidden states wider than 1 feature", () => {
-    expect(runMultilayerPerceptronOnVector([2, -1], twoDimPerceptron)).toEqual(
-      [2.5, 2.5],
-    );
+    expect(runMultilayerPerceptronOnVector([2, -1], twoDimPerceptron)).toEqual([
+      2.5, 2.5,
+    ]);
   });
 
   it("handles a 3-feature input with a 12-neuron intermediate layer", () => {

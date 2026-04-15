@@ -7,7 +7,7 @@ import {
 import { softmax } from "./math.ts";
 import { multiplyMatrices, validateSize } from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
-import { runMultilayerPerceptronOnMatrix } from "./transform.ts";
+import { runMultilayerPerceptronOnMatrix } from "./mlp.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
