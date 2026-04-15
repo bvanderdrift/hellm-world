@@ -1,0 +1,1 @@
+In this repo I'm trying to build a very basic LLM from the ground up.
