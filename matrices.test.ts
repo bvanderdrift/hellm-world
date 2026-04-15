@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { addVectors, flipMatrix, multiplyMatrices } from "./matrices.ts";
+import {
+  addMatrices,
+  addVectors,
+  flipMatrix,
+  multiplyMatrices,
+} from "./matrices.ts";
 
 describe("multiplyMatrices", () => {
   it("multiplies two 1x1 matrices", () => {
@@ -124,5 +129,64 @@ describe("addVectors", () => {
     expect(() => addVectors([1, 2], [3])).toThrow(
       "Vector1 size 2 doesn't match vector2 size 1",
     );
+  });
+});
+
+describe("addMatrices", () => {
+  it("adds matrices element-wise", () => {
+    expect(
+      addMatrices(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [
+          [10, 20],
+          [30, 40],
+        ],
+      ),
+    ).toEqual([
+      [11, 22],
+      [33, 44],
+    ]);
+  });
+
+  it("handles negative and decimal values", () => {
+    expect(
+      addMatrices(
+        [
+          [-1.5, 0],
+          [2.25, -3],
+        ],
+        [
+          [0.5, 4],
+          [-2.25, 1.5],
+        ],
+      ),
+    ).toEqual([
+      [-1, 4],
+      [0, -1.5],
+    ]);
+  });
+
+  it("throws when matrix sizes do not match", () => {
+    expect(() =>
+      addMatrices(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [[5, 6]],
+      ),
+    ).toThrow("matrix vector count (2) doesn't match expected vector count 1");
+  });
+
+  it("throws when row widths do not match", () => {
+    expect(() =>
+      addMatrices(
+        [[1, 2]],
+        [[3, 4, 5]],
+      ),
+    ).toThrow("m has unexpected vector depth 2, expected 3");
   });
 });

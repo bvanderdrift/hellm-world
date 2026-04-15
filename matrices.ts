@@ -72,12 +72,22 @@ export const multiplyMatrices = (
 };
 
 export const addVectors = (vector1: number[], vector2: number[]) => {
-  if(vector1.length !== vector2.length) {
-    throw new Error(`Vector1 size ${vector1.length} doesn't match vector2 size ${vector2.length}`);
+  if (vector1.length !== vector2.length) {
+    throw new Error(
+      `Vector1 size ${vector1.length} doesn't match vector2 size ${vector2.length}`,
+    );
   }
 
   return vector1.map((e1, index) => e1 + vector2[index]!);
-}
+};
+
+export const addMatrices = (matrix1: number[][], matrix2: number[][]) => {
+  validateSize(matrix1, matrix2.length, matrix2[0]!.length);
+
+  return matrix1.map((vector1, vector1Index) =>
+    addVectors(vector1, matrix2[vector1Index]!),
+  );
+};
 
 export const flipMatrix = (matrix: number[][]): number[][] => {
   const vectors = matrix.length;
