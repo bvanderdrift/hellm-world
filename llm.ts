@@ -5,7 +5,12 @@ import {
   unembeddingsMatrix,
 } from "./weights.ts";
 import { softmax } from "./math.ts";
-import { addMatrices, multiplyMatrices, validateSize } from "./matrices.ts";
+import {
+  addMatrices,
+  multiplyMatrices,
+  normalize,
+  validateSize,
+} from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "./mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
@@ -31,16 +36,14 @@ export const runLlm = (input: string) => {
   validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
   for (const transformer of transformers) {
-    // TODO: normalization
-
-    // TODO: attention processing
+    // TODO: attention processing - NORMALIZE THE INPUT
 
     // TODO: residual connection
 
-    // TODO: normalization
-
     const mlpUpdateMatrix = getMultilayerPerceptronUpdateMatrix(
-      intermediateState,
+      // Normalize input only, don't normalize the intermediateState iself
+      // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
+      normalize(intermediateState),
       transformer.multilayerPerceptron,
     );
 
@@ -48,10 +51,8 @@ export const runLlm = (input: string) => {
     intermediateState = addMatrices(intermediateState, mlpUpdateMatrix);
   }
 
-  // TODO: Final normalization
-
   const unembeddedState = multiplyMatrices(
-    intermediateState,
+    normalize(intermediateState),
     unembeddingsMatrix,
   );
 
