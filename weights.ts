@@ -21,10 +21,6 @@ for (const [token, vector] of Object.entries(embeddings)) {
   }
 }
 
-export const unembeddingsMatrix: number[][] = [[1]];
+export const unembeddingsMatrix: number[][] = [[1, 1, 1, 1, 1, 1]];
 
-validateSize(unembeddingsMatrix, HIDDEN_DIMENSIONS_SIZE);
-
-export const outMatrix: number[][] = [[1, 1, 1, 1, 1, 1]];
-
-validateSize(outMatrix, HIDDEN_DIMENSIONS_SIZE, VOCAB_SIZE);
+validateSize(unembeddingsMatrix, HIDDEN_DIMENSIONS_SIZE, VOCAB_SIZE);

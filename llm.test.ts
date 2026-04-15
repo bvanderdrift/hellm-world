@@ -4,7 +4,6 @@ import { multiplyMatrices, validateSize } from "./matrices.ts";
 import {
   embeddings,
   HIDDEN_DIMENSIONS_SIZE,
-  outMatrix,
   unembeddingsMatrix,
   VOCAB_SIZE,
 } from "./weights.ts";
@@ -43,8 +42,10 @@ describe("llm pipeline contracts", () => {
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
     const inputTokens = tokenize("hello world beer");
     const embeddedState = inputTokens.map((token) => embeddings[token]);
-    const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
-    const logitsByPosition = multiplyMatrices(unembeddedState, outMatrix);
+    const logitsByPosition = multiplyMatrices(
+      embeddedState,
+      unembeddingsMatrix,
+    );
 
     validateSize(logitsByPosition, inputTokens.length, VOCAB_SIZE);
   });

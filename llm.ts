@@ -1,7 +1,6 @@
 import {
   embeddings,
   HIDDEN_DIMENSIONS_SIZE,
-  outMatrix,
   unembeddingsMatrix,
 } from "./weights.ts";
 import { softmax } from "./math.ts";
@@ -20,10 +19,7 @@ export const runLlm = (input: string) => {
   // TODO the actual shizzle
 
   const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
-
-  validateSize(unembeddedState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
-
-  const logits = multiplyMatrices(unembeddedState, outMatrix)[CONTEXT_SIZE - 1];
+  const logits = unembeddedState[CONTEXT_SIZE - 1];
 
   if (!logits) {
     throw new Error(`Logits array is undefined`);
