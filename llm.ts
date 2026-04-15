@@ -13,7 +13,9 @@ import { getPositionEncoding } from "./position-encoding.ts";
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
 
-  let intermediateState = inputTokens.map((t) => embeddings[t]);
+  let intermediateState = inputTokens.map((t) =>
+    embeddings[t].map((v) => v * Math.sqrt(HIDDEN_DIMENSIONS_SIZE)),
+  );
 
   const CONTEXT_SIZE = inputTokens.length;
 
