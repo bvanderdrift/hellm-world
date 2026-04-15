@@ -6,7 +6,7 @@ import {
 } from "./weights.ts";
 import { softmax } from "./math.ts";
 import { multiplyMatrices, validateSize } from "./matrices.ts";
-import { tokenize } from "./tokenizer.ts";
+import { tokenize, tokens } from "./tokenizer.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
@@ -23,7 +23,7 @@ export const runLlm = (input: string) => {
 
   validateSize(unembeddedState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
-  const logits = multiplyMatrices(unembeddedState, outMatrix)[0];
+  const logits = multiplyMatrices(unembeddedState, outMatrix)[CONTEXT_SIZE - 1];
 
   if (!logits) {
     throw new Error(`Logits array is undefined`);
@@ -33,7 +33,7 @@ export const runLlm = (input: string) => {
 
   const nextTokenIndex = getHighestValueIndex(probabilities);
 
-  const nextToken = inputTokens[nextTokenIndex];
+  const nextToken = tokens[nextTokenIndex];
 
   if (!nextToken) {
     throw new Error(`Failed to find token at index ${nextTokenIndex}`);
