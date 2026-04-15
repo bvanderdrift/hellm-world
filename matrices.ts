@@ -106,6 +106,8 @@ export const normalize = (matrix: number[][]): number[][] => {
   return matrix.map((vector) => {
     const { average, standardDeviation } = calculateStandardDeviation(vector);
 
-    return vector.map((scalar) => (scalar - average) / standardDeviation);
+    return vector.map(
+      (scalar) => (scalar - average) / (standardDeviation + Number.EPSILON),
+    ); // to prevent 0-divisions
   });
 };

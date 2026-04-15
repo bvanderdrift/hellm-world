@@ -162,6 +162,11 @@ describe("normalize", () => {
     expect(normalized[0]).not.toBe(matrix[0]);
     expect(normalized[1]).not.toBe(matrix[1]);
   });
+
+  it("gracefully handles constant vectors", () => {
+    const matrix = [[3, 3, 3, 3]];
+    expect(normalize(matrix)).toEqual([[0, 0, 0, 0]]);
+  });
 });
 
 describe("addVectors", () => {
@@ -230,11 +235,8 @@ describe("addMatrices", () => {
   });
 
   it("throws when row widths do not match", () => {
-    expect(() =>
-      addMatrices(
-        [[1, 2]],
-        [[3, 4, 5]],
-      ),
-    ).toThrow("m has unexpected vector depth 2, expected 3");
+    expect(() => addMatrices([[1, 2]], [[3, 4, 5]])).toThrow(
+      "m has unexpected vector depth 2, expected 3",
+    );
   });
 });
