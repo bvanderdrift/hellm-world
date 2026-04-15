@@ -71,6 +71,14 @@ export const multiplyMatrices = (
   return m3;
 };
 
+export const addVectors = (vector1: number[], vector2: number[]) => {
+  if(vector1.length !== vector2.length) {
+    throw new Error(`Vector1 size ${vector1.length} doesn't match vector2 size ${vector2.length}`);
+  }
+
+  return vector1.map((e1, index) => e1 + vector2[index]!);
+}
+
 export const flipMatrix = (matrix: number[][]): number[][] => {
   const vectors = matrix.length;
   const depth = matrix[0]!.length;

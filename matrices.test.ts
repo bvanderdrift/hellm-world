@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flipMatrix, multiplyMatrices } from "./matrices.ts";
+import { addVectors, flipMatrix, multiplyMatrices } from "./matrices.ts";
 
 describe("multiplyMatrices", () => {
   it("multiplies two 1x1 matrices", () => {
@@ -108,5 +108,21 @@ describe("flipMatrix", () => {
       [2, 5],
       [3, 6],
     ]);
+  });
+});
+
+describe("addVectors", () => {
+  it("adds vectors element-wise", () => {
+    expect(addVectors([1, 2, 3], [4, 5, 6])).toEqual([5, 7, 9]);
+  });
+
+  it("handles negative and decimal values", () => {
+    expect(addVectors([-1.5, 2, 0], [0.5, -3, 4.25])).toEqual([-1, -1, 4.25]);
+  });
+
+  it("throws when vector sizes do not match", () => {
+    expect(() => addVectors([1, 2], [3])).toThrow(
+      "Vector1 size 2 doesn't match vector2 size 1",
+    );
   });
 });
