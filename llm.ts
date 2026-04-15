@@ -1,11 +1,13 @@
 import {
   embeddings,
   HIDDEN_DIMENSIONS_SIZE,
+  transformers,
   unembeddingsMatrix,
 } from "./weights.ts";
 import { softmax } from "./math.ts";
 import { multiplyMatrices, validateSize } from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
+import { runMultilayerPerceptronOnMatrix } from "./transform.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
@@ -16,9 +18,21 @@ export const runLlm = (input: string) => {
 
   validateSize(embeddedState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
-  // TODO the actual shizzle
+  let intermediateState = embeddedState;
 
-  const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
+  for (const transformer of transformers) {
+    // TODO attention
+
+    intermediateState = runMultilayerPerceptronOnMatrix(
+      intermediateState,
+      transformer.multilayerPerceptron,
+    );
+  }
+
+  const unembeddedState = multiplyMatrices(
+    intermediateState,
+    unembeddingsMatrix,
+  );
 
   // Last vector is probability logits
   const logits = unembeddedState[CONTEXT_SIZE - 1];
