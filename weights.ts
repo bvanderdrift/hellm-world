@@ -16,7 +16,7 @@ export const VOCAB_SIZE = tokens.length;
 for (const [token, vector] of Object.entries(embeddings)) {
   if (vector.length !== HIDDEN_DIMENSIONS_SIZE) {
     throw new Error(
-      `Token ${token} has unexpected vector length ${vector.length} vs base length ${VOCAB_SIZE}`,
+      `Token ${token} has unexpected vector length ${vector.length} vs base length ${HIDDEN_DIMENSIONS_SIZE}`,
     );
   }
 }
