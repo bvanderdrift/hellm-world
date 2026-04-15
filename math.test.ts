@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { dotProduct, relu, softmax } from "./math.ts";
+import {
+  calculateStandardDeviation,
+  dotProduct,
+  mean,
+  relu,
+  softmax,
+  sum,
+} from "./math.ts";
+
+describe("sum", () => {
+  it("adds numbers together", () => {
+    const values = [1, 6, -3, 0, 2.5, -3.7];
+
+    expect(sum(values)).toBe(2.8);
+  });
+});
 
 describe("dotProduct", () => {
   it("multiplies matching vector entries and sums them", () => {
@@ -32,5 +47,29 @@ describe("relu", () => {
     const output = relu([-1, 5, -33.2, 0, 12]);
 
     expect(output).toEqual([0, 5, 0, 0, 12]);
+  });
+});
+
+describe("mean", () => {
+  it("averages out a set of numbers", () => {
+    const values = [-1, 5, -33.2, 0, 12];
+
+    expect(mean(values)).toBeCloseTo(-3.44);
+  });
+});
+
+describe("calculateStandardDeviation", () => {
+  it("returns the average and population standard deviation", () => {
+    const result = calculateStandardDeviation([2, 4, 4, 4, 5, 5, 7, 9]);
+
+    expect(result.average).toBe(5);
+    expect(result.standardDeviation).toBe(2);
+  });
+
+  it("returns zero when every value is identical", () => {
+    const result = calculateStandardDeviation([3, 3, 3, 3]);
+
+    expect(result.average).toBe(3);
+    expect(result.standardDeviation).toBe(0);
   });
 });

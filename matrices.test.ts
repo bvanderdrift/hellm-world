@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { calculateStandardDeviation } from "./math.ts";
 import {
   addMatrices,
   addVectors,
   flipMatrix,
   multiplyMatrices,
+  normalize,
 } from "./matrices.ts";
 
 describe("multiplyMatrices", () => {
@@ -113,6 +115,52 @@ describe("flipMatrix", () => {
       [2, 5],
       [3, 6],
     ]);
+  });
+});
+
+describe("normalize", () => {
+  it("normalizes each row to zero mean and unit standard deviation", () => {
+    const normalized = normalize([
+      [1, 2, 3],
+      [10, 20, 30],
+    ]);
+
+    for (const row of normalized) {
+      const { average, standardDeviation } = calculateStandardDeviation(row);
+
+      expect(average).toBeCloseTo(0, 10);
+      expect(standardDeviation).toBeCloseTo(1, 10);
+    }
+  });
+
+  it("treats each row independently", () => {
+    const normalized = normalize([
+      [1, 2, 3],
+      [101, 102, 103],
+      [10, 20, 30],
+    ]);
+
+    const [baseRow, shiftedRow, scaledRow] = normalized;
+
+    for (const [index, value] of (baseRow ?? []).entries()) {
+      expect(value).toBeCloseTo(shiftedRow?.[index] ?? NaN, 10);
+      expect(value).toBeCloseTo(scaledRow?.[index] ?? NaN, 10);
+    }
+  });
+
+  it("returns a new matrix without mutating the input", () => {
+    const matrix = [
+      [1, 2, 3],
+      [4, 5, 6],
+    ];
+    const original = matrix.map((row) => [...row]);
+
+    const normalized = normalize(matrix);
+
+    expect(matrix).toEqual(original);
+    expect(normalized).not.toBe(matrix);
+    expect(normalized[0]).not.toBe(matrix[0]);
+    expect(normalized[1]).not.toBe(matrix[1]);
   });
 });
 

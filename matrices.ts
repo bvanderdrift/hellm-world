@@ -1,3 +1,5 @@
+import { calculateStandardDeviation } from "./math.ts";
+
 export const validateSize = (
   matrix: number[][],
   expectedVectorCount: number,
@@ -97,5 +99,13 @@ export const flipMatrix = (matrix: number[][]): number[][] => {
     return new Array(vectors).fill(0).map((_, newDepthIndex) => {
       return matrix[newDepthIndex]![newVectorIndex]!;
     });
+  });
+};
+
+export const normalize = (matrix: number[][]): number[][] => {
+  return matrix.map((vector) => {
+    const { average, standardDeviation } = calculateStandardDeviation(vector);
+
+    return vector.map((scalar) => (scalar - average) / standardDeviation);
   });
 };
