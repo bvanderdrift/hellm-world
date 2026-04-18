@@ -3,7 +3,10 @@ import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
 } from "./attention.ts";
-import type { AttentionHeadWeights, AttentionWeights } from "../weights.ts";
+import type {
+  AttentionHeadWeights,
+  AttentionWeights,
+} from "../weights/weight-helpers.ts";
 
 const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
   expect(actual).toHaveLength(expected.length);
@@ -25,18 +28,8 @@ const input = [
 ];
 
 const identityLikeHead = (valueDown: number[], valueUp: number[][]) => ({
-  Q: [
-    [0],
-    [0],
-    [0],
-    [0],
-  ],
-  K: [
-    [0],
-    [0],
-    [0],
-    [0],
-  ],
+  Q: [[0], [0], [0], [0]],
+  K: [[0], [0], [0], [0]],
   V: {
     down: valueDown.map((value) => [value]),
     up: valueUp,
@@ -107,7 +100,10 @@ describe("runSelfAttentionHead", () => {
   });
 
   it("uses query-key similarity to weight the visible values", () => {
-    const output = runSelfAttentionHead(input, headThatUsesQueryKeySimilarity());
+    const output = runSelfAttentionHead(
+      input,
+      headThatUsesQueryKeySimilarity(),
+    );
 
     expectMatrixCloseTo(output, [
       [1, 0, 0, 0],

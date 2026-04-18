@@ -3,7 +3,7 @@ import {
   getMultilayerPerceptronUpdateMatrix,
   getMultilayerPerceptronUpdateVector,
 } from "./mlp.ts";
-import type { MultilayerPerceptronWeights } from "../weights.ts";
+import type { MultilayerPerceptronWeights } from "../weights/weight-helpers.ts";
 
 const twoDimPerceptron: MultilayerPerceptronWeights = {
   wUp: {

@@ -6,12 +6,10 @@ import {
   multiplyMatrixWithVector,
   validateSize,
 } from "../matrices.ts";
-import {
-  ATTENTION_DIMENSIONS,
-  HIDDEN_DIMENSIONS_SIZE,
-  type AttentionHeadWeights,
-  type AttentionWeights,
-} from "../weights.ts";
+import type {
+  AttentionHeadWeights,
+  AttentionWeights,
+} from "../weights/types.ts";
 
 export const runSelfAttentionMechanism = (
   input: number[][],

@@ -1,9 +1,3 @@
-import {
-  embeddings,
-  HIDDEN_DIMENSIONS_SIZE,
-  transformers,
-  unembeddingsMatrix,
-} from "./weights.ts";
 import { softmax } from "./math.ts";
 import {
   addMatrices,
@@ -11,32 +5,36 @@ import {
   normalize,
   validateSize,
 } from "./matrices.ts";
-import { tokenize, tokens } from "./tokenizer.ts";
+import { tokenize, tokens, type Token } from "./tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "./transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "./transforming/attention.ts";
+import type { Weights } from "./weights/types.ts";
+import { extractDimensionSizes } from "./weights/weight-helpers.ts";
 
-export const runLlm = (input: string) => {
+export const runLlm = (input: string, weights: Weights<Token>) => {
+  const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+
   const inputTokens = tokenize(input);
 
   let intermediateState = inputTokens.map((t) =>
-    embeddings[t].map((v) => v * Math.sqrt(HIDDEN_DIMENSIONS_SIZE)),
+    weights.embeddings[t].map((v) => v * Math.sqrt(hiddenDimensionsSize)),
   );
 
-  const CONTEXT_SIZE = inputTokens.length;
+  const contextSize = inputTokens.length;
 
-  validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
+  validateSize(intermediateState, contextSize, hiddenDimensionsSize);
 
   const positionalEncoding = getPositionEncoding(
-    CONTEXT_SIZE,
-    HIDDEN_DIMENSIONS_SIZE,
+    contextSize,
+    hiddenDimensionsSize,
   );
 
   intermediateState = addMatrices(intermediateState, positionalEncoding);
 
-  validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
+  validateSize(intermediateState, contextSize, hiddenDimensionsSize);
 
-  for (const transformer of transformers) {
+  for (const transformer of weights.transformers) {
     const attentionUpdateMatrix = runSelfAttentionMechanism(
       // Normalize input only, don't normalize the intermediateState iself
       // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
@@ -59,11 +57,13 @@ export const runLlm = (input: string) => {
 
   const unembeddedState = multiplyMatrices(
     normalize(intermediateState),
-    unembeddingsMatrix,
+    weights.unembeddings,
   );
 
+  validateSize(unembeddedState, contextSize, vocabSize);
+
   // Last vector is probability logits
-  const logits = unembeddedState[CONTEXT_SIZE - 1];
+  const logits = unembeddedState[contextSize - 1];
 
   if (!logits) {
     throw new Error(`Logits array is undefined`);

@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { getHighestValueIndex } from "./llm.ts";
 import { multiplyMatrices, validateSize } from "./matrices.ts";
-import {
-  embeddings,
-  HIDDEN_DIMENSIONS_SIZE,
-  unembeddingsMatrix,
-  VOCAB_SIZE,
-} from "./weights.ts";
 import { tokenize } from "./tokenizer.ts";
+import { toyWeights } from "./weights/toy_weights/toyWeights.ts";
 
 describe("getHighestValueIndex", () => {
   it("should get highest value", () => {
@@ -26,27 +21,40 @@ describe("getHighestValueIndex", () => {
 describe("llm pipeline contracts", () => {
   it("embeds each input token into the hidden dimension", () => {
     const inputTokens = tokenize("hello world beer");
-    const embeddedState = inputTokens.map((token) => embeddings[token]);
+    const embeddedState = inputTokens.map(
+      (token) => toyWeights.embeddings[token],
+    );
 
-    validateSize(embeddedState, inputTokens.length, HIDDEN_DIMENSIONS_SIZE);
+    validateSize(
+      embeddedState,
+      inputTokens.length,
+      toyWeights.hiddenDimensionsSize,
+    );
   });
 
   it("keeps one hidden-state row per context position after the hidden projection", () => {
     const inputTokens = tokenize("hello world beer");
-    const embeddedState = inputTokens.map((token) => embeddings[token]);
-    const unembeddedState = multiplyMatrices(embeddedState, unembeddingsMatrix);
+    const embeddedState = inputTokens.map(
+      (token) => toyWeights.embeddings[token],
+    );
+    const unembeddedState = multiplyMatrices(
+      embeddedState,
+      toyWeights.unembeddings,
+    );
 
-    validateSize(unembeddedState, inputTokens.length, VOCAB_SIZE);
+    validateSize(unembeddedState, inputTokens.length, toyWeights.vocabSize);
   });
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
     const inputTokens = tokenize("hello world beer");
-    const embeddedState = inputTokens.map((token) => embeddings[token]);
+    const embeddedState = inputTokens.map(
+      (token) => toyWeights.embeddings[token],
+    );
     const logitsByPosition = multiplyMatrices(
       embeddedState,
-      unembeddingsMatrix,
+      toyWeights.unembeddings,
     );
 
-    validateSize(logitsByPosition, inputTokens.length, VOCAB_SIZE);
+    validateSize(logitsByPosition, inputTokens.length, toyWeights.vocabSize);
   });
 });

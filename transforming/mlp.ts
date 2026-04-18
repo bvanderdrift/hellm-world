@@ -1,6 +1,6 @@
 import { relu } from "../math.ts";
 import { addVectors, multiplyMatrices, validateSize } from "../matrices.ts";
-import { type MultilayerPerceptronWeights } from "../weights.ts";
+import { type MultilayerPerceptronWeights } from "../weights/weight-helpers.ts";
 
 export const getMultilayerPerceptronUpdateMatrix = (
   encoding: number[][],
