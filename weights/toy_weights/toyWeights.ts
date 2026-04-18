@@ -1,8 +1,11 @@
-import type { Token } from "../../tokenizer.ts";
 import type { Weights } from "../types.ts";
 import { extractDimensionSizes } from "../weight-helpers.ts";
 
+export const tokens = ["hello", "world", "my", "name", "is", "beer"] as const;
+export type Token = (typeof tokens)[number];
+
 const toyWeightsBare: Weights<Token> = {
+  tokens: [...tokens],
   embeddings: {
     hello: [1, 1, 1, 1],
     world: [1, 1, 1, 1],

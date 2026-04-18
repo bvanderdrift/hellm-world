@@ -28,6 +28,7 @@ export interface TransformerWeights {
 }
 
 export type Weights<T extends string = string> = {
+  tokens: T[];
   embeddings: Record<T, number[]>; // C x D
   unembeddings: number[][]; // D x C
   transformers: TransformerWeights[];

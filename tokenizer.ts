@@ -1,13 +1,13 @@
-export const tokens = ["hello", "world", "my", "name", "is", "beer"] as const;
-export type Token = (typeof tokens)[number];
-
-export const tokenize = (input: string): Token[] => {
+export const tokenize = <T extends string>(
+  input: string,
+  vocabTokens: T[],
+): T[] => {
   let temp = input;
 
-  const matchedTokens: Token[] = [];
+  const matchedTokens: T[] = [];
 
   while (temp !== "") {
-    const match = tokens.find((t) => temp.startsWith(t));
+    const match = vocabTokens.find((t) => temp.startsWith(t));
 
     if (!match) {
       throw new Error(`Unable to tokenize ${temp}`);

@@ -5,17 +5,20 @@ import {
   normalize,
   validateSize,
 } from "./matrices.ts";
-import { tokenize, tokens, type Token } from "./tokenizer.ts";
+import { tokenize } from "./tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "./transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "./transforming/attention.ts";
 import type { Weights } from "./weights/types.ts";
 import { extractDimensionSizes } from "./weights/weight-helpers.ts";
 
-export const runLlm = (input: string, weights: Weights<Token>) => {
+export const runLlm = <T extends string>(
+  input: string,
+  weights: Weights<T>,
+) => {
   const { hiddenDimensionsSize } = extractDimensionSizes(weights);
 
-  const inputTokens = tokenize(input);
+  const inputTokens = tokenize(input, weights.tokens);
 
   const startState = inputTokens.map((t) =>
     weights.embeddings[t].map((v) => v * Math.sqrt(hiddenDimensionsSize)),
@@ -30,7 +33,7 @@ export const runLlm = (input: string, weights: Weights<Token>) => {
     throw new Error(`Logits array is undefined`);
   }
 
-  return decodeLogits(logits);
+  return decodeLogits(logits, weights.tokens);
 };
 
 export const getHighestValueIndex = (values: number[]) => {
@@ -52,10 +55,7 @@ export const getHighestValueIndex = (values: number[]) => {
   ).index;
 };
 
-export const llmForwardPass = (
-  startState: number[][],
-  weights: Weights<Token>,
-) => {
+export const llmForwardPass = (startState: number[][], weights: Weights) => {
   const contextSize = startState.length;
 
   const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
@@ -102,7 +102,7 @@ export const llmForwardPass = (
   return unembeddedState;
 };
 
-export const decodeLogits = (logits: number[]) => {
+export const decodeLogits = (logits: number[], tokens: string[]) => {
   const probabilities = softmax(logits);
 
   const nextTokenIndex = getHighestValueIndex(probabilities);
