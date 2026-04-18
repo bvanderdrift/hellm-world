@@ -21,6 +21,13 @@ export const validateSizing = (weights: Weights) => {
     }
   }
 
+  const tokensDeduped = new Set(...weights.tokens);
+  const duplicateCount = weights.tokens.length - tokensDeduped.size;
+
+  if(duplicateCount > 0){
+    throw new Error(`Provided weights have ${duplicateCount} duplicate tokens`)
+  }
+
   validateSize(weights.unembeddings, hiddenDimensionsSize, vocabSize);
 
   for (const transformer of weights.transformers) {
