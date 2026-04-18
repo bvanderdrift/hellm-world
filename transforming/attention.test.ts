@@ -6,7 +6,7 @@ import {
 import type {
   AttentionHeadWeights,
   AttentionWeights,
-} from "../weights/weight-helpers.ts";
+} from "../weights/types.ts";
 
 const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
   expect(actual).toHaveLength(expected.length);
