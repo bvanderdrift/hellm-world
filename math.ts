@@ -51,3 +51,15 @@ export const calculateStandardDeviation = (values: number[]) => {
     standardDeviation: Math.sqrt(averageSquareDeltas),
   };
 };
+
+export const divideToWhole = (nominator: number, denominator: number) => {
+  const divisionRemainder = nominator % denominator;
+
+  if (divisionRemainder !== 0) {
+    throw new Error(
+      `Can't perfectly divide the nominator by denominator (${denominator})`,
+    );
+  }
+
+  return Math.round(nominator / denominator);
+};

@@ -1,17 +1,19 @@
+import { divideToWhole } from "./math.ts";
 import { validateSize } from "./matrices.ts";
 import { tokens, type Token } from "./tokenizer.ts";
 
 export const embeddings: Record<Token, number[]> = {
-  hello: [1],
-  world: [1],
-  my: [1],
-  name: [1],
-  is: [1],
-  beer: [1],
+  hello: [1, 1, 1, 1],
+  world: [1, 1, 1, 1],
+  my: [1, 1, 1, 1],
+  name: [1, 1, 1, 1],
+  is: [1, 1, 1, 1],
+  beer: [1, 1, 1, 1],
 };
 
 export const HIDDEN_DIMENSIONS_SIZE = embeddings.beer.length;
 export const VOCAB_SIZE = tokens.length;
+export const ATTENTION_DIMENSIONS = 1;
 
 for (const [token, vector] of Object.entries(embeddings)) {
   if (vector.length !== HIDDEN_DIMENSIONS_SIZE) {
@@ -21,14 +23,22 @@ for (const [token, vector] of Object.entries(embeddings)) {
   }
 }
 
-export const unembeddingsMatrix: number[][] = [[1, 1, 1, 1, 1, 1]];
+export const unembeddingsMatrix: number[][] = [
+  [1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1],
+];
 
 validateSize(unembeddingsMatrix, HIDDEN_DIMENSIONS_SIZE, VOCAB_SIZE);
 
 export interface AttentionHeadWeights {
   Q: number[][];
   K: number[][];
-  V: number[][];
+  V: {
+    up: number[][];
+    down: number[][];
+  };
 }
 
 export interface AttentionWeights {
@@ -56,20 +66,92 @@ export const transformers: TransformerWeights[] = [
     attention: {
       heads: [
         {
-          Q: [],
-          K: [],
-          V: [],
+          Q: [
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+          ],
+          K: [
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+            [1, 1, 1, 1],
+          ],
+          V: {
+            up: [
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+            ],
+            down: [
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+              [1, 1, 1, 1],
+            ],
+          },
         },
       ],
     },
     multilayerPerceptron: {
-      wUp: { weightsMatrix: [[1, 1, 1, 1]], biasVector: [1, 1, 1, 1] },
-      wDown: { weightsMatrix: [[1], [1], [1], [1]], biasVector: [1] },
+      wUp: {
+        weightsMatrix: [
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        ],
+        biasVector: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+      },
+      wDown: {
+        weightsMatrix: [
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+        ],
+        biasVector: [1, 1, 1, 1],
+      },
     },
   },
 ];
 
 for (const transformer of transformers) {
+  const attentionDimension = divideToWhole(
+    HIDDEN_DIMENSIONS_SIZE,
+    transformer.attention.heads.length,
+  );
+
+  for (const attentionHead of transformer.attention.heads) {
+    validateSize(attentionHead.Q, HIDDEN_DIMENSIONS_SIZE, attentionDimension);
+    validateSize(attentionHead.K, HIDDEN_DIMENSIONS_SIZE, attentionDimension);
+    validateSize(
+      attentionHead.V.up,
+      attentionDimension,
+      HIDDEN_DIMENSIONS_SIZE,
+    );
+    validateSize(
+      attentionHead.V.down,
+      HIDDEN_DIMENSIONS_SIZE,
+      attentionDimension,
+    );
+  }
+
+  // MLP validation
   validateSize(
     transformer.multilayerPerceptron.wUp.weightsMatrix,
     HIDDEN_DIMENSIONS_SIZE,

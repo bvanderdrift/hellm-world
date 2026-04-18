@@ -73,6 +73,20 @@ export const multiplyMatrices = (
   return m3;
 };
 
+export const multiplyMatrixWithVector = (
+  matrix: number[][],
+  vector: number[],
+): number[] => {
+  const multipliedMatrix = multiplyMatrices([vector], matrix);
+
+  validateSize(multipliedMatrix, 1);
+
+  return multipliedMatrix[0]!;
+};
+
+export const applyScalarToVector = (scalar: number, vector: number[]) =>
+  vector.map((value) => value * scalar);
+
 export const addVectors = (vector1: number[], vector2: number[]) => {
   if (vector1.length !== vector2.length) {
     throw new Error(
@@ -81,6 +95,16 @@ export const addVectors = (vector1: number[], vector2: number[]) => {
   }
 
   return vector1.map((e1, index) => e1 + vector2[index]!);
+};
+
+export const addVectorsInMatrix = (matrix: number[][]) => {
+  const vectorDimensions = matrix[0]?.length ?? 0;
+  validateSize(matrix, matrix.length, vectorDimensions);
+
+  return matrix.reduce(
+    (sumVector, nextVector) => addVectors(sumVector, nextVector),
+    new Array<number>(vectorDimensions).fill(0),
+  );
 };
 
 export const addMatrices = (matrix1: number[][], matrix2: number[][]) => {

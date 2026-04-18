@@ -3,7 +3,7 @@ import {
   getMultilayerPerceptronUpdateMatrix,
   getMultilayerPerceptronUpdateVector,
 } from "./mlp.ts";
-import type { MultilayerPerceptronWeights } from "./weights.ts";
+import type { MultilayerPerceptronWeights } from "../weights.ts";
 
 const twoDimPerceptron: MultilayerPerceptronWeights = {
   wUp: {
@@ -112,9 +112,9 @@ describe("getMultilayerPerceptronUpdateVector", () => {
   it("returns only the learned update, not the original residual input", () => {
     const input = [2, -1];
 
-    expect(getMultilayerPerceptronUpdateVector(input, twoDimPerceptron)).not.toEqual(
-      [4.5, 1.5],
-    );
+    expect(
+      getMultilayerPerceptronUpdateVector(input, twoDimPerceptron),
+    ).not.toEqual([4.5, 1.5]);
   });
 });
 

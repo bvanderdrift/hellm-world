@@ -12,8 +12,9 @@ import {
   validateSize,
 } from "./matrices.ts";
 import { tokenize, tokens } from "./tokenizer.ts";
-import { getMultilayerPerceptronUpdateMatrix } from "./mlp.ts";
+import { getMultilayerPerceptronUpdateMatrix } from "./transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
+import { runSelfAttentionMechanism } from "./transforming/attention.ts";
 
 export const runLlm = (input: string) => {
   const inputTokens = tokenize(input);
@@ -36,9 +37,12 @@ export const runLlm = (input: string) => {
   validateSize(intermediateState, CONTEXT_SIZE, HIDDEN_DIMENSIONS_SIZE);
 
   for (const transformer of transformers) {
-    // TODO: attention processing - NORMALIZE THE INPUT
+    const attentionUpdateMatrix = runSelfAttentionMechanism(
+      normalize(intermediateState),
+      transformer.attention,
+    );
 
-    // TODO: residual connection
+    intermediateState = addMatrices(intermediateState, attentionUpdateMatrix);
 
     const mlpUpdateMatrix = getMultilayerPerceptronUpdateMatrix(
       // Normalize input only, don't normalize the intermediateState iself
