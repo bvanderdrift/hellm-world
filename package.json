@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc"
   },
   "keywords": [],
   "author": "",
