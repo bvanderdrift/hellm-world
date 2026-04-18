@@ -13,24 +13,61 @@ import type { Weights } from "./weights/types.ts";
 import { extractDimensionSizes } from "./weights/weight-helpers.ts";
 
 export const runLlm = (input: string, weights: Weights<Token>) => {
-  const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+  const { hiddenDimensionsSize } = extractDimensionSizes(weights);
 
   const inputTokens = tokenize(input);
 
-  let intermediateState = inputTokens.map((t) =>
+  const startState = inputTokens.map((t) =>
     weights.embeddings[t].map((v) => v * Math.sqrt(hiddenDimensionsSize)),
   );
 
-  const contextSize = inputTokens.length;
+  const unembeddedState = llmForwardPass(startState, weights);
 
-  validateSize(intermediateState, contextSize, hiddenDimensionsSize);
+  // Last vector is probability logits
+  const logits = unembeddedState[unembeddedState.length - 1];
+
+  if (!logits) {
+    throw new Error(`Logits array is undefined`);
+  }
+
+  return decodeLogits(logits);
+};
+
+export const getHighestValueIndex = (values: number[]) => {
+  return values.reduce(
+    (tracker, value, index) => {
+      if (value > tracker.value) {
+        return {
+          index,
+          value,
+        };
+      }
+
+      return tracker;
+    },
+    {
+      index: 0,
+      value: -Infinity,
+    },
+  ).index;
+};
+
+export const llmForwardPass = (
+  startState: number[][],
+  weights: Weights<Token>,
+) => {
+  const contextSize = startState.length;
+
+  const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+
+  validateSize(startState, contextSize, hiddenDimensionsSize);
 
   const positionalEncoding = getPositionEncoding(
     contextSize,
     hiddenDimensionsSize,
   );
 
-  intermediateState = addMatrices(intermediateState, positionalEncoding);
+  let intermediateState = addMatrices(startState, positionalEncoding);
 
   validateSize(intermediateState, contextSize, hiddenDimensionsSize);
 
@@ -62,13 +99,10 @@ export const runLlm = (input: string, weights: Weights<Token>) => {
 
   validateSize(unembeddedState, contextSize, vocabSize);
 
-  // Last vector is probability logits
-  const logits = unembeddedState[contextSize - 1];
+  return unembeddedState;
+};
 
-  if (!logits) {
-    throw new Error(`Logits array is undefined`);
-  }
-
+export const decodeLogits = (logits: number[]) => {
   const probabilities = softmax(logits);
 
   const nextTokenIndex = getHighestValueIndex(probabilities);
@@ -80,23 +114,4 @@ export const runLlm = (input: string, weights: Weights<Token>) => {
   }
 
   return nextToken;
-};
-
-export const getHighestValueIndex = (values: number[]) => {
-  return values.reduce(
-    (tracker, value, index) => {
-      if (value > tracker.value) {
-        return {
-          index,
-          value,
-        };
-      }
-
-      return tracker;
-    },
-    {
-      index: 0,
-      value: -Infinity,
-    },
-  ).index;
 };
