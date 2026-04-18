@@ -10,12 +10,17 @@ import { getMultilayerPerceptronUpdateMatrix } from "./transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "./transforming/attention.ts";
 import type { Weights } from "./weights/types.ts";
-import { extractDimensionSizes } from "./weights/weight-helpers.ts";
+import {
+  extractDimensionSizes,
+  validateSizing,
+} from "./weights/weight-helpers.ts";
 
 export const runLlm = <T extends string>(
   input: string,
   weights: Weights<T>,
 ) => {
+  validateSizing(weights);
+
   const { hiddenDimensionsSize } = extractDimensionSizes(weights);
 
   const inputTokens = tokenize(input, weights.tokens);

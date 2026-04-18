@@ -106,3 +106,25 @@ describe("llm pipeline contracts", () => {
     validateSize(logitsByPosition, inputTokens.length, toyWeights.vocabSize);
   });
 });
+
+describe("weights validation contract", () => {
+  it("fails fast when any embedding row has the wrong width, even if that token is unused", () => {
+    const malformedWeights: Weights<Token> = {
+      tokens: [...toyWeights.tokens],
+      embeddings: {
+        hello: [1, 1, 1, 1],
+        world: [1, 1, 1],
+        my: [1, 1, 1, 1],
+        name: [1, 1, 1, 1],
+        is: [1, 1, 1, 1],
+        beer: [1, 1, 1, 1],
+      },
+      unembeddings: toyWeights.unembeddings,
+      transformers: toyWeights.transformers,
+    };
+
+    expect(() => runLlm("hello", malformedWeights)).toThrow(
+      "Token world has unexpected vector length 3 vs base length 4",
+    );
+  });
+});
