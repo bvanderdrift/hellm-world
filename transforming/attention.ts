@@ -9,6 +9,7 @@ import type { AttentionWeights } from "../weights/types.ts";
 
 export const runSelfAttentionMechanism = (
   input: number[][],
+  headsCount: number,
   attentionWeights: AttentionWeights,
 ) => {
   const contextLength = input.length;
@@ -18,35 +19,30 @@ export const runSelfAttentionMechanism = (
   const inputK = multiplyMatrices(input, attentionWeights.K);
   const inputV = multiplyMatrices(input, attentionWeights.V);
 
-  const headDimensionsCount = divideToWhole(
-    hiddenDimensionsCount,
-    attentionWeights.headsCount,
-  );
+  const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
-  const headOutputs = new Array(attentionWeights.headsCount)
-    .fill([])
-    .map((_, headIndex) => {
-      return runSelfAttentionHead(
-        inputQ.map((vector) =>
-          vector.slice(
-            headIndex * headDimensionsCount,
-            (headIndex + 1) * headDimensionsCount,
-          ),
+  const headOutputs = new Array(headsCount).fill([]).map((_, headIndex) => {
+    return runSelfAttentionHead(
+      inputQ.map((vector) =>
+        vector.slice(
+          headIndex * headDimensionsCount,
+          (headIndex + 1) * headDimensionsCount,
         ),
-        inputK.map((vector) =>
-          vector.slice(
-            headIndex * headDimensionsCount,
-            (headIndex + 1) * headDimensionsCount,
-          ),
+      ),
+      inputK.map((vector) =>
+        vector.slice(
+          headIndex * headDimensionsCount,
+          (headIndex + 1) * headDimensionsCount,
         ),
-        inputV.map((vector) =>
-          vector.slice(
-            headIndex * headDimensionsCount,
-            (headIndex + 1) * headDimensionsCount,
-          ),
+      ),
+      inputV.map((vector) =>
+        vector.slice(
+          headIndex * headDimensionsCount,
+          (headIndex + 1) * headDimensionsCount,
         ),
-      );
-    });
+      ),
+    );
+  });
 
   const headsConcatenated = headOutputs.reduce(
     (partial, head) =>

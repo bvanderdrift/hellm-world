@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  extractDimensionSizes,
-  validateSizing,
-} from "./weight-helpers.ts";
+import { extractDimensionSizes, validateSizing } from "./weight-helpers.ts";
 import { toyWeights, type Token } from "./toy_weights/toyWeights.ts";
 import type { Weights } from "./types.ts";
 
@@ -18,6 +15,7 @@ const createWeights = (
   overrides: Partial<Weights<Token>> = {},
 ): Weights<Token> => ({
   tokens: [...toyWeights.tokens],
+  headsCount: toyWeights.headsCount,
   embeddings: cloneEmbeddings(),
   unembeddings: toyWeights.unembeddings.map((row) => [...row]),
   transformers: toyWeights.transformers,
@@ -36,6 +34,16 @@ describe("extractDimensionSizes", () => {
 describe("validateSizing", () => {
   it("accepts a self-consistent checkpoint with unique multi-character tokens", () => {
     expect(() => validateSizing(toyWeights)).not.toThrow();
+  });
+
+  it("rejects a headsCount that does not evenly divide the hidden width", () => {
+    const malformedWeights = createWeights({
+      headsCount: 3,
+    });
+
+    expect(() => validateSizing(malformedWeights)).toThrow(
+      "Can't perfectly divide the nominator by denominator (3)",
+    );
   });
 
   it("rejects duplicate tokens in the checkpoint vocabulary", () => {

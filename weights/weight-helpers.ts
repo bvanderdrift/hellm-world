@@ -13,6 +13,8 @@ export const extractDimensionSizes = (weights: Weights) => {
 export const validateSizing = (weights: Weights) => {
   const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
 
+  divideToWhole(hiddenDimensionsSize, weights.headsCount);
+
   for (const [token, vector] of Object.entries(weights.embeddings)) {
     if (vector.length !== hiddenDimensionsSize) {
       throw new Error(

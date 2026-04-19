@@ -58,11 +58,7 @@ describe("runSelfAttentionHead", () => {
   });
 
   it("does not attend to future keys and values", () => {
-    const output = runSelfAttentionHead(
-      [[1], [0]],
-      [[0], [10]],
-      [[1], [5]],
-    );
+    const output = runSelfAttentionHead([[1], [0]], [[0], [10]], [[1], [5]]);
 
     expectMatrixCloseTo(output, [[1], [3]]);
   });
@@ -71,7 +67,6 @@ describe("runSelfAttentionHead", () => {
 describe("runSelfAttentionMechanism", () => {
   it("projects Q/K/V once, splits heads by feature columns, then applies one shared output projection", () => {
     const twoHeadAttention: AttentionWeights = {
-      headsCount: 2,
       Q: [
         [0, 0, 0, 0],
         [0, 0, 0, 0],
@@ -98,7 +93,7 @@ describe("runSelfAttentionMechanism", () => {
       ],
     };
 
-    const output = runSelfAttentionMechanism(input, twoHeadAttention);
+    const output = runSelfAttentionMechanism(input, 2, twoHeadAttention);
 
     expectMatrixCloseTo(output, [
       [1, 10, 0, 0],

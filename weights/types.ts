@@ -1,5 +1,4 @@
 export interface AttentionWeights {
-  headsCount: number;
   Q: number[][];
   K: number[][];
   V: number[][];
@@ -24,6 +23,7 @@ export interface TransformerWeights {
 
 export type Weights<T extends string = string> = {
   tokens: T[];
+  headsCount: number;
   embeddings: Record<T, number[]>; // C x D
   unembeddings: number[][]; // D x C
   transformers: TransformerWeights[];

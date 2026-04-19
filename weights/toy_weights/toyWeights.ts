@@ -6,6 +6,7 @@ export type Token = (typeof tokens)[number];
 
 const toyWeightsBare: Weights<Token> = {
   tokens: [...tokens],
+  headsCount: 2,
   embeddings: {
     hello: [1, 1, 1, 1],
     world: [1, 1, 1, 1],
@@ -23,7 +24,6 @@ const toyWeightsBare: Weights<Token> = {
   transformers: [
     {
       attention: {
-        headsCount: 2,
         Q: [
           [1, 1, 1, 1],
           [1, 1, 1, 1],

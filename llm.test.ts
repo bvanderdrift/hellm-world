@@ -111,6 +111,7 @@ describe("weights validation contract", () => {
   it("fails fast when any embedding row has the wrong width, even if that token is unused", () => {
     const malformedWeights: Weights<Token> = {
       tokens: [...toyWeights.tokens],
+      headsCount: toyWeights.headsCount,
       embeddings: {
         hello: [1, 1, 1, 1],
         world: [1, 1, 1],
