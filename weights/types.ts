@@ -1,14 +1,9 @@
-export interface AttentionHeadWeights {
+export interface AttentionWeights {
+  headsCount: number;
   Q: number[][];
   K: number[][];
-  V: {
-    up: number[][];
-    down: number[][];
-  };
-}
-
-export interface AttentionWeights {
-  heads: AttentionHeadWeights[];
+  V: number[][];
+  out: number[][];
 }
 
 export interface MultilayerPerceptronWeights {

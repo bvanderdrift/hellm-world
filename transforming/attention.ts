@@ -1,15 +1,11 @@
-import { dotProduct, softmax } from "../math.ts";
+import { divideToWhole, dotProduct, softmax } from "../math.ts";
 import {
-  addMatrices,
   addVectorsInMatrix,
   applyScalarToVector,
-  multiplyMatrixWithVector,
+  multiplyMatrices,
   validateSize,
 } from "../matrices.ts";
-import type {
-  AttentionHeadWeights,
-  AttentionWeights,
-} from "../weights/types.ts";
+import type { AttentionWeights } from "../weights/types.ts";
 
 export const runSelfAttentionMechanism = (
   input: number[][],
@@ -18,49 +14,72 @@ export const runSelfAttentionMechanism = (
   const contextLength = input.length;
   const hiddenDimensionsCount = input[0]?.length ?? -1;
 
-  const headOutputs = attentionWeights.heads.reduce(
-    (summedActivation, head) => {
-      const headOutput = runSelfAttentionHead(input, head);
+  const inputQ = multiplyMatrices(input, attentionWeights.Q);
+  const inputK = multiplyMatrices(input, attentionWeights.K);
+  const inputV = multiplyMatrices(input, attentionWeights.V);
 
-      validateSize(headOutput, contextLength, hiddenDimensionsCount);
-
-      return addMatrices(summedActivation, headOutput);
-    },
-    new Array(input.length).fill(new Array(hiddenDimensionsCount).fill(0)),
+  const headDimensionsCount = divideToWhole(
+    hiddenDimensionsCount,
+    attentionWeights.headsCount,
   );
 
-  validateSize(headOutputs, contextLength, hiddenDimensionsCount);
+  const headOutputs = new Array(attentionWeights.headsCount)
+    .fill([])
+    .map((_, headIndex) => {
+      return runSelfAttentionHead(
+        inputQ.map((vector) =>
+          vector.slice(
+            headIndex * headDimensionsCount,
+            (headIndex + 1) * headDimensionsCount,
+          ),
+        ),
+        inputK.map((vector) =>
+          vector.slice(
+            headIndex * headDimensionsCount,
+            (headIndex + 1) * headDimensionsCount,
+          ),
+        ),
+        inputV.map((vector) =>
+          vector.slice(
+            headIndex * headDimensionsCount,
+            (headIndex + 1) * headDimensionsCount,
+          ),
+        ),
+      );
+    });
 
-  return headOutputs;
+  const headsConcatenated = headOutputs.reduce(
+    (partial, head) =>
+      partial.map((vector, vectorIndex) => [...vector, ...head[vectorIndex]!]),
+    new Array(contextLength).fill([]),
+  );
+
+  const attentionUpdate = multiplyMatrices(
+    headsConcatenated,
+    attentionWeights.out,
+  );
+
+  validateSize(attentionUpdate, contextLength, hiddenDimensionsCount);
+
+  return attentionUpdate;
 };
 
 export const runSelfAttentionHead = (
-  input: number[][],
-  attentionHeadWeights: AttentionHeadWeights,
+  inputHeadQ: number[][],
+  inputHeadK: number[][],
+  inputHeadV: number[][],
 ) => {
   const keyValues: {
     key: number[];
     value: number[];
   }[] = [];
 
-  const contextLength = input.length;
-  const hiddenDimensionCount = input[0]?.length ?? -1;
-  const headDimensionCount = attentionHeadWeights.Q[0]?.length ?? -1;
+  const contextLength = inputHeadQ.length;
+  const headDimensionCount = inputHeadQ[0]?.length ?? -1;
 
-  const attentionMatrix = input.map((vector, index) => {
-    const vectorQ = multiplyMatrixWithVector(attentionHeadWeights.Q, vector);
-    const vectorK = multiplyMatrixWithVector(attentionHeadWeights.K, vector);
-
-    const vectorVDownsized = multiplyMatrixWithVector(
-      attentionHeadWeights.V.down,
-      vector,
-    );
-    const vectorV = multiplyMatrixWithVector(
-      attentionHeadWeights.V.up,
-      vectorVDownsized,
-    );
-
-    validateSize([vectorV], 1, hiddenDimensionCount);
+  const attentionMatrix = inputHeadQ.map((vectorQ, index) => {
+    const vectorK = inputHeadK[index]!;
+    const vectorV = inputHeadV[index]!;
 
     // Do it BEFORE the dotproducts so it self-matches
     keyValues.push({
@@ -91,7 +110,7 @@ export const runSelfAttentionHead = (
 
       if (!entry) {
         // attempting to look-forward - return 0-vector
-        return new Array<number>(hiddenDimensionCount).fill(0);
+        return new Array<number>(headDimensionCount).fill(0);
       }
 
       return applyScalarToVector(scalar, entry.value);
@@ -100,7 +119,7 @@ export const runSelfAttentionHead = (
     return addVectorsInMatrix(vectorUpdatePayload);
   });
 
-  validateSize(attentionMatrix, contextLength, hiddenDimensionCount);
+  validateSize(attentionMatrix, contextLength, headDimensionCount);
 
   return attentionMatrix;
 };

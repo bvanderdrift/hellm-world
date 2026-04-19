@@ -3,10 +3,7 @@ import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
 } from "./attention.ts";
-import type {
-  AttentionHeadWeights,
-  AttentionWeights,
-} from "../weights/types.ts";
+import type { AttentionWeights } from "../weights/types.ts";
 
 const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
   expect(actual).toHaveLength(expected.length);
@@ -27,71 +24,22 @@ const input = [
   [0, 1, 0, 0],
 ];
 
-const identityLikeHead = (valueDown: number[], valueUp: number[][]) => ({
-  Q: [[0], [0], [0], [0]],
-  K: [[0], [0], [0], [0]],
-  V: {
-    down: valueDown.map((value) => [value]),
-    up: valueUp,
-  },
-});
-
-const zeroedHeadSpaceRow = [0];
-
-const headThatProjectsValues = (): AttentionHeadWeights => ({
-  Q: [
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-  ],
-  K: [
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-    zeroedHeadSpaceRow,
-  ],
-  V: {
-    down: [[1], [2], [0], [0]],
-    up: [[1, 10, 100, 1000]],
-  },
-});
-
-const headThatUsesQueryKeySimilarity = (): AttentionHeadWeights => ({
-  Q: [[0], [Math.log(2)], [0], [0]],
-  K: [[1], [0], [0], [0]],
-  V: {
-    down: [[1], [2], [0], [0]],
-    up: [[1, 0, 0, 0]],
-  },
-});
-
-const headWithStrongFutureMatch = (): AttentionHeadWeights => ({
-  Q: [[1], [0], [0], [0]],
-  K: [[0], [10], [0], [0]],
-  V: {
-    down: [[1], [5], [0], [0]],
-    up: [[1, 0, 0, 0]],
-  },
-});
-
-const headA: AttentionHeadWeights = identityLikeHead(
-  [1, 3, 0, 0],
-  [[1, 0, 0, 0]],
-);
-
-const headB: AttentionHeadWeights = identityLikeHead(
-  [10, 30, 0, 0],
-  [[0, 1, 0, 0]],
-);
-
-const twoHeadAttention: AttentionWeights = {
-  heads: [headA, headB],
-};
-
 describe("runSelfAttentionHead", () => {
-  it("uses the value projection as the payload that gets mixed across positions", () => {
-    const output = runSelfAttentionHead(input, headThatProjectsValues());
+  it("uses the value matrix as the payload that gets mixed across positions", () => {
+    const output = runSelfAttentionHead(
+      [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      [
+        [1, 10, 100, 1000],
+        [2, 20, 200, 2000],
+      ],
+    );
 
     expectMatrixCloseTo(output, [
       [1, 10, 100, 1000],
@@ -101,28 +49,55 @@ describe("runSelfAttentionHead", () => {
 
   it("uses query-key similarity to weight the visible values", () => {
     const output = runSelfAttentionHead(
-      input,
-      headThatUsesQueryKeySimilarity(),
+      [[0], [Math.log(2)]],
+      [[1], [0]],
+      [[1], [2]],
     );
 
-    expectMatrixCloseTo(output, [
-      [1, 0, 0, 0],
-      [4 / 3, 0, 0, 0],
-    ]);
+    expectMatrixCloseTo(output, [[1], [4 / 3]]);
   });
 
   it("does not attend to future keys and values", () => {
-    const output = runSelfAttentionHead(input, headWithStrongFutureMatch());
+    const output = runSelfAttentionHead(
+      [[1], [0]],
+      [[0], [10]],
+      [[1], [5]],
+    );
 
-    expectMatrixCloseTo(output, [
-      [1, 0, 0, 0],
-      [3, 0, 0, 0],
-    ]);
+    expectMatrixCloseTo(output, [[1], [3]]);
   });
 });
 
 describe("runSelfAttentionMechanism", () => {
-  it("adds the model-space contribution from each head", () => {
+  it("projects Q/K/V once, splits heads by feature columns, then applies one shared output projection", () => {
+    const twoHeadAttention: AttentionWeights = {
+      headsCount: 2,
+      Q: [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      K: [
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      V: [
+        [1, 0, 10, 0],
+        [3, 0, 30, 0],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ],
+      out: [
+        [1, 0, 0, 0],
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 0],
+      ],
+    };
+
     const output = runSelfAttentionMechanism(input, twoHeadAttention);
 
     expectMatrixCloseTo(output, [

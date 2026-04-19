@@ -31,25 +31,27 @@ export const validateSizing = (weights: Weights) => {
   validateSize(weights.unembeddings, hiddenDimensionsSize, vocabSize);
 
   for (const transformer of weights.transformers) {
-    const attentionDimension = divideToWhole(
+    validateSize(
+      transformer.attention.Q,
       hiddenDimensionsSize,
-      transformer.attention.heads.length,
+      hiddenDimensionsSize,
+    );
+    validateSize(
+      transformer.attention.K,
+      hiddenDimensionsSize,
+      hiddenDimensionsSize,
+    );
+    validateSize(
+      transformer.attention.V,
+      hiddenDimensionsSize,
+      hiddenDimensionsSize,
     );
 
-    for (const attentionHead of transformer.attention.heads) {
-      validateSize(attentionHead.Q, hiddenDimensionsSize, attentionDimension);
-      validateSize(attentionHead.K, hiddenDimensionsSize, attentionDimension);
-      validateSize(
-        attentionHead.V.up,
-        attentionDimension,
-        hiddenDimensionsSize,
-      );
-      validateSize(
-        attentionHead.V.down,
-        hiddenDimensionsSize,
-        attentionDimension,
-      );
-    }
+    validateSize(
+      transformer.attention.out,
+      hiddenDimensionsSize,
+      hiddenDimensionsSize,
+    );
 
     // MLP validation
     validateSize(

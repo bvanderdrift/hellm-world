@@ -37,7 +37,7 @@
 - [ ] Revisit normalization first.
 - Hint: your current `normalize(...)` is a fixed statistical transform, not a learned module. Standard checkpoints expect norm parameters to live somewhere in the weight format.
 
-- [ ] Revisit attention parameterization.
+- [x] Revisit attention parameterization.
 - Hint: compare your per-head `V.down` / `V.up` structure with the more common "project Q/K/V, combine heads, then apply one shared output projection" pattern.
 
 - [ ] Revisit the MLP activation.
