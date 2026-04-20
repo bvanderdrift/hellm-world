@@ -15,17 +15,39 @@ import {
   validateWeights,
 } from "../weights/weight-helpers.ts";
 import { getLatestCheckpointWeights } from "../weights/weight-io.ts";
+import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
+
+const contextTimeout = 100;
 
 export const runLlm = (input: string, model: string) => {
+  let outputTokens: string[] = [];
+
   const weights = getLatestCheckpointWeights(model);
 
   validateWeights(weights);
 
-  const { hiddenDimensionsSize } = extractDimensionSizes(weights);
-
   const inputTokens = tokenize(input, weights.vocabulary);
 
-  const startState = inputTokens.map((t) =>
+  for (let index = 0; index < contextTimeout; index++) {
+    const nextToken = generateNextToken(
+      [...inputTokens, ...outputTokens],
+      weights,
+    );
+
+    if (nextToken === END_OF_SEQUENCE_TOKEN) {
+      break;
+    }
+
+    outputTokens.push(nextToken);
+  }
+
+  return outputTokens.join(" ");
+};
+
+const generateNextToken = (input: string[], weights: Weights) => {
+  const { hiddenDimensionsSize } = extractDimensionSizes(weights);
+
+  const startState = input.map((t) =>
     weights.embeddings[t]!.map((v) => v * Math.sqrt(hiddenDimensionsSize)),
   );
 
