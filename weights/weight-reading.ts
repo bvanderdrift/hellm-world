@@ -10,7 +10,7 @@ export const getLatestCheckpoint = (model: string): Weights => {
     (file) => file !== METADATA_FILE_NAME,
   );
 
-  const sortedCheckpoints = checkpointFiles.sort((a, b) => a.localeCompare(b));
+  const sortedCheckpoints = checkpointFiles.sort((a, b) => b.localeCompare(a));
 
   const latestCheckpoint = sortedCheckpoints[0];
 
