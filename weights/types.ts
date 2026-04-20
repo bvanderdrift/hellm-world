@@ -21,10 +21,15 @@ export interface TransformerWeights {
   multilayerPerceptron: MultilayerPerceptronWeights;
 }
 
-export type Weights<T extends string = string> = {
-  tokens: T[];
-  headsCount: number;
-  embeddings: Record<T, number[]>; // C x D
+export type CheckpointWeights = {
+  embeddings: Record<string, number[]>; // C x D
   unembeddings: number[][]; // D x C
   transformers: TransformerWeights[];
 };
+
+export type ModelMetadata = {
+  vocabulary: string[];
+  headsCount: number;
+};
+
+export type Weights = ModelMetadata & CheckpointWeights;

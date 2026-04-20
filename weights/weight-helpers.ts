@@ -10,24 +10,47 @@ export const extractDimensionSizes = (weights: Weights) => {
   };
 };
 
-export const validateSizing = (weights: Weights) => {
+export const validateWeights = (weights: Weights) => {
+  if (weights.vocabulary.length === 0) {
+    throw new Error("Provided vocabulary cannot be empty");
+  }
+
   const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+
+  if (weights.headsCount <= 0) {
+    throw new Error("headsCount must be a positive integer");
+  }
 
   divideToWhole(hiddenDimensionsSize, weights.headsCount);
 
-  for (const [token, vector] of Object.entries(weights.embeddings)) {
+  const tokensDeduped = new Set(weights.vocabulary);
+
+  const duplicateCount = weights.vocabulary.length - tokensDeduped.size;
+
+  if (duplicateCount > 0) {
+    throw new Error(`Provided weights have ${duplicateCount} duplicate tokens`);
+  }
+
+  const embeddingsEntries = Object.entries(weights.embeddings);
+
+  if (embeddingsEntries.length !== tokensDeduped.size) {
+    throw new Error(
+      `Provided embeddings has unexpected vocabulary size ${embeddingsEntries.length}, expected ${tokensDeduped.size}`,
+    );
+  }
+
+  for (const [token, vector] of embeddingsEntries) {
+    if (!tokensDeduped.has(token)) {
+      throw new Error(
+        `Unknown embedding token ${token}. Does not occur in vocabulary of model.`,
+      );
+    }
+
     if (vector.length !== hiddenDimensionsSize) {
       throw new Error(
         `Token ${token} has unexpected vector length ${vector.length} vs base length ${hiddenDimensionsSize}`,
       );
     }
-  }
-
-  const tokensDeduped = new Set(weights.tokens);
-  const duplicateCount = weights.tokens.length - tokensDeduped.size;
-
-  if (duplicateCount > 0) {
-    throw new Error(`Provided weights have ${duplicateCount} duplicate tokens`);
   }
 
   validateSize(weights.unembeddings, hiddenDimensionsSize, vocabSize);

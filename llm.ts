@@ -12,21 +12,21 @@ import { runSelfAttentionMechanism } from "./transforming/attention.ts";
 import type { Weights } from "./weights/types.ts";
 import {
   extractDimensionSizes,
-  validateSizing,
+  validateWeights,
 } from "./weights/weight-helpers.ts";
+import { getLatestCheckpoint } from "./weights/weight-reading.ts";
 
-export const runLlm = <T extends string>(
-  input: string,
-  weights: Weights<T>,
-) => {
-  validateSizing(weights);
+export const runLlm = (input: string, model: string) => {
+  const weights = getLatestCheckpoint(model);
+
+  validateWeights(weights);
 
   const { hiddenDimensionsSize } = extractDimensionSizes(weights);
 
-  const inputTokens = tokenize(input, weights.tokens);
+  const inputTokens = tokenize(input, weights.vocabulary);
 
   const startState = inputTokens.map((t) =>
-    weights.embeddings[t].map((v) => v * Math.sqrt(hiddenDimensionsSize)),
+    weights.embeddings[t]!.map((v) => v * Math.sqrt(hiddenDimensionsSize)),
   );
 
   const unembeddedState = llmForwardPass(startState, weights);
@@ -38,7 +38,7 @@ export const runLlm = <T extends string>(
     throw new Error(`Logits array is undefined`);
   }
 
-  return decodeLogits(logits, weights.tokens);
+  return decodeLogits(logits, weights.vocabulary);
 };
 
 export const getHighestValueIndex = (values: number[]) => {

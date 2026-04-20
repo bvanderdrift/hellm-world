@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { tokenize } from "./tokenizer.ts";
-import { toyWeights } from "./weights/toy_weights/toyWeights.ts";
 
 describe("tokenize", () => {
+  const vocab = ["hello", "world", "my", "name", "is", "beer"];
+
   it("tokenizes a known sentence into vocabulary tokens", () => {
-    expect(tokenize("hello world my name is beer", toyWeights.tokens)).toEqual([
+    expect(tokenize("hello world my name is beer", vocab)).toEqual([
       "hello",
       "world",
       "my",
@@ -15,7 +16,7 @@ describe("tokenize", () => {
   });
 
   it("handles repeated tokens", () => {
-    expect(tokenize("hello hello world", toyWeights.tokens)).toEqual([
+    expect(tokenize("hello hello world", vocab)).toEqual([
       "hello",
       "hello",
       "world",
@@ -23,7 +24,7 @@ describe("tokenize", () => {
   });
 
   it("throws when the input contains an unknown token", () => {
-    expect(() => tokenize("hello mars", toyWeights.tokens)).toThrow(
+    expect(() => tokenize("hello mars", vocab)).toThrow(
       "Unable to tokenize mars",
     );
   });
