@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   decodeLogits,
   getHighestValueIndex,
@@ -62,18 +63,26 @@ describe("llmForwardPass", () => {
 });
 
 describe("runLlm", () => {
-  it("decodes the last-position logits from the forward pass", () => {
-    const input = "hello world beer";
-    const logitsByPosition = llmForwardPass(getStartState(input), toyWeights);
-    const lastLogits = logitsByPosition[logitsByPosition.length - 1];
+  it("stops generation when the model predicts EOS and does not include it in the output", () => {
+    const eosStoppingWeights: Weights = {
+      vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
+      headsCount: 1,
+      embeddings: {
+        hello: [0, 0],
+        [END_OF_SEQUENCE_TOKEN]: [0, 0],
+      },
+      unembeddings: [
+        [0, -1],
+        [0, 1],
+      ],
+      transformers: [],
+    };
 
-    if (!lastLogits) {
-      throw new Error(`Expected the forward pass to return at least one row`);
-    }
-
-    expect(runLlm(input, MODEL_NAME)).toBe(
-      decodeLogits(lastLogits, toyWeights.vocabulary),
+    vi.spyOn(weightReading, "getLatestCheckpointWeights").mockReturnValue(
+      eosStoppingWeights,
     );
+
+    expect(runLlm("hello", MODEL_NAME)).toBe("");
   });
 });
 
@@ -126,6 +135,7 @@ describe("weights validation contract", () => {
         name: [1, 1, 1, 1],
         is: [1, 1, 1, 1],
         beer: [1, 1, 1, 1],
+        [END_OF_SEQUENCE_TOKEN]: [1, 1, 1, 1],
       },
       unembeddings: toyWeights.unembeddings,
       transformers: toyWeights.transformers,

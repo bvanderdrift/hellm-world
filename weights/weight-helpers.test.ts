@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { extractDimensionSizes, validateWeights } from "./weight-helpers.ts";
 import type { Weights } from "./types.ts";
 
@@ -8,14 +9,15 @@ const matrix = (rows: number, columns: number, value = 1) =>
   new Array(rows).fill(null).map(() => vector(columns, value));
 
 const validWeights: Weights = {
-  vocabulary: ["hello", "world", "beer"],
+  vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
   embeddings: {
     hello: [1, 1, 1, 1],
     world: [1, 1, 1, 1],
     beer: [1, 1, 1, 1],
+    [END_OF_SEQUENCE_TOKEN]: [1, 1, 1, 1],
   },
-  unembeddings: matrix(4, 3),
+  unembeddings: matrix(4, 4),
   transformers: [
     {
       attention: {
@@ -49,7 +51,7 @@ describe("extractDimensionSizes", () => {
   it("derives the hidden width and vocab size from embeddings", () => {
     expect(extractDimensionSizes(validWeights)).toEqual({
       hiddenDimensionsSize: 4,
-      vocabSize: 3,
+      vocabSize: 4,
     });
   });
 });
@@ -71,11 +73,25 @@ describe("validateWeights", () => {
 
   it("rejects duplicate tokens in the checkpoint vocabulary", () => {
     const duplicateTokenWeights = createWeights({
-      vocabulary: ["hello", "world", "hello"],
+      vocabulary: ["hello", "world", "hello", END_OF_SEQUENCE_TOKEN],
     });
 
     expect(() => validateWeights(duplicateTokenWeights)).toThrow(
       "Provided weights have 1 duplicate tokens",
+    );
+  });
+
+  it("rejects vocabularies that are missing the EOS token", () => {
+    const { [END_OF_SEQUENCE_TOKEN]: _, ...embeddingsWithoutEos } =
+      cloneEmbeddings();
+    const malformedWeights = createWeights({
+      vocabulary: ["hello", "world", "beer"],
+      embeddings: embeddingsWithoutEos,
+      unembeddings: matrix(4, 3),
+    });
+
+    expect(() => validateWeights(malformedWeights)).toThrow(
+      `Model embeddings are missing special end-of-sequence token "${END_OF_SEQUENCE_TOKEN}"`,
     );
   });
 
@@ -86,7 +102,7 @@ describe("validateWeights", () => {
     });
 
     expect(() => validateWeights(malformedWeights)).toThrow(
-      "Provided embeddings has unexpected vocabulary size 2, expected 3",
+      "Provided embeddings has unexpected vocabulary size 3, expected 4",
     );
   });
 

@@ -1,3 +1,4 @@
+import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
 import { validateSize } from "../shared/matrices.ts";
 import type { Weights } from "./types.ts";
@@ -29,6 +30,12 @@ export const validateWeights = (weights: Weights) => {
 
   if (duplicateCount > 0) {
     throw new Error(`Provided weights have ${duplicateCount} duplicate tokens`);
+  }
+
+  if (!tokensDeduped.has(END_OF_SEQUENCE_TOKEN)) {
+    throw new Error(
+      `Model embeddings are missing special end-of-sequence token "${END_OF_SEQUENCE_TOKEN}"`,
+    );
   }
 
   const embeddingsEntries = Object.entries(weights.embeddings);

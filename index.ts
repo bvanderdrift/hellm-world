@@ -1,6 +1,6 @@
 import { program } from "commander";
 import { runLlm } from "./running/llm.ts";
-import { doTrainingLoopAndStoreCheckpoint } from "./training.ts";
+import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
 
 program
   .name("llm")
