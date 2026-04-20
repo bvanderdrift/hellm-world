@@ -8,11 +8,11 @@ import {
 import { multiplyMatrices, validateSize } from "./matrices.ts";
 import { tokenize } from "./tokenizer.ts";
 import { extractDimensionSizes } from "./weights/weight-helpers.ts";
-import * as weightReading from "./weights/weight-reading.ts";
+import * as weightReading from "./weights/weight-io.ts";
 import type { Weights } from "./weights/types.ts";
 
 const MODEL_NAME = "toy_model";
-const toyWeights = weightReading.getLatestCheckpoint(MODEL_NAME);
+const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);
 const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(toyWeights);
 
 const getStartState = (input: string) => {
@@ -131,7 +131,7 @@ describe("weights validation contract", () => {
       transformers: toyWeights.transformers,
     };
 
-    vi.spyOn(weightReading, "getLatestCheckpoint").mockReturnValue(
+    vi.spyOn(weightReading, "getLatestCheckpointWeights").mockReturnValue(
       malformedWeights,
     );
 

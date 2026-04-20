@@ -14,10 +14,10 @@ import {
   extractDimensionSizes,
   validateWeights,
 } from "./weights/weight-helpers.ts";
-import { getLatestCheckpoint } from "./weights/weight-reading.ts";
+import { getLatestCheckpointWeights } from "./weights/weight-io.ts";
 
 export const runLlm = (input: string, model: string) => {
-  const weights = getLatestCheckpoint(model);
+  const weights = getLatestCheckpointWeights(model);
 
   validateWeights(weights);
 
