@@ -1,10 +1,10 @@
-import { divideToWhole, dotProduct, softmax } from "../math.ts";
+import { divideToWhole, dotProduct, softmax } from "../shared/math.ts";
 import {
   addVectorsInMatrix,
   applyScalarToVector,
   multiplyMatrices,
   validateSize,
-} from "../matrices.ts";
+} from "../shared/matrices.ts";
 import type { AttentionWeights } from "../weights/types.ts";
 
 export const runSelfAttentionMechanism = (

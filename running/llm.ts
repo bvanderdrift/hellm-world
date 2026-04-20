@@ -1,20 +1,20 @@
-import { softmax } from "./math.ts";
+import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
   multiplyMatrices,
   normalize,
   validateSize,
-} from "./matrices.ts";
-import { tokenize } from "./tokenizer.ts";
-import { getMultilayerPerceptronUpdateMatrix } from "./transforming/mlp.ts";
+} from "../shared/matrices.ts";
+import { tokenize } from "../shared/tokenizer.ts";
+import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
-import { runSelfAttentionMechanism } from "./transforming/attention.ts";
-import type { Weights } from "./weights/types.ts";
+import { runSelfAttentionMechanism } from "../transforming/attention.ts";
+import type { Weights } from "../weights/types.ts";
 import {
   extractDimensionSizes,
   validateWeights,
-} from "./weights/weight-helpers.ts";
-import { getLatestCheckpointWeights } from "./weights/weight-io.ts";
+} from "../weights/weight-helpers.ts";
+import { getLatestCheckpointWeights } from "../weights/weight-io.ts";
 
 export const runLlm = (input: string, model: string) => {
   const weights = getLatestCheckpointWeights(model);

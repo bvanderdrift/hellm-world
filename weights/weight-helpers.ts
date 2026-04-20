@@ -1,5 +1,5 @@
-import { divideToWhole } from "../math.ts";
-import { validateSize } from "../matrices.ts";
+import { divideToWhole } from "../shared/math.ts";
+import { validateSize } from "../shared/matrices.ts";
 import type { Weights } from "./types.ts";
 
 export const extractDimensionSizes = (weights: Weights) => {

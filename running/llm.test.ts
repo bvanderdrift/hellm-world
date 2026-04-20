@@ -5,11 +5,11 @@ import {
   llmForwardPass,
   runLlm,
 } from "./llm.ts";
-import { multiplyMatrices, validateSize } from "./matrices.ts";
-import { tokenize } from "./tokenizer.ts";
-import { extractDimensionSizes } from "./weights/weight-helpers.ts";
-import * as weightReading from "./weights/weight-io.ts";
-import type { Weights } from "./weights/types.ts";
+import { multiplyMatrices, validateSize } from "../shared/matrices.ts";
+import { tokenize } from "../shared/tokenizer.ts";
+import { extractDimensionSizes } from "../weights/weight-helpers.ts";
+import * as weightReading from "../weights/weight-io.ts";
+import type { Weights } from "../weights/types.ts";
 
 const MODEL_NAME = "toy_model";
 const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);
