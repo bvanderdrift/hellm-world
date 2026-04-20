@@ -15,7 +15,7 @@
 - [x] Separate "forward pass" from "generation".
 - Hint: one function can return logits for a prompt; a different layer can turn those logits into one or more emitted tokens.
 
-- [ ] Add a real load path for vocab/tokenizer artifacts.
+- [x] Add a real load path for vocab/tokenizer artifacts.
 - Hint: your current vocab order is implicit in `tokenizer.ts`. Ask what must stay stable so token id `n` always means the same thing during training and inference.
 
 - [x] Add a decode path, not just encode/tokenize.
@@ -29,7 +29,7 @@
 - [ ] Add end-to-end tests around the assembled model.
 - Hint: unit tests for math blocks are good, but they do not yet prove that a trained checkpoint would survive load -> forward pass -> token selection.
 
-- [ ] Add a small generation loop.
+- [x] Add a small generation loop.
 - Hint: greedy one-token prediction is already close; the missing idea is how to append the chosen token and stop at the right time.
 
 ## If you want a more standard decoder architecture
@@ -51,7 +51,7 @@
 - [ ] Make CLI inference robust to unknown input or bad artifacts.
 - Hint: the tokenizer CLI already catches errors; the LLM CLI should eventually have equally clear failure modes.
 
-- [ ] Add checkpoint validation beyond shape checks.
+- [x] Add checkpoint validation beyond shape checks.
 - Hint: a tensor can have the right dimensions and still be semantically wrong because vocab order, head ordering, or projection layout drifted.
 
 - [ ] Add at least one golden-path test.
