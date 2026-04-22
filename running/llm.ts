@@ -29,10 +29,9 @@ export const runLlm = (input: string, model: string) => {
   const inputTokens = tokenize(input, weights.vocabulary);
 
   for (let index = 0; index < contextTimeout; index++) {
-    const nextToken = generateNextToken(
-      [...inputTokens, ...outputTokens],
-      weights,
-    );
+    const logits = generateLogits([...inputTokens, ...outputTokens], weights);
+
+    const nextToken = decodeLogits(logits, weights.vocabulary);
 
     if (nextToken === END_OF_SEQUENCE_TOKEN) {
       break;
@@ -44,7 +43,7 @@ export const runLlm = (input: string, model: string) => {
   return outputTokens.join(" ");
 };
 
-const generateNextToken = (input: string[], weights: Weights) => {
+export const generateLogits = (input: string[], weights: Weights) => {
   const { hiddenDimensionsSize } = extractDimensionSizes(weights);
 
   const startState = input.map((t) =>
@@ -60,7 +59,7 @@ const generateNextToken = (input: string[], weights: Weights) => {
     throw new Error(`Logits array is undefined`);
   }
 
-  return decodeLogits(logits, weights.vocabulary);
+  return logits;
 };
 
 export const getHighestValueIndex = (values: number[]) => {
