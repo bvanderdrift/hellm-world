@@ -3,12 +3,15 @@ import {
   getLatestCheckpointWeights,
   writeNewCheckpoint,
 } from "../weights/weight-io.ts";
+import { getAvgCostVector } from "./cost.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
 export const doSingleTrainingPass = (
   weights: Weights,
   trainingData: string[][],
 ): Weights => {
+  const costVectors = getAvgCostVector(trainingData, weights);
+
   return weights;
 };
 

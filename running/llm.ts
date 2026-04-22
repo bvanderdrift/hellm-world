@@ -29,9 +29,12 @@ export const runLlm = (input: string, model: string) => {
   const inputTokens = tokenize(input, weights.vocabulary);
 
   for (let index = 0; index < contextTimeout; index++) {
-    const logits = generateLogits([...inputTokens, ...outputTokens], weights);
+    const probabilities = generateProbabilities(
+      [...inputTokens, ...outputTokens],
+      weights,
+    );
 
-    const nextToken = decodeLogits(logits, weights.vocabulary);
+    const nextToken = pickToken(probabilities, weights.vocabulary);
 
     if (nextToken === END_OF_SEQUENCE_TOKEN) {
       break;
@@ -60,6 +63,12 @@ export const generateLogits = (input: string[], weights: Weights) => {
   }
 
   return logits;
+};
+
+export const generateProbabilities = (input: string[], weights: Weights) => {
+  const logits = generateLogits(input, weights);
+
+  return softmax(logits);
 };
 
 export const getHighestValueIndex = (values: number[]) => {
@@ -129,12 +138,10 @@ export const llmForwardPass = (startState: number[][], weights: Weights) => {
   return unembeddedState;
 };
 
-export const decodeLogits = (logits: number[], tokens: string[]) => {
-  const probabilities = softmax(logits);
-
+export const pickToken = (probabilities: number[], vocabulary: string[]) => {
   const nextTokenIndex = getHighestValueIndex(probabilities);
 
-  const nextToken = tokens[nextTokenIndex];
+  const nextToken = vocabulary[nextTokenIndex];
 
   if (!nextToken) {
     throw new Error(`Failed to find token at index ${nextTokenIndex}`);

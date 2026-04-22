@@ -19,14 +19,13 @@ export const prepareTrainingData = (
 
   const sequences = modelTrainingDataContent.split(END_OF_SEQUENCE_TOKEN);
 
-  return sequences.map((sequence) => [
-    ...tokenize(
+  return sequences.map((sequence) =>
+    tokenize(
       sequence
         // this only replaces the first \n
         .replace("\\n", "")
         .trim(),
       vocabulary,
     ),
-    END_OF_SEQUENCE_TOKEN,
-  ]);
+  );
 };
