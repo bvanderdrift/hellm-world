@@ -19,7 +19,7 @@ export const doTrainingLoopAndStoreCheckpoint = (
   let weights = getLatestCheckpointWeights(model);
 
   if (steps <= 0) {
-    new Error(`steps has to be a positive integer, received: ${steps}`);
+    throw new Error(`steps has to be a positive integer, received: ${steps}`);
   }
 
   const trainingData = prepareTrainingData(model, weights.vocabulary);
