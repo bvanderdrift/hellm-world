@@ -47,7 +47,7 @@ export const runLlm = (input: string, model: string) => {
   return outputTokens.join(" ");
 };
 
-export const generateLogits = (input: string[], weights: Weights) => {
+export const llmForwardPassByTokens = (input: string[], weights: Weights) => {
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
   const startState = input.map((token) => {
@@ -55,9 +55,14 @@ export const generateLogits = (input: string[], weights: Weights) => {
 
     return weights.embeddings[tokenIndex]!.map(
       (v) => v * Math.sqrt(hiddenDimensionsSize),
-  );
+    );
+  });
 
-  const unembeddedState = llmForwardPass(startState, weights);
+  return llmForwardPass(startState, weights);
+};
+
+export const generateLogits = (input: string[], weights: Weights) => {
+  const unembeddedState = llmForwardPassByTokens(input, weights);
 
   // Last vector is probability logits
   const logits = unembeddedState[unembeddedState.length - 1];

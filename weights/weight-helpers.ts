@@ -216,3 +216,6 @@ export const operateWeights = (
     ),
   };
 };
+
+export const makeZeroVersion = (weights: Weights) =>
+  operateWeights(weights, weights, () => 0);

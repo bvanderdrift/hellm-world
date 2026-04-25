@@ -33,3 +33,8 @@ export type ModelMetadata = {
 };
 
 export type Weights = ModelMetadata & CheckpointWeights;
+
+export type Activations = {
+  // TODO
+  outputLogits: number[][];
+};
