@@ -1,7 +1,11 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
-import { validateSize } from "../shared/matrices.ts";
-import type { Weights } from "./types.ts";
+import {
+  operateOnMatrices,
+  operateOnVectors,
+  validateSize,
+} from "../shared/matrices.ts";
+import type { TransformerWeights, Weights } from "./types.ts";
 
 export const extractHiddenDimensionSize = (weights: Weights) => {
   const embeddingsArray = Object.values(weights.embeddings);
@@ -108,6 +112,14 @@ export const validateSameWeightShape = (
   weights1: Weights,
   weights2: Weights,
 ) => {
+  const allTokensExactMatch = weights1.vocabulary.every(
+    (token1, tokenIndex) => token1 === weights2.vocabulary[tokenIndex],
+  );
+
+  if (!allTokensExactMatch) {
+    throw new Error(`Vocabularies between weights don't match`);
+  }
+
   validateSize(
     weights1.embeddings,
     weights2.embeddings.length,
@@ -125,4 +137,82 @@ export const validateSameWeightShape = (
       `Weights1 has different head count ${weights1.headsCount} than Weights2 (${weights2.headsCount})`,
     );
   }
+};
+
+export const operateWeights = (
+  weights1: Weights,
+  weights2: Weights,
+  operation: (v1: number, w2: number) => number,
+): Weights => {
+  validateSameWeightShape(weights1, weights2);
+
+  return {
+    ...weights1,
+    embeddings: operateOnMatrices(
+      weights1.embeddings,
+      weights2.embeddings,
+      operation,
+    ),
+    unembeddings: operateOnMatrices(
+      weights1.unembeddings,
+      weights2.unembeddings,
+      operation,
+    ),
+    transformers: weights1.transformers.map(
+      (transformerWeights1, index): TransformerWeights => {
+        const transformerWeights2 = weights2.transformers[index]!; // Type-safe b/c of shape check above
+
+        return {
+          attention: {
+            Q: operateOnMatrices(
+              transformerWeights1.attention.Q,
+              transformerWeights2.attention.Q,
+              operation,
+            ),
+            K: operateOnMatrices(
+              transformerWeights1.attention.K,
+              transformerWeights2.attention.K,
+              operation,
+            ),
+            V: operateOnMatrices(
+              transformerWeights1.attention.V,
+              transformerWeights2.attention.V,
+              operation,
+            ),
+            out: operateOnMatrices(
+              transformerWeights1.attention.out,
+              transformerWeights2.attention.out,
+              operation,
+            ),
+          },
+          multilayerPerceptron: {
+            wDown: {
+              weightsMatrix: operateOnMatrices(
+                transformerWeights1.multilayerPerceptron.wDown.weightsMatrix,
+                transformerWeights2.multilayerPerceptron.wDown.weightsMatrix,
+                operation,
+              ),
+              biasVector: operateOnVectors(
+                transformerWeights1.multilayerPerceptron.wDown.biasVector,
+                transformerWeights2.multilayerPerceptron.wDown.biasVector,
+                operation,
+              ),
+            },
+            wUp: {
+              weightsMatrix: operateOnMatrices(
+                transformerWeights1.multilayerPerceptron.wUp.weightsMatrix,
+                transformerWeights2.multilayerPerceptron.wUp.weightsMatrix,
+                operation,
+              ),
+              biasVector: operateOnVectors(
+                transformerWeights1.multilayerPerceptron.wUp.biasVector,
+                transformerWeights2.multilayerPerceptron.wUp.biasVector,
+                operation,
+              ),
+            },
+          },
+        };
+      },
+    ),
+  };
 };

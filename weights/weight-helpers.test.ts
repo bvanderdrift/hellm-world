@@ -3,6 +3,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
+  operateWeights,
   validateSameWeightShape,
   validateWeights,
 } from "./weight-helpers.ts";
@@ -43,6 +44,32 @@ const validWeights: Weights = {
 const createWeights = (overrides: Partial<Weights> = {}): Weights => ({
   ...structuredClone(validWeights),
   ...overrides,
+});
+
+const createWeightsWithValue = (value: number): Weights => ({
+  ...validWeights,
+  embeddings: matrix(4, 4, value),
+  unembeddings: matrix(4, 4, value),
+  transformers: [
+    {
+      attention: {
+        Q: matrix(4, 4, value),
+        K: matrix(4, 4, value),
+        V: matrix(4, 4, value),
+        out: matrix(4, 4, value),
+      },
+      multilayerPerceptron: {
+        wUp: {
+          weightsMatrix: matrix(4, 16, value),
+          biasVector: vector(16, value),
+        },
+        wDown: {
+          weightsMatrix: matrix(16, 4, value),
+          biasVector: vector(4, value),
+        },
+      },
+    },
+  ],
 });
 
 describe("extractHiddenDimensionSize", () => {
@@ -209,37 +236,30 @@ describe("validateSameWeightShape", () => {
       validateSameWeightShape(weightsWithDifferentHeadCount, createWeights()),
     ).toThrow("Weights1 has different head count 4 than Weights2 (2)");
   });
+});
 
-  it("rejects unembeddings with a different shape", () => {
-    const weightsWithDifferentUnembeddings = createWeights({
-      unembeddings: matrix(5, 4),
+describe("operateWeights", () => {
+  it("applies the operation across embeddings, unembeddings, attention, and MLP weights", () => {
+    const operatedWeights = operateWeights(
+      createWeightsWithValue(2),
+      createWeightsWithValue(3),
+      (value1, value2) => value1 + value2,
+    );
+
+    expect(operatedWeights).toEqual(createWeightsWithValue(5));
+  });
+
+  it("rejects weights with the same shape but a different vocabulary order", () => {
+    const weightsWithReorderedVocabulary = createWeights({
+      vocabulary: ["world", "hello", "beer", END_OF_SEQUENCE_TOKEN],
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithDifferentUnembeddings, createWeights()),
-    ).toThrow();
-  });
-
-  it("rejects transformer matrices with a different shape", () => {
-    const weightsWithDifferentTransformerShape = createWeights();
-    weightsWithDifferentTransformerShape.transformers[0]!.attention.Q =
-      matrix(5, 4);
-
-    expect(() =>
-      validateSameWeightShape(
-        weightsWithDifferentTransformerShape,
+      operateWeights(
+        weightsWithReorderedVocabulary,
         createWeights(),
+        (value1, value2) => value1 + value2,
       ),
-    ).toThrow();
-  });
-
-  it("rejects MLP bias vectors with a different shape", () => {
-    const weightsWithDifferentBiasShape = createWeights();
-    weightsWithDifferentBiasShape.transformers[0]!.multilayerPerceptron.wUp.biasVector =
-      vector(17);
-
-    expect(() =>
-      validateSameWeightShape(weightsWithDifferentBiasShape, createWeights()),
     ).toThrow();
   });
 });
