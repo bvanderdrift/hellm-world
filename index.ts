@@ -13,7 +13,10 @@ program
 program
   .name("train")
   .command("train")
-  .option("-s <steps>", "Amount of steps before storing another checkpoint")
+  .option(
+    "-s, --steps <steps>",
+    "Amount of steps before storing another checkpoint",
+  )
   .action((opts: { steps: number }) => {
     doTrainingLoopAndStoreCheckpoint("toy_model", opts.steps);
   });
