@@ -3,12 +3,9 @@ import { divideToWhole } from "../shared/math.ts";
 import { validateSize } from "../shared/matrices.ts";
 import type { Weights } from "./types.ts";
 
-export const extractDimensionSizes = (weights: Weights) => {
+export const extractHiddenDimensionSize = (weights: Weights) => {
   const embeddingsArray = Object.values(weights.embeddings);
-  return {
-    hiddenDimensionsSize: embeddingsArray[0]!.length,
-    vocabSize: embeddingsArray.length,
-  };
+  return embeddingsArray[0]!.length;
 };
 
 export const validateWeights = (weights: Weights) => {
@@ -16,7 +13,7 @@ export const validateWeights = (weights: Weights) => {
     throw new Error("Provided vocabulary cannot be empty");
   }
 
-  const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
   if (weights.headsCount <= 0) {
     throw new Error("headsCount must be a positive integer");
@@ -38,29 +35,16 @@ export const validateWeights = (weights: Weights) => {
     );
   }
 
-  const embeddingsEntries = Object.entries(weights.embeddings);
-
-  if (embeddingsEntries.length !== tokensDeduped.size) {
-    throw new Error(
-      `Provided embeddings has unexpected vocabulary size ${embeddingsEntries.length}, expected ${tokensDeduped.size}`,
-    );
-  }
-
-  for (const [token, vector] of embeddingsEntries) {
-    if (!tokensDeduped.has(token)) {
-      throw new Error(
-        `Unknown embedding token ${token}. Does not occur in vocabulary of model.`,
-      );
-    }
-
-    if (vector.length !== hiddenDimensionsSize) {
-      throw new Error(
-        `Token ${token} has unexpected vector length ${vector.length} vs base length ${hiddenDimensionsSize}`,
-      );
-    }
-  }
-
-  validateSize(weights.unembeddings, hiddenDimensionsSize, vocabSize);
+  validateSize(
+    weights.embeddings,
+    weights.vocabulary.length,
+    hiddenDimensionsSize,
+  );
+  validateSize(
+    weights.unembeddings,
+    hiddenDimensionsSize,
+    weights.vocabulary.length,
+  );
 
   for (const transformer of weights.transformers) {
     validateSize(
@@ -108,4 +92,14 @@ export const validateWeights = (weights: Weights) => {
       hiddenDimensionsSize,
     );
   }
+};
+
+export const findTokenIndex = (vocabulary: string[], token: string) => {
+  const tokenIndex = vocabulary.indexOf(token);
+
+  if (tokenIndex === -1) {
+    throw new Error(`Failed to find token ${token} in vocabulary`);
+  }
+
+  return tokenIndex;
 };

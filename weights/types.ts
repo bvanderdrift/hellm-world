@@ -22,8 +22,8 @@ export interface TransformerWeights {
 }
 
 export type CheckpointWeights = {
-  embeddings: Record<string, number[]>; // C x D
-  unembeddings: number[][]; // D x C
+  embeddings: number[][]; // T x D
+  unembeddings: number[][]; // D x T
   transformers: TransformerWeights[];
 };
 

@@ -1,26 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
-  decodeLogits,
   getHighestValueIndex,
   llmForwardPass,
+  pickToken,
   runLlm,
 } from "./llm.ts";
 import { multiplyMatrices, validateSize } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import { extractDimensionSizes } from "../weights/weight-helpers.ts";
+import {
+  extractHiddenDimensionSize,
+  findTokenIndex,
+} from "../weights/weight-helpers.ts";
 import * as weightReading from "../weights/weight-io.ts";
 import type { Weights } from "../weights/types.ts";
 
 const MODEL_NAME = "toy_model";
 const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);
-const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(toyWeights);
+const hiddenDimensionsSize = extractHiddenDimensionSize(toyWeights);
+const vocabSize = toyWeights.vocabulary.length;
+
+const getEmbedding = (weights: Weights, token: string) => {
+  const tokenIndex = findTokenIndex(weights.vocabulary, token);
+
+  return weights.embeddings[tokenIndex]!;
+};
 
 const getStartState = (input: string) => {
   const inputTokens = tokenize(input, toyWeights.vocabulary);
 
   return inputTokens.map((token) =>
-    toyWeights.embeddings[token]!.map(
+    getEmbedding(toyWeights, token).map(
       (value) => value * Math.sqrt(hiddenDimensionsSize),
     ),
   );
@@ -44,11 +54,9 @@ describe("getHighestValueIndex", () => {
   });
 });
 
-describe("decodeLogits", () => {
+describe("pickToken", () => {
   it("returns the token behind the highest logit", () => {
-    expect(decodeLogits([0, 5, 1, -3, 2, 4], toyWeights.vocabulary)).toBe(
-      "world",
-    );
+    expect(pickToken([0, 5, 1, -3, 2, 4], toyWeights.vocabulary)).toBe("world");
   });
 });
 
@@ -67,10 +75,10 @@ describe("runLlm", () => {
     const eosStoppingWeights: Weights = {
       vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
       headsCount: 1,
-      embeddings: {
-        hello: [0, 0],
-        [END_OF_SEQUENCE_TOKEN]: [0, 0],
-      },
+      embeddings: [
+        [0, 0],
+        [0, 0],
+      ],
       unembeddings: [
         [0, -1],
         [0, 1],
@@ -89,8 +97,8 @@ describe("runLlm", () => {
 describe("llm pipeline contracts", () => {
   it("embeds each input token into the hidden dimension", () => {
     const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
-    const embeddedState = inputTokens.map(
-      (token) => toyWeights.embeddings[token]!,
+    const embeddedState = inputTokens.map((token) =>
+      getEmbedding(toyWeights, token),
     );
 
     validateSize(embeddedState, inputTokens.length, hiddenDimensionsSize);
@@ -98,8 +106,8 @@ describe("llm pipeline contracts", () => {
 
   it("keeps one hidden-state row per context position after the hidden projection", () => {
     const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
-    const embeddedState = inputTokens.map(
-      (token) => toyWeights.embeddings[token]!,
+    const embeddedState = inputTokens.map((token) =>
+      getEmbedding(toyWeights, token),
     );
     const unembeddedState = multiplyMatrices(
       embeddedState,
@@ -111,8 +119,8 @@ describe("llm pipeline contracts", () => {
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
     const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
-    const embeddedState = inputTokens.map(
-      (token) => toyWeights.embeddings[token]!,
+    const embeddedState = inputTokens.map((token) =>
+      getEmbedding(toyWeights, token),
     );
     const logitsByPosition = multiplyMatrices(
       embeddedState,
@@ -128,15 +136,15 @@ describe("weights validation contract", () => {
     const malformedWeights: Weights = {
       vocabulary: [...toyWeights.vocabulary],
       headsCount: toyWeights.headsCount,
-      embeddings: {
-        hello: [1, 1, 1, 1],
-        world: [1, 1, 1],
-        my: [1, 1, 1, 1],
-        name: [1, 1, 1, 1],
-        is: [1, 1, 1, 1],
-        beer: [1, 1, 1, 1],
-        [END_OF_SEQUENCE_TOKEN]: [1, 1, 1, 1],
-      },
+      embeddings: [
+        [1, 1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+      ],
       unembeddings: toyWeights.unembeddings,
       transformers: toyWeights.transformers,
     };
@@ -146,7 +154,7 @@ describe("weights validation contract", () => {
     );
 
     expect(() => runLlm("hello", MODEL_NAME)).toThrow(
-      "Token world has unexpected vector length 3 vs base length 4",
+      "Vector at index 1 has unexpected depth 3 (expected 4)",
     );
   });
 });

@@ -11,7 +11,8 @@ import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import type { Weights } from "../weights/types.ts";
 import {
-  extractDimensionSizes,
+  extractHiddenDimensionSize,
+  findTokenIndex,
   validateWeights,
 } from "../weights/weight-helpers.ts";
 import { getLatestCheckpointWeights } from "../weights/weight-io.ts";
@@ -47,10 +48,13 @@ export const runLlm = (input: string, model: string) => {
 };
 
 export const generateLogits = (input: string[], weights: Weights) => {
-  const { hiddenDimensionsSize } = extractDimensionSizes(weights);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
-  const startState = input.map((t) =>
-    weights.embeddings[t]!.map((v) => v * Math.sqrt(hiddenDimensionsSize)),
+  const startState = input.map((token) => {
+    const tokenIndex = findTokenIndex(weights.vocabulary, token);
+
+    return weights.embeddings[tokenIndex]!.map(
+      (v) => v * Math.sqrt(hiddenDimensionsSize),
   );
 
   const unembeddedState = llmForwardPass(startState, weights);
@@ -93,7 +97,7 @@ export const getHighestValueIndex = (values: number[]) => {
 export const llmForwardPass = (startState: number[][], weights: Weights) => {
   const contextSize = startState.length;
 
-  const { hiddenDimensionsSize, vocabSize } = extractDimensionSizes(weights);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
   validateSize(startState, contextSize, hiddenDimensionsSize);
 
@@ -133,7 +137,7 @@ export const llmForwardPass = (startState: number[][], weights: Weights) => {
     weights.unembeddings,
   );
 
-  validateSize(unembeddedState, contextSize, vocabSize);
+  validateSize(unembeddedState, contextSize, weights.vocabulary.length);
 
   return unembeddedState;
 };

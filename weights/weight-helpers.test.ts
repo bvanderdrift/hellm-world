@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { extractDimensionSizes, validateWeights } from "./weight-helpers.ts";
+import {
+  extractHiddenDimensionSize,
+  validateWeights,
+} from "./weight-helpers.ts";
 import type { Weights } from "./types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);
@@ -11,12 +14,7 @@ const matrix = (rows: number, columns: number, value = 1) =>
 const validWeights: Weights = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
-  embeddings: {
-    hello: [1, 1, 1, 1],
-    world: [1, 1, 1, 1],
-    beer: [1, 1, 1, 1],
-    [END_OF_SEQUENCE_TOKEN]: [1, 1, 1, 1],
-  },
+  embeddings: matrix(4, 4),
   unembeddings: matrix(4, 4),
   transformers: [
     {
@@ -40,19 +38,14 @@ const validWeights: Weights = {
   ],
 };
 
-const cloneEmbeddings = () => structuredClone(validWeights.embeddings);
-
 const createWeights = (overrides: Partial<Weights> = {}): Weights => ({
   ...structuredClone(validWeights),
   ...overrides,
 });
 
-describe("extractDimensionSizes", () => {
+describe("extractHiddenDimensionSize", () => {
   it("derives the hidden width and vocab size from embeddings", () => {
-    expect(extractDimensionSizes(validWeights)).toEqual({
-      hiddenDimensionsSize: 4,
-      vocabSize: 4,
-    });
+    expect(extractHiddenDimensionSize(validWeights)).toEqual(4);
   });
 });
 
@@ -82,11 +75,9 @@ describe("validateWeights", () => {
   });
 
   it("rejects vocabularies that are missing the EOS token", () => {
-    const { [END_OF_SEQUENCE_TOKEN]: _, ...embeddingsWithoutEos } =
-      cloneEmbeddings();
     const malformedWeights = createWeights({
       vocabulary: ["hello", "world", "beer"],
-      embeddings: embeddingsWithoutEos,
+      embeddings: matrix(3, 4),
       unembeddings: matrix(4, 3),
     });
 
@@ -96,47 +87,44 @@ describe("validateWeights", () => {
   });
 
   it("rejects embeddings that do not cover the full vocabulary", () => {
-    const { beer: _, ...embeddingsMissingBeer } = cloneEmbeddings();
     const malformedWeights = createWeights({
-      embeddings: embeddingsMissingBeer,
+      embeddings: matrix(3, 4),
     });
 
     expect(() => validateWeights(malformedWeights)).toThrow(
-      "Provided embeddings has unexpected vocabulary size 3, expected 4",
+      "matrix vector count (3) doesn't match expected vector count 4",
     );
   });
 
-  it("rejects embeddings whose keys do not exactly match the vocabulary", () => {
-    const { beer: _, ...embeddingsWithoutBeer } = cloneEmbeddings();
+  it("rejects embeddings with too many rows for the vocabulary", () => {
     const malformedWeights = createWeights({
-      embeddings: {
-        ...embeddingsWithoutBeer,
-        ghost: [1, 1, 1, 1],
-      },
+      embeddings: matrix(5, 4),
     });
 
     expect(() => validateWeights(malformedWeights)).toThrow(
-      "Unknown embedding token ghost. Does not occur in vocabulary of model.",
+      "matrix vector count (5) doesn't match expected vector count 4",
     );
   });
 
   it("throws when any embedding row has the wrong width", () => {
     const malformedWeights = createWeights({
-      embeddings: {
-        ...cloneEmbeddings(),
-        world: [1, 1, 1],
-      },
+      embeddings: [
+        [1, 1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1, 1],
+        [1, 1, 1, 1],
+      ],
     });
 
     expect(() => validateWeights(malformedWeights)).toThrow(
-      "Token world has unexpected vector length 3 vs base length 4",
+      "Vector at index 1 has unexpected depth 3 (expected 4)",
     );
   });
 
   it("rejects checkpoints with empty vocabulary using a helpful error", () => {
     const malformedWeights = createWeights({
       vocabulary: [],
-      embeddings: {},
+      embeddings: [],
       unembeddings: [],
     });
 
