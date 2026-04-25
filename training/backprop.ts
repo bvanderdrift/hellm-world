@@ -1,6 +1,6 @@
 import { validateSize } from "../shared/matrices.ts";
-import type { Activations, Model } from "../weights/types.ts";
-import { makeZeroVersion } from "../weights/weight-helpers.ts";
+import type { Activations, Model } from "../model/types.ts";
+import { makeZeroVersion } from "../model/model-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
 
 export const backprop = (

@@ -10,13 +10,13 @@ import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
-import type { Model } from "../weights/types.ts";
+import type { Model } from "../model/types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
   validateWeights,
-} from "../weights/weight-helpers.ts";
-import { getLatestCheckpointWeights } from "../weights/weight-io.ts";
+} from "../model/model-helpers.ts";
+import { getLatestCheckpointWeights } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 
 const contextTimeout = 100;

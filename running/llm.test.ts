@@ -11,9 +11,9 @@ import { tokenize } from "../shared/tokenizer.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
-} from "../weights/weight-helpers.ts";
-import * as weightReading from "../weights/weight-io.ts";
-import type { Model } from "../weights/types.ts";
+} from "../model/model-helpers.ts";
+import * as weightReading from "../model/model-io.ts";
+import type { Model } from "../model/types.ts";
 
 const MODEL_NAME = "toy_model";
 const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);

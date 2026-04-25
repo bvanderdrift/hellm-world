@@ -3,7 +3,7 @@ import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
 } from "./attention.ts";
-import type { AttentionWeights } from "../weights/types.ts";
+import type { AttentionWeights } from "../model/types.ts";
 
 const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
   expect(actual).toHaveLength(expected.length);

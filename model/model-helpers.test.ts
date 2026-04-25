@@ -6,7 +6,7 @@ import {
   operateCombinedWeights,
   validateSameWeightShape,
   validateWeights,
-} from "./weight-helpers.ts";
+} from "./model-helpers.ts";
 import type { Model } from "./types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);

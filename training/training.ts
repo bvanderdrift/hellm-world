@@ -1,16 +1,16 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
-import type { Model } from "../weights/types.ts";
+import type { Model } from "../model/types.ts";
 import {
   makeZeroVersion,
   operateCombinedWeights,
   operateSingleWeights,
-} from "../weights/weight-helpers.ts";
+} from "../model/model-helpers.ts";
 import {
   getLatestCheckpointWeights,
   writeNewCheckpoint,
-} from "../weights/weight-io.ts";
+} from "../model/model-io.ts";
 import { backprop } from "./backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 

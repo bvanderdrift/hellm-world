@@ -4,7 +4,7 @@ import {
   multiplyMatrices,
   validateSize,
 } from "../shared/matrices.ts";
-import type { MultilayerPerceptronWeights } from "../weights/types.ts";
+import type { MultilayerPerceptronWeights } from "../model/types.ts";
 
 export const getMultilayerPerceptronUpdateMatrix = (
   encoding: number[][],
