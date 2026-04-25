@@ -84,21 +84,38 @@ export const multiplyMatrixWithVector = (
   return multipliedMatrix[0]!;
 };
 
+export const operateOnVectors = (
+  vector1: number[],
+  vector2: number[],
+  operation: (v1: number, v2: number) => number,
+): number[] => {
+  validateSize([vector1], 1, vector2.length);
+
+  return vector1.map((value1, dimensionIndex) =>
+    operation(value1, vector2[dimensionIndex]!),
+  );
+};
+
+export const operateOnMatrices = (
+  m1: number[][],
+  m2: number[][],
+  operation: (v1: number, v2: number) => number,
+): number[][] => {
+  validateSize(m1, m2.length, m2[0]!.length);
+
+  return m1.map((vector1, vectorIndex) =>
+    operateOnVectors(vector1, m2[vectorIndex]!, operation),
+  );
+};
+
 export const applyScalarToVector = (scalar: number, vector: number[]) =>
   vector.map((value) => value * scalar);
 
 export const applyScalarToMatrix = (scalar: number, matrix: number[][]) =>
   matrix.map((vector) => applyScalarToVector(scalar, vector));
 
-export const addVectors = (vector1: number[], vector2: number[]) => {
-  if (vector1.length !== vector2.length) {
-    throw new Error(
-      `Vector1 size ${vector1.length} doesn't match vector2 size ${vector2.length}`,
-    );
-  }
-
-  return vector1.map((e1, index) => e1 + vector2[index]!);
-};
+export const addVectors = (vector1: number[], vector2: number[]) =>
+  operateOnVectors(vector1, vector2, (value1, value2) => value1 + value2);
 
 export const addVectorsInMatrix = (matrix: number[][]) => {
   const vectorDimensions = matrix[0]?.length ?? 0;
@@ -110,13 +127,8 @@ export const addVectorsInMatrix = (matrix: number[][]) => {
   );
 };
 
-export const addMatrices = (matrix1: number[][], matrix2: number[][]) => {
-  validateSize(matrix1, matrix2.length, matrix2[0]!.length);
-
-  return matrix1.map((vector1, vector1Index) =>
-    addVectors(vector1, matrix2[vector1Index]!),
-  );
-};
+export const addMatrices = (matrix1: number[][], matrix2: number[][]) =>
+  operateOnMatrices(matrix1, matrix2, (value1, value2) => value1 + value2);
 
 export const flipMatrix = (matrix: number[][]): number[][] => {
   const vectors = matrix.length;

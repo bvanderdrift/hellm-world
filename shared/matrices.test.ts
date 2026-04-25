@@ -263,7 +263,7 @@ describe("addVectors", () => {
 
   it("throws when vector sizes do not match", () => {
     expect(() => addVectors([1, 2], [3])).toThrow(
-      "Vector1 size 2 doesn't match vector2 size 1",
+      "m has unexpected vector depth 2, expected 1",
     );
   });
 });
@@ -340,12 +340,9 @@ describe("addVectorsInMatrix", () => {
   });
 
   it("throws when matrix rows have inconsistent widths", () => {
-    expect(() =>
-      addVectorsInMatrix([
-        [1, 2],
-        [3],
-      ]),
-    ).toThrow("Vector at index 1 has unexpected depth 1 (expected 2)");
+    expect(() => addVectorsInMatrix([[1, 2], [3]])).toThrow(
+      "Vector at index 1 has unexpected depth 1 (expected 2)",
+    );
   });
 });
 
