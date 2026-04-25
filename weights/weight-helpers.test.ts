@@ -3,7 +3,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
-  operateWeights,
+  operateCombinedWeights,
   validateSameWeightShape,
   validateWeights,
 } from "./weight-helpers.ts";
@@ -222,9 +222,7 @@ describe("validateSameWeightShape", () => {
 
     expect(() =>
       validateSameWeightShape(weightsWithExtraTransformer, createWeights()),
-    ).toThrow(
-      "Weights1 has different transformers count 2 than Weights2 (1)",
-    );
+    ).toThrow("Weights1 has different transformers count 2 than Weights2 (1)");
   });
 
   it("rejects different head counts", () => {
@@ -240,7 +238,7 @@ describe("validateSameWeightShape", () => {
 
 describe("operateWeights", () => {
   it("applies the operation across embeddings, unembeddings, attention, and MLP weights", () => {
-    const operatedWeights = operateWeights(
+    const operatedWeights = operateCombinedWeights(
       createWeightsWithValue(2),
       createWeightsWithValue(3),
       (value1, value2) => value1 + value2,
@@ -255,7 +253,7 @@ describe("operateWeights", () => {
     });
 
     expect(() =>
-      operateWeights(
+      operateCombinedWeights(
         weightsWithReorderedVocabulary,
         createWeights(),
         (value1, value2) => value1 + value2,

@@ -2,7 +2,11 @@ import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
 import type { Weights } from "../weights/types.ts";
-import { makeZeroVersion, operateWeights } from "../weights/weight-helpers.ts";
+import {
+  makeZeroVersion,
+  operateCombinedWeights,
+  operateSingleWeights,
+} from "../weights/weight-helpers.ts";
 import {
   getLatestCheckpointWeights,
   writeNewCheckpoint,
@@ -48,7 +52,7 @@ export const doSingleTrainingPass = (
 
           return {
             loss: acc.loss + backpropResults.loss,
-            gradients: operateWeights(
+            gradients: operateCombinedWeights(
               acc.gradients,
               backpropResults.gradients,
               (v1, v2) => v1 + v2,
@@ -60,7 +64,7 @@ export const doSingleTrainingPass = (
 
       return {
         loss: acc.loss + summedLossWithGradientsWithinSequence.loss,
-        gradients: operateWeights(
+        gradients: operateCombinedWeights(
           acc.gradients,
           summedLossWithGradientsWithinSequence.gradients,
           (v1, v2) => v1 + v2,
@@ -71,15 +75,14 @@ export const doSingleTrainingPass = (
   );
 
   const averageLoss = summedLossWithGradients.loss / flatTrainingSize;
-  const averageGradient = operateWeights(
-    summedLossWithGradients.gradients,
+  const averageGradient = operateSingleWeights(
     summedLossWithGradients.gradients,
     (v1) => v1 / flatTrainingSize,
   );
 
   return {
     averageLoss,
-    adjustedWeights: operateWeights(
+    adjustedWeights: operateCombinedWeights(
       weights,
       averageGradient,
       // Subtraction since we need to go DOWNHILL

@@ -139,7 +139,15 @@ export const validateSameWeightShape = (
   }
 };
 
-export const operateWeights = (
+export const operateSingleWeights = (
+  weights: Weights,
+  operation: (value: number) => number,
+) => {
+  // Hacky solution hihi
+  return operateCombinedWeights(weights, weights, (v1) => operation(v1));
+};
+
+export const operateCombinedWeights = (
   weights1: Weights,
   weights2: Weights,
   operation: (v1: number, w2: number) => number,
@@ -218,4 +226,4 @@ export const operateWeights = (
 };
 
 export const makeZeroVersion = (weights: Weights) =>
-  operateWeights(weights, weights, () => 0);
+  operateSingleWeights(weights, () => 0);
