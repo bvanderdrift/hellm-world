@@ -1,7 +1,7 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
-import type { Weights } from "../weights/types.ts";
+import type { Model } from "../weights/types.ts";
 import {
   makeZeroVersion,
   operateCombinedWeights,
@@ -16,12 +16,39 @@ import { prepareTrainingData } from "./prepareTrainingData.ts";
 
 const TRAINING_ALPHA = 0.0001;
 
+export const doTrainingLoopAndStoreCheckpoint = (
+  model: string,
+  steps: number,
+) => {
+  let weights = getLatestCheckpointWeights(model);
+
+  if (steps <= 0) {
+    throw new Error(`steps has to be a positive integer, received: ${steps}`);
+  }
+
+  const trainingData = prepareTrainingData(model, weights.vocabulary);
+
+  for (let index = 0; index < steps; index++) {
+    const { averageLoss, adjustedWeights } = doSingleTrainingPass(
+      weights,
+      trainingData,
+    );
+
+    console.log(`Training pass done - average loss: ${averageLoss}`);
+    weights = adjustedWeights;
+  }
+
+  writeNewCheckpoint(model, weights);
+
+  console.log(`✅ Succesfully ran training loop for model ${model}`);
+};
+
 export const doSingleTrainingPass = (
-  weights: Weights,
+  weights: Model,
   trainingData: string[][],
 ): {
   averageLoss: number;
-  adjustedWeights: Weights;
+  adjustedWeights: Model;
 } => {
   const flatTrainingSize = sum(
     // Add one for the EOS special token
@@ -89,31 +116,4 @@ export const doSingleTrainingPass = (
       (v1, v2) => v1 - TRAINING_ALPHA * v2,
     ),
   };
-};
-
-export const doTrainingLoopAndStoreCheckpoint = (
-  model: string,
-  steps: number,
-) => {
-  let weights = getLatestCheckpointWeights(model);
-
-  if (steps <= 0) {
-    throw new Error(`steps has to be a positive integer, received: ${steps}`);
-  }
-
-  const trainingData = prepareTrainingData(model, weights.vocabulary);
-
-  for (let index = 0; index < steps; index++) {
-    const { averageLoss, adjustedWeights } = doSingleTrainingPass(
-      weights,
-      trainingData,
-    );
-
-    console.log(`Training pass done - average loss: ${averageLoss}`);
-    weights = adjustedWeights;
-  }
-
-  writeNewCheckpoint(model, weights);
-
-  console.log(`✅ Succesfully ran training loop for model ${model}`);
 };

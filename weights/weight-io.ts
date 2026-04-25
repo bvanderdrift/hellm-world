@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import type { CheckpointWeights, ModelMetadata, Weights } from "./types.ts";
+import type { Weights, ModelMetadata, Model } from "./types.ts";
 
 const METADATA_FILE_NAME = `_metadata.json`;
 
-export const getLatestCheckpointWeights = (model: string): Weights => {
+export const getLatestCheckpointWeights = (model: string): Model => {
   const modelFolderPath = join(import.meta.dirname, model);
   const latestCheckpointFile = getLatestCheckpointFile(modelFolderPath);
 
@@ -53,16 +53,13 @@ const getMetadata = (metadataFilePath: string): ModelMetadata => {
   return metadata;
 };
 
-const getCheckpointWeights = (pathToCheckpoint: string): CheckpointWeights => {
+const getCheckpointWeights = (pathToCheckpoint: string): Weights => {
   return JSON.parse(readFileSync(pathToCheckpoint).toString());
 };
 
-export const writeNewCheckpoint = (
-  model: string,
-  weights: CheckpointWeights,
-) => {
+export const writeNewCheckpoint = (model: string, weights: Weights) => {
   // layman's pick operation
-  const cleanWeights: CheckpointWeights = {
+  const cleanWeights: Weights = {
     embeddings: weights.embeddings,
     transformers: weights.transformers,
     unembeddings: weights.unembeddings,

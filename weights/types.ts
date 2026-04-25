@@ -21,7 +21,7 @@ export interface TransformerWeights {
   multilayerPerceptron: MultilayerPerceptronWeights;
 }
 
-export type CheckpointWeights = {
+export type Weights = {
   embeddings: number[][]; // T x D
   unembeddings: number[][]; // D x T
   transformers: TransformerWeights[];
@@ -32,7 +32,7 @@ export type ModelMetadata = {
   headsCount: number;
 };
 
-export type Weights = ModelMetadata & CheckpointWeights;
+export type Model = ModelMetadata & Weights;
 
 export type Activations = {
   // TODO

@@ -5,14 +5,14 @@ import {
   operateOnVectors,
   validateSize,
 } from "../shared/matrices.ts";
-import type { TransformerWeights, Weights } from "./types.ts";
+import type { TransformerWeights, Model } from "./types.ts";
 
-export const extractHiddenDimensionSize = (weights: Weights) => {
+export const extractHiddenDimensionSize = (weights: Model) => {
   const embeddingsArray = Object.values(weights.embeddings);
   return embeddingsArray[0]!.length;
 };
 
-export const validateWeights = (weights: Weights) => {
+export const validateWeights = (weights: Model) => {
   if (weights.vocabulary.length === 0) {
     throw new Error("Provided vocabulary cannot be empty");
   }
@@ -108,10 +108,7 @@ export const findTokenIndex = (vocabulary: string[], token: string) => {
   return tokenIndex;
 };
 
-export const validateSameWeightShape = (
-  weights1: Weights,
-  weights2: Weights,
-) => {
+export const validateSameWeightShape = (weights1: Model, weights2: Model) => {
   const allTokensExactMatch = weights1.vocabulary.every(
     (token1, tokenIndex) => token1 === weights2.vocabulary[tokenIndex],
   );
@@ -140,7 +137,7 @@ export const validateSameWeightShape = (
 };
 
 export const operateSingleWeights = (
-  weights: Weights,
+  weights: Model,
   operation: (value: number) => number,
 ) => {
   // Hacky solution hihi
@@ -148,10 +145,10 @@ export const operateSingleWeights = (
 };
 
 export const operateCombinedWeights = (
-  weights1: Weights,
-  weights2: Weights,
+  weights1: Model,
+  weights2: Model,
   operation: (v1: number, w2: number) => number,
-): Weights => {
+): Model => {
   validateSameWeightShape(weights1, weights2);
 
   return {
@@ -225,5 +222,5 @@ export const operateCombinedWeights = (
   };
 };
 
-export const makeZeroVersion = (weights: Weights) =>
+export const makeZeroVersion = (weights: Model) =>
   operateSingleWeights(weights, () => 0);

@@ -7,14 +7,14 @@ import {
   validateSameWeightShape,
   validateWeights,
 } from "./weight-helpers.ts";
-import type { Weights } from "./types.ts";
+import type { Model } from "./types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);
 
 const matrix = (rows: number, columns: number, value = 1) =>
   new Array(rows).fill(null).map(() => vector(columns, value));
 
-const validWeights: Weights = {
+const validWeights: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
   embeddings: matrix(4, 4),
@@ -41,12 +41,12 @@ const validWeights: Weights = {
   ],
 };
 
-const createWeights = (overrides: Partial<Weights> = {}): Weights => ({
+const createWeights = (overrides: Partial<Model> = {}): Model => ({
   ...structuredClone(validWeights),
   ...overrides,
 });
 
-const createWeightsWithValue = (value: number): Weights => ({
+const createWeightsWithValue = (value: number): Model => ({
   ...validWeights,
   embeddings: matrix(4, 4, value),
   unembeddings: matrix(4, 4, value),

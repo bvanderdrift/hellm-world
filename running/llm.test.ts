@@ -13,14 +13,14 @@ import {
   findTokenIndex,
 } from "../weights/weight-helpers.ts";
 import * as weightReading from "../weights/weight-io.ts";
-import type { Weights } from "../weights/types.ts";
+import type { Model } from "../weights/types.ts";
 
 const MODEL_NAME = "toy_model";
 const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);
 const hiddenDimensionsSize = extractHiddenDimensionSize(toyWeights);
 const vocabSize = toyWeights.vocabulary.length;
 
-const getEmbedding = (weights: Weights, token: string) => {
+const getEmbedding = (weights: Model, token: string) => {
   const tokenIndex = findTokenIndex(weights.vocabulary, token);
 
   return weights.embeddings[tokenIndex]!;
@@ -72,7 +72,7 @@ describe("llmForwardPass", () => {
 
 describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
-    const eosStoppingWeights: Weights = {
+    const eosStoppingWeights: Model = {
       vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
       headsCount: 1,
       embeddings: [
@@ -133,7 +133,7 @@ describe("llm pipeline contracts", () => {
 
 describe("weights validation contract", () => {
   it("fails fast when loaded weights contain an invalid embedding row, even if that token is unused", () => {
-    const malformedWeights: Weights = {
+    const malformedWeights: Model = {
       vocabulary: [...toyWeights.vocabulary],
       headsCount: toyWeights.headsCount,
       embeddings: [

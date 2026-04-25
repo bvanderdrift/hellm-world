@@ -10,7 +10,7 @@ import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
-import type { Weights } from "../weights/types.ts";
+import type { Model } from "../weights/types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
@@ -48,7 +48,7 @@ export const runLlm = (input: string, model: string) => {
   return outputTokens.join(" ");
 };
 
-export const llmForwardPassByTokens = (input: string[], weights: Weights) => {
+export const llmForwardPassByTokens = (input: string[], weights: Model) => {
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
   const startState = input.map((token) => {
@@ -62,7 +62,7 @@ export const llmForwardPassByTokens = (input: string[], weights: Weights) => {
   return llmForwardPass(startState, weights);
 };
 
-export const generateLogits = (input: string[], weights: Weights) => {
+export const generateLogits = (input: string[], weights: Model) => {
   const unembeddedState = llmForwardPassByTokens(input, weights);
 
   // Last vector is probability logits
@@ -75,7 +75,7 @@ export const generateLogits = (input: string[], weights: Weights) => {
   return logits;
 };
 
-export const generateProbabilities = (input: string[], weights: Weights) => {
+export const generateProbabilities = (input: string[], weights: Model) => {
   const logits = generateLogits(input, weights);
 
   return softmax(logits);
@@ -100,7 +100,7 @@ export const getHighestValueIndex = (values: number[]) => {
   ).index;
 };
 
-export const llmForwardPass = (startState: number[][], weights: Weights) => {
+export const llmForwardPass = (startState: number[][], weights: Model) => {
   const contextSize = startState.length;
 
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);

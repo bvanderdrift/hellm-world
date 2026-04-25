@@ -1,16 +1,16 @@
 import { validateSize } from "../shared/matrices.ts";
-import type { Activations, Weights } from "../weights/types.ts";
+import type { Activations, Model } from "../weights/types.ts";
 import { makeZeroVersion } from "../weights/weight-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
 
 export const backprop = (
   inputTokensLength: number,
   correctOutputToken: string,
-  weights: Weights,
+  weights: Model,
   activations: Activations,
 ): {
   loss: number;
-  gradients: Weights;
+  gradients: Model;
 } => {
   const outputLogits = activations.outputLogits[inputTokensLength - 1];
 
