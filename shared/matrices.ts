@@ -87,6 +87,9 @@ export const multiplyMatrixWithVector = (
 export const applyScalarToVector = (scalar: number, vector: number[]) =>
   vector.map((value) => value * scalar);
 
+export const applyScalarToMatrix = (scalar: number, matrix: number[][]) =>
+  matrix.map((vector) => applyScalarToVector(scalar, vector));
+
 export const addVectors = (vector1: number[], vector2: number[]) => {
   if (vector1.length !== vector2.length) {
     throw new Error(
