@@ -19,7 +19,10 @@ export const doSingleTrainingPass = (
   averageLoss: number;
   adjustedWeights: Weights;
 } => {
-  const flatTrainingSize = sum(trainingData.map((sequence) => sequence.length));
+  const flatTrainingSize = sum(
+    // Add one for the EOS special token
+    trainingData.map((sequence) => sequence.length + 1),
+  );
 
   if (flatTrainingSize === 0) {
     throw new Error(`No training data present`);
