@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   extractHiddenDimensionSize,
+  findTokenIndex,
   validateWeights,
 } from "./weight-helpers.ts";
 import type { Weights } from "./types.ts";
@@ -46,6 +47,18 @@ const createWeights = (overrides: Partial<Weights> = {}): Weights => ({
 describe("extractHiddenDimensionSize", () => {
   it("derives the hidden width and vocab size from embeddings", () => {
     expect(extractHiddenDimensionSize(validWeights)).toEqual(4);
+  });
+});
+
+describe("findTokenIndex", () => {
+  it("returns the vocabulary index for a known token", () => {
+    expect(findTokenIndex(validWeights.vocabulary, "beer")).toBe(2);
+  });
+
+  it("throws when the token is not in the vocabulary", () => {
+    expect(() => findTokenIndex(validWeights.vocabulary, "ghost")).toThrow(
+      "Failed to find token ghost in vocabulary",
+    );
   });
 });
 
