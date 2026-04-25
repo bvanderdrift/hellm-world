@@ -16,9 +16,9 @@ import * as weightReading from "../model/model-io.ts";
 import type { Model } from "../model/types.ts";
 
 const MODEL_NAME = "toy_model";
-const toyWeights = weightReading.getLatestCheckpointWeights(MODEL_NAME);
-const hiddenDimensionsSize = extractHiddenDimensionSize(toyWeights);
-const vocabSize = toyWeights.vocabulary.length;
+const { model: toyModel } = weightReading.getLatestCheckpointModel(MODEL_NAME);
+const hiddenDimensionsSize = extractHiddenDimensionSize(toyModel);
+const vocabSize = toyModel.vocabulary.length;
 
 const getEmbedding = (weights: Model, token: string) => {
   const tokenIndex = findTokenIndex(weights.vocabulary, token);
@@ -27,10 +27,10 @@ const getEmbedding = (weights: Model, token: string) => {
 };
 
 const getStartState = (input: string) => {
-  const inputTokens = tokenize(input, toyWeights.vocabulary);
+  const inputTokens = tokenize(input, toyModel.vocabulary);
 
   return inputTokens.map((token) =>
-    getEmbedding(toyWeights, token).map(
+    getEmbedding(toyModel, token).map(
       (value) => value * Math.sqrt(hiddenDimensionsSize),
     ),
   );
@@ -56,7 +56,7 @@ describe("getHighestValueIndex", () => {
 
 describe("pickToken", () => {
   it("returns the token behind the highest logit", () => {
-    expect(pickToken([0, 5, 1, -3, 2, 4], toyWeights.vocabulary)).toBe("world");
+    expect(pickToken([0, 5, 1, -3, 2, 4], toyModel.vocabulary)).toBe("world");
   });
 });
 
@@ -64,7 +64,7 @@ describe("llmForwardPass", () => {
   it("returns one vocab-sized logit vector per input position", () => {
     const startState = getStartState("hello world beer");
 
-    const logitsByPosition = llmForwardPass(startState, toyWeights);
+    const logitsByPosition = llmForwardPass(startState, toyModel);
 
     validateSize(logitsByPosition, startState.length, vocabSize);
   });
@@ -72,21 +72,24 @@ describe("llmForwardPass", () => {
 
 describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
-    const eosStoppingWeights: Model = {
-      vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
-      headsCount: 1,
-      embeddings: [
-        [0, 0],
-        [0, 0],
-      ],
-      unembeddings: [
-        [0, -1],
-        [0, 1],
-      ],
-      transformers: [],
+    const eosStoppingWeights: { historyLosses: number[]; model: Model } = {
+      historyLosses: [3],
+      model: {
+        vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
+        headsCount: 1,
+        embeddings: [
+          [0, 0],
+          [0, 0],
+        ],
+        unembeddings: [
+          [0, -1],
+          [0, 1],
+        ],
+        transformers: [],
+      },
     };
 
-    vi.spyOn(weightReading, "getLatestCheckpointWeights").mockReturnValue(
+    vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
       eosStoppingWeights,
     );
 
@@ -96,35 +99,35 @@ describe("runLlm", () => {
 
 describe("llm pipeline contracts", () => {
   it("embeds each input token into the hidden dimension", () => {
-    const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
+    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyWeights, token),
+      getEmbedding(toyModel, token),
     );
 
     validateSize(embeddedState, inputTokens.length, hiddenDimensionsSize);
   });
 
   it("keeps one hidden-state row per context position after the hidden projection", () => {
-    const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
+    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyWeights, token),
+      getEmbedding(toyModel, token),
     );
     const unembeddedState = multiplyMatrices(
       embeddedState,
-      toyWeights.unembeddings,
+      toyModel.unembeddings,
     );
 
     validateSize(unembeddedState, inputTokens.length, vocabSize);
   });
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
-    const inputTokens = tokenize("hello world beer", toyWeights.vocabulary);
+    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyWeights, token),
+      getEmbedding(toyModel, token),
     );
     const logitsByPosition = multiplyMatrices(
       embeddedState,
-      toyWeights.unembeddings,
+      toyModel.unembeddings,
     );
 
     validateSize(logitsByPosition, inputTokens.length, vocabSize);
@@ -133,23 +136,26 @@ describe("llm pipeline contracts", () => {
 
 describe("weights validation contract", () => {
   it("fails fast when loaded weights contain an invalid embedding row, even if that token is unused", () => {
-    const malformedWeights: Model = {
-      vocabulary: [...toyWeights.vocabulary],
-      headsCount: toyWeights.headsCount,
-      embeddings: [
-        [1, 1, 1, 1],
-        [1, 1, 1],
-        [1, 1, 1, 1],
-        [1, 1, 1, 1],
-        [1, 1, 1, 1],
-        [1, 1, 1, 1],
-        [1, 1, 1, 1],
-      ],
-      unembeddings: toyWeights.unembeddings,
-      transformers: toyWeights.transformers,
+    const malformedWeights: { historyLosses: number[]; model: Model } = {
+      historyLosses: [3],
+      model: {
+        vocabulary: [...toyModel.vocabulary],
+        headsCount: toyModel.headsCount,
+        embeddings: [
+          [1, 1, 1, 1],
+          [1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+          [1, 1, 1, 1],
+        ],
+        unembeddings: toyModel.unembeddings,
+        transformers: toyModel.transformers,
+      },
     };
 
-    vi.spyOn(weightReading, "getLatestCheckpointWeights").mockReturnValue(
+    vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
       malformedWeights,
     );
 

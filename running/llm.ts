@@ -16,27 +16,27 @@ import {
   findTokenIndex,
   validateWeights,
 } from "../model/model-helpers.ts";
-import { getLatestCheckpointWeights } from "../model/model-io.ts";
+import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 
 const contextTimeout = 100;
 
-export const runLlm = (input: string, model: string) => {
+export const runLlm = (input: string, modelName: string) => {
   let outputTokens: string[] = [];
 
-  const weights = getLatestCheckpointWeights(model);
+  const { model } = getLatestCheckpointModel(modelName);
 
-  validateWeights(weights);
+  validateWeights(model);
 
-  const inputTokens = tokenize(input, weights.vocabulary);
+  const inputTokens = tokenize(input, model.vocabulary);
 
   for (let index = 0; index < contextTimeout; index++) {
     const probabilities = generateProbabilities(
       [...inputTokens, ...outputTokens],
-      weights,
+      model,
     );
 
-    const nextToken = pickToken(probabilities, weights.vocabulary);
+    const nextToken = pickToken(probabilities, model.vocabulary);
 
     if (nextToken === END_OF_SEQUENCE_TOKEN) {
       break;

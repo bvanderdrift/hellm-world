@@ -8,7 +8,7 @@ import {
   operateSingleWeights,
 } from "../model/model-helpers.ts";
 import {
-  getLatestCheckpointWeights,
+  getLatestCheckpointModel,
   writeNewCheckpoint,
 } from "../model/model-io.ts";
 import { backprop } from "./backprop.ts";
@@ -17,30 +17,37 @@ import { prepareTrainingData } from "./prepareTrainingData.ts";
 const TRAINING_ALPHA = 0.0001;
 
 export const doTrainingLoopAndStoreCheckpoint = (
-  model: string,
+  modelName: string,
   steps: number,
 ) => {
-  let weights = getLatestCheckpointWeights(model);
+  const { historyLosses, model: modelLoaded } =
+    getLatestCheckpointModel(modelName);
+
+  let model = modelLoaded;
 
   if (steps <= 0) {
     throw new Error(`steps has to be a positive integer, received: ${steps}`);
   }
 
-  const trainingData = prepareTrainingData(model, weights.vocabulary);
+  const trainingData = prepareTrainingData(modelName, model.vocabulary);
 
   for (let index = 0; index < steps; index++) {
     const { averageLoss, adjustedWeights } = doSingleTrainingPass(
-      weights,
+      model,
       trainingData,
     );
 
     console.log(`Training pass done - average loss: ${averageLoss}`);
-    weights = adjustedWeights;
+    historyLosses.push(averageLoss);
+    model = adjustedWeights;
   }
 
-  writeNewCheckpoint(model, weights);
+  writeNewCheckpoint(modelName, {
+    historyLosses,
+    weights: model,
+  });
 
-  console.log(`✅ Succesfully ran training loop for model ${model}`);
+  console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
 export const doSingleTrainingPass = (

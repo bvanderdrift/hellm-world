@@ -1,16 +1,27 @@
 import { readdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import type { Weights, ModelMetadata, Model } from "./types.ts";
+import type {
+  Weights,
+  ModelMetadata,
+  Model,
+  ModelCheckpoint,
+} from "./types.ts";
 
 const METADATA_FILE_NAME = `_metadata.json`;
 
-export const getLatestCheckpointWeights = (model: string): Model => {
+export const getLatestCheckpointModel = (
+  model: string,
+): { historyLosses: number[]; model: Model } => {
   const modelFolderPath = join(import.meta.dirname, model);
   const latestCheckpointFile = getLatestCheckpointFile(modelFolderPath);
+  const checkpoint = getCheckpoint(join(modelFolderPath, latestCheckpointFile));
 
   return {
-    ...getMetadata(join(modelFolderPath, METADATA_FILE_NAME)),
-    ...getCheckpointWeights(join(modelFolderPath, latestCheckpointFile)),
+    historyLosses: checkpoint.historyLosses,
+    model: {
+      ...getMetadata(join(modelFolderPath, METADATA_FILE_NAME)),
+      ...checkpoint.weights,
+    },
   };
 };
 
@@ -53,16 +64,22 @@ const getMetadata = (metadataFilePath: string): ModelMetadata => {
   return metadata;
 };
 
-const getCheckpointWeights = (pathToCheckpoint: string): Weights => {
+const getCheckpoint = (pathToCheckpoint: string): ModelCheckpoint => {
   return JSON.parse(readFileSync(pathToCheckpoint).toString());
 };
 
-export const writeNewCheckpoint = (model: string, weights: Weights) => {
+export const writeNewCheckpoint = (
+  model: string,
+  checkpoint: ModelCheckpoint,
+) => {
   // layman's pick operation
-  const cleanWeights: Weights = {
-    embeddings: weights.embeddings,
-    transformers: weights.transformers,
-    unembeddings: weights.unembeddings,
+  const cleanPayload: ModelCheckpoint = {
+    historyLosses: checkpoint.historyLosses,
+    weights: {
+      embeddings: checkpoint.weights.embeddings,
+      transformers: checkpoint.weights.transformers,
+      unembeddings: checkpoint.weights.unembeddings,
+    },
   };
   const modelFolderPath = join(import.meta.dirname, model);
   const lastFile = getLatestCheckpointFile(modelFolderPath);
@@ -76,6 +93,6 @@ export const writeNewCheckpoint = (model: string, weights: Weights) => {
 
   writeFileSync(
     join(modelFolderPath, newFileName),
-    JSON.stringify(cleanWeights),
+    JSON.stringify(cleanPayload),
   );
 };

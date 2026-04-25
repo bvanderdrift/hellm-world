@@ -34,6 +34,12 @@ export type ModelMetadata = {
 
 export type Model = ModelMetadata & Weights;
 
+export type ModelCheckpoint = {
+  // Average loss of every training step, so length is amount of steps taken
+  historyLosses: number[];
+  weights: Weights;
+};
+
 export type Activations = {
   // TODO
   outputLogits: number[][];

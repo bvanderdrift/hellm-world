@@ -9,7 +9,7 @@ export const prepareTrainingData = (
 ): string[][] => {
   const modelTrainingDataFile = join(
     import.meta.dirname,
-    "../weights",
+    "../model",
     model,
     "_training_data.txt",
   );
