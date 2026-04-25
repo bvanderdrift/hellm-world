@@ -17,7 +17,17 @@ export const prepareTrainingData = (
     modelTrainingDataFile,
   ).toString();
 
-  const sequences = modelTrainingDataContent.split(END_OF_SEQUENCE_TOKEN);
+  return parseTrainingData(modelTrainingDataContent, vocabulary);
+};
+
+export const parseTrainingData = (
+  fileContent: string,
+  vocabulary: string[],
+): string[][] => {
+  const sequences = fileContent
+    .split(END_OF_SEQUENCE_TOKEN)
+    // Remove empty lines
+    .filter((sequence) => !!sequence);
 
   return sequences.map((sequence) =>
     tokenize(
