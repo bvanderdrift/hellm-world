@@ -1,6 +1,7 @@
 import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
+  applyScalarToVector,
   multiplyMatrices,
   normalize,
   validateSize,
@@ -53,9 +54,9 @@ export const llmForwardPassByTokens = (input: string[], weights: Weights) => {
   const startState = input.map((token) => {
     const tokenIndex = findTokenIndex(weights.vocabulary, token);
 
-    return weights.embeddings[tokenIndex]!.map(
-      (v) => v * Math.sqrt(hiddenDimensionsSize),
-    );
+    const tokenEmbedding = weights.embeddings[tokenIndex]!;
+
+    return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
   });
 
   return llmForwardPass(startState, weights);
