@@ -3,9 +3,15 @@ import { calculateStandardDeviation } from "./math.ts";
 import {
   addMatrices,
   addVectors,
+  addVectorsInMatrix,
+  applyScalarToMatrix,
+  applyScalarToVector,
   flipMatrix,
+  multiplyMatrixWithVector,
   multiplyMatrices,
   normalize,
+  validateConsistentNestedArrayLength,
+  validateSize,
 } from "./matrices.ts";
 
 describe("multiplyMatrices", () => {
@@ -91,6 +97,33 @@ describe("multiplyMatrices", () => {
   });
 });
 
+describe("multiplyMatrixWithVector", () => {
+  it("multiplies a vector by a matrix", () => {
+    expect(
+      multiplyMatrixWithVector(
+        [
+          [1, 2],
+          [3, 4],
+          [5, 6],
+        ],
+        [7, 8, 9],
+      ),
+    ).toEqual([76, 100]);
+  });
+
+  it("throws when the vector length does not match the matrix row count", () => {
+    expect(() =>
+      multiplyMatrixWithVector(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [5],
+      ),
+    ).toThrow("matrix vector count (2) doesn't match expected vector count 1");
+  });
+});
+
 describe("flipMatrix", () => {
   it("should flip square matrix", () => {
     const flipped = flipMatrix([
@@ -115,6 +148,56 @@ describe("flipMatrix", () => {
       [2, 5],
       [3, 6],
     ]);
+  });
+});
+
+describe("applyScalarToVector", () => {
+  it("multiplies every vector value by the scalar", () => {
+    expect(applyScalarToVector(3, [2, -4, 0.5])).toEqual([6, -12, 1.5]);
+  });
+
+  it("returns a new vector without mutating the input", () => {
+    const vector = [1, 2, 3];
+
+    const scaled = applyScalarToVector(2, vector);
+
+    expect(scaled).toEqual([2, 4, 6]);
+    expect(vector).toEqual([1, 2, 3]);
+    expect(scaled).not.toBe(vector);
+  });
+});
+
+describe("applyScalarToMatrix", () => {
+  it("multiplies every matrix value by the scalar", () => {
+    expect(
+      applyScalarToMatrix(0.5, [
+        [2, 4],
+        [-6, 8],
+      ]),
+    ).toEqual([
+      [1, 2],
+      [-3, 4],
+    ]);
+  });
+
+  it("returns a new matrix without mutating the input", () => {
+    const matrix = [
+      [1, 2],
+      [3, 4],
+    ];
+
+    const scaled = applyScalarToMatrix(-1, matrix);
+
+    expect(scaled).toEqual([
+      [-1, -2],
+      [-3, -4],
+    ]);
+    expect(matrix).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+    expect(scaled).not.toBe(matrix);
+    expect(scaled[0]).not.toBe(matrix[0]);
   });
 });
 
@@ -238,5 +321,85 @@ describe("addMatrices", () => {
     expect(() => addMatrices([[1, 2]], [[3, 4, 5]])).toThrow(
       "m has unexpected vector depth 2, expected 3",
     );
+  });
+});
+
+describe("addVectorsInMatrix", () => {
+  it("sums all rows into one vector", () => {
+    expect(
+      addVectorsInMatrix([
+        [1, 2, 3],
+        [4, 5, 6],
+        [-2, 10, 0],
+      ]),
+    ).toEqual([3, 17, 9]);
+  });
+
+  it("returns a zero vector for an empty row", () => {
+    expect(addVectorsInMatrix([[], []])).toEqual([]);
+  });
+
+  it("throws when matrix rows have inconsistent widths", () => {
+    expect(() =>
+      addVectorsInMatrix([
+        [1, 2],
+        [3],
+      ]),
+    ).toThrow("Vector at index 1 has unexpected depth 1 (expected 2)");
+  });
+});
+
+describe("validateSize", () => {
+  it("accepts matrices with the expected row count and depth", () => {
+    expect(() =>
+      validateSize(
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        2,
+        2,
+      ),
+    ).not.toThrow();
+  });
+
+  it("throws when the row count is wrong", () => {
+    expect(() => validateSize([[1, 2]], 2, 2)).toThrow(
+      "matrix vector count (1) doesn't match expected vector count 2",
+    );
+  });
+
+  it("throws when the first row depth is wrong", () => {
+    expect(() => validateSize([[1, 2, 3]], 1, 2)).toThrow(
+      "m has unexpected vector depth 3, expected 2",
+    );
+  });
+
+  it("throws when the matrix is empty", () => {
+    expect(() => validateSize([], 0)).toThrow("matrix has no vectors");
+  });
+});
+
+describe("validateConsistentNestedArrayLength", () => {
+  it("accepts an empty matrix", () => {
+    expect(() => validateConsistentNestedArrayLength([])).not.toThrow();
+  });
+
+  it("accepts rows with matching depths", () => {
+    expect(() =>
+      validateConsistentNestedArrayLength([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).not.toThrow();
+  });
+
+  it("throws when a later row has a different depth", () => {
+    expect(() =>
+      validateConsistentNestedArrayLength([
+        [1, 2],
+        [3, 4, 5],
+      ]),
+    ).toThrow("Vector at index 1 has unexpected depth 3 (expected 2)");
   });
 });
