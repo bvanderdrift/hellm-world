@@ -3,6 +3,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
+  validateSameWeightShape,
   validateWeights,
 } from "./weight-helpers.ts";
 import type { Weights } from "./types.ts";
@@ -154,5 +155,91 @@ describe("validateWeights", () => {
     expect(() => validateWeights(malformedWeights)).toThrow(
       "headsCount must be a positive integer",
     );
+  });
+});
+
+describe("validateSameWeightShape", () => {
+  it("accepts weights with the same shape", () => {
+    expect(() =>
+      validateSameWeightShape(createWeights(), createWeights()),
+    ).not.toThrow();
+  });
+
+  it("rejects embeddings with different vocabulary sizes", () => {
+    const weightsWithMoreEmbeddings = createWeights({
+      embeddings: matrix(5, 4),
+    });
+
+    expect(() =>
+      validateSameWeightShape(weightsWithMoreEmbeddings, createWeights()),
+    ).toThrow("matrix vector count (5) doesn't match expected vector count 4");
+  });
+
+  it("rejects embeddings with different hidden widths", () => {
+    const weightsWithWiderEmbeddings = createWeights({
+      embeddings: matrix(4, 5),
+    });
+
+    expect(() =>
+      validateSameWeightShape(weightsWithWiderEmbeddings, createWeights()),
+    ).toThrow("m has unexpected vector depth 5, expected 4");
+  });
+
+  it("rejects different transformer counts", () => {
+    const weightsWithExtraTransformer = createWeights({
+      transformers: [
+        ...structuredClone(validWeights.transformers),
+        structuredClone(validWeights.transformers[0]!),
+      ],
+    });
+
+    expect(() =>
+      validateSameWeightShape(weightsWithExtraTransformer, createWeights()),
+    ).toThrow(
+      "Weights1 has different transformers count 2 than Weights2 (1)",
+    );
+  });
+
+  it("rejects different head counts", () => {
+    const weightsWithDifferentHeadCount = createWeights({
+      headsCount: 4,
+    });
+
+    expect(() =>
+      validateSameWeightShape(weightsWithDifferentHeadCount, createWeights()),
+    ).toThrow("Weights1 has different head count 4 than Weights2 (2)");
+  });
+
+  it("rejects unembeddings with a different shape", () => {
+    const weightsWithDifferentUnembeddings = createWeights({
+      unembeddings: matrix(5, 4),
+    });
+
+    expect(() =>
+      validateSameWeightShape(weightsWithDifferentUnembeddings, createWeights()),
+    ).toThrow();
+  });
+
+  it("rejects transformer matrices with a different shape", () => {
+    const weightsWithDifferentTransformerShape = createWeights();
+    weightsWithDifferentTransformerShape.transformers[0]!.attention.Q =
+      matrix(5, 4);
+
+    expect(() =>
+      validateSameWeightShape(
+        weightsWithDifferentTransformerShape,
+        createWeights(),
+      ),
+    ).toThrow();
+  });
+
+  it("rejects MLP bias vectors with a different shape", () => {
+    const weightsWithDifferentBiasShape = createWeights();
+    weightsWithDifferentBiasShape.transformers[0]!.multilayerPerceptron.wUp.biasVector =
+      vector(17);
+
+    expect(() =>
+      validateSameWeightShape(weightsWithDifferentBiasShape, createWeights()),
+    ).toThrow();
   });
 });

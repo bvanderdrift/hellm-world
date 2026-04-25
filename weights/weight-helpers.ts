@@ -103,3 +103,26 @@ export const findTokenIndex = (vocabulary: string[], token: string) => {
 
   return tokenIndex;
 };
+
+export const validateSameWeightShape = (
+  weights1: Weights,
+  weights2: Weights,
+) => {
+  validateSize(
+    weights1.embeddings,
+    weights2.embeddings.length,
+    weights2.embeddings[0]!.length,
+  );
+
+  if (weights1.transformers.length !== weights2.transformers.length) {
+    throw new Error(
+      `Weights1 has different transformers count ${weights1.transformers.length} than Weights2 (${weights2.transformers.length})`,
+    );
+  }
+
+  if (weights1.headsCount !== weights2.headsCount) {
+    throw new Error(
+      `Weights1 has different head count ${weights1.headsCount} than Weights2 (${weights2.headsCount})`,
+    );
+  }
+};
