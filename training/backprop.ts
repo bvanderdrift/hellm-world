@@ -1,9 +1,6 @@
 import { validateSize } from "../shared/matrices.ts";
-import type {
-  Activations,
-  CheckpointWeights,
-  Weights,
-} from "../weights/types.ts";
+import type { Activations, Weights } from "../weights/types.ts";
+import { makeZeroVersion } from "../weights/weight-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
 
 export const backprop = (
@@ -27,5 +24,6 @@ export const backprop = (
 
   return {
     loss: calculateLoss(outputLogits, correctOutputToken, weights.vocabulary),
+    gradients: makeZeroVersion(weights),
   };
 };
