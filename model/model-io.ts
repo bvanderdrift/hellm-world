@@ -7,7 +7,8 @@ import type {
   ModelCheckpoint,
 } from "./types.ts";
 
-const METADATA_FILE_NAME = `_metadata.json`;
+const METADATA_FILE_NAME = "_metadata.json";
+const TRAINING_DATA_FILE_NAME = "_training_data.txt";
 
 export const getLatestCheckpointModel = (
   model: string,
@@ -68,8 +69,18 @@ const getCheckpoint = (pathToCheckpoint: string): ModelCheckpoint => {
   return JSON.parse(readFileSync(pathToCheckpoint).toString());
 };
 
+export const readRawTrainingData = (modelName: string) => {
+  const modelTrainingDataFile = join(
+    import.meta.dirname,
+    modelName,
+    TRAINING_DATA_FILE_NAME,
+  );
+
+  return readFileSync(modelTrainingDataFile).toString();
+};
+
 export const writeNewCheckpoint = (
-  model: string,
+  modelName: string,
   checkpoint: ModelCheckpoint,
 ) => {
   // layman's pick operation
@@ -81,7 +92,7 @@ export const writeNewCheckpoint = (
       unembeddings: checkpoint.weights.unembeddings,
     },
   };
-  const modelFolderPath = join(import.meta.dirname, model);
+  const modelFolderPath = join(import.meta.dirname, modelName);
   const lastFile = getLatestCheckpointFile(modelFolderPath);
 
   const [_, numberAsStringWithExtension] = lastFile.split("_");
