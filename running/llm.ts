@@ -14,7 +14,7 @@ import type { Model } from "../model/types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
-  validateWeights,
+  validateModel,
 } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
@@ -26,7 +26,7 @@ export const runLlm = (input: string, modelName: string) => {
 
   const { model } = getLatestCheckpointModel(modelName);
 
-  validateWeights(model);
+  validateModel(model);
 
   const inputTokens = tokenize(input, model.vocabulary);
 

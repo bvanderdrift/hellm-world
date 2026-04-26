@@ -5,7 +5,7 @@ import {
   findTokenIndex,
   operateCombinedWeights,
   validateSameWeightShape,
-  validateWeights,
+  validateModel,
 } from "./model-helpers.ts";
 import type { Model } from "./types.ts";
 
@@ -14,7 +14,7 @@ const vector = (length: number, value = 1) => new Array(length).fill(value);
 const matrix = (rows: number, columns: number, value = 1) =>
   new Array(rows).fill(null).map(() => vector(columns, value));
 
-const validWeights: Model = {
+const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
   embeddings: matrix(4, 4),
@@ -41,13 +41,13 @@ const validWeights: Model = {
   ],
 };
 
-const createWeights = (overrides: Partial<Model> = {}): Model => ({
-  ...structuredClone(validWeights),
+const createModel = (overrides: Partial<Model> = {}): Model => ({
+  ...structuredClone(validModel),
   ...overrides,
 });
 
-const createWeightsWithValue = (value: number): Model => ({
-  ...validWeights,
+const createModelWithValue = (value: number): Model => ({
+  ...validModel,
   embeddings: matrix(4, 4, value),
   unembeddings: matrix(4, 4, value),
   transformers: [
@@ -74,17 +74,17 @@ const createWeightsWithValue = (value: number): Model => ({
 
 describe("extractHiddenDimensionSize", () => {
   it("derives the hidden width and vocab size from embeddings", () => {
-    expect(extractHiddenDimensionSize(validWeights)).toEqual(4);
+    expect(extractHiddenDimensionSize(validModel)).toEqual(4);
   });
 });
 
 describe("findTokenIndex", () => {
   it("returns the vocabulary index for a known token", () => {
-    expect(findTokenIndex(validWeights.vocabulary, "beer")).toBe(2);
+    expect(findTokenIndex(validModel.vocabulary, "beer")).toBe(2);
   });
 
   it("throws when the token is not in the vocabulary", () => {
-    expect(() => findTokenIndex(validWeights.vocabulary, "ghost")).toThrow(
+    expect(() => findTokenIndex(validModel.vocabulary, "ghost")).toThrow(
       "Failed to find token ghost in vocabulary",
     );
   });
@@ -92,63 +92,63 @@ describe("findTokenIndex", () => {
 
 describe("validateWeights", () => {
   it("accepts a self-consistent checkpoint", () => {
-    expect(() => validateWeights(validWeights)).not.toThrow();
+    expect(() => validateModel(validModel)).not.toThrow();
   });
 
   it("rejects a headsCount that does not evenly divide the hidden width", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       headsCount: 3,
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "Can't perfectly divide the nominator by denominator (3)",
     );
   });
 
   it("rejects duplicate tokens in the checkpoint vocabulary", () => {
-    const duplicateTokenWeights = createWeights({
+    const duplicateTokenWeights = createModel({
       vocabulary: ["hello", "world", "hello", END_OF_SEQUENCE_TOKEN],
     });
 
-    expect(() => validateWeights(duplicateTokenWeights)).toThrow(
+    expect(() => validateModel(duplicateTokenWeights)).toThrow(
       "Provided weights have 1 duplicate tokens",
     );
   });
 
   it("rejects vocabularies that are missing the EOS token", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       vocabulary: ["hello", "world", "beer"],
       embeddings: matrix(3, 4),
       unembeddings: matrix(4, 3),
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       `Model embeddings are missing special end-of-sequence token "${END_OF_SEQUENCE_TOKEN}"`,
     );
   });
 
   it("rejects embeddings that do not cover the full vocabulary", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       embeddings: matrix(3, 4),
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "matrix vector count (3) doesn't match expected vector count 4",
     );
   });
 
   it("rejects embeddings with too many rows for the vocabulary", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       embeddings: matrix(5, 4),
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "matrix vector count (5) doesn't match expected vector count 4",
     );
   });
 
   it("throws when any embedding row has the wrong width", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       embeddings: [
         [1, 1, 1, 1],
         [1, 1, 1],
@@ -157,29 +157,29 @@ describe("validateWeights", () => {
       ],
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "Vector at index 1 has unexpected depth 3 (expected 4)",
     );
   });
 
   it("rejects checkpoints with empty vocabulary using a helpful error", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       vocabulary: [],
       embeddings: [],
       unembeddings: [],
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "Provided vocabulary cannot be empty",
     );
   });
 
   it("rejects a negative headsCount", () => {
-    const malformedWeights = createWeights({
+    const malformedWeights = createModel({
       headsCount: -2,
     });
 
-    expect(() => validateWeights(malformedWeights)).toThrow(
+    expect(() => validateModel(malformedWeights)).toThrow(
       "headsCount must be a positive integer",
     );
   });
@@ -188,50 +188,50 @@ describe("validateWeights", () => {
 describe("validateSameWeightShape", () => {
   it("accepts weights with the same shape", () => {
     expect(() =>
-      validateSameWeightShape(createWeights(), createWeights()),
+      validateSameWeightShape(createModel(), createModel()),
     ).not.toThrow();
   });
 
   it("rejects embeddings with different vocabulary sizes", () => {
-    const weightsWithMoreEmbeddings = createWeights({
+    const weightsWithMoreEmbeddings = createModel({
       embeddings: matrix(5, 4),
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithMoreEmbeddings, createWeights()),
+      validateSameWeightShape(weightsWithMoreEmbeddings, createModel()),
     ).toThrow("matrix vector count (5) doesn't match expected vector count 4");
   });
 
   it("rejects embeddings with different hidden widths", () => {
-    const weightsWithWiderEmbeddings = createWeights({
+    const weightsWithWiderEmbeddings = createModel({
       embeddings: matrix(4, 5),
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithWiderEmbeddings, createWeights()),
+      validateSameWeightShape(weightsWithWiderEmbeddings, createModel()),
     ).toThrow("m has unexpected vector depth 5, expected 4");
   });
 
   it("rejects different transformer counts", () => {
-    const weightsWithExtraTransformer = createWeights({
+    const weightsWithExtraTransformer = createModel({
       transformers: [
-        ...structuredClone(validWeights.transformers),
-        structuredClone(validWeights.transformers[0]!),
+        ...structuredClone(validModel.transformers),
+        structuredClone(validModel.transformers[0]!),
       ],
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithExtraTransformer, createWeights()),
+      validateSameWeightShape(weightsWithExtraTransformer, createModel()),
     ).toThrow("Weights1 has different transformers count 2 than Weights2 (1)");
   });
 
   it("rejects different head counts", () => {
-    const weightsWithDifferentHeadCount = createWeights({
+    const weightsWithDifferentHeadCount = createModel({
       headsCount: 4,
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithDifferentHeadCount, createWeights()),
+      validateSameWeightShape(weightsWithDifferentHeadCount, createModel()),
     ).toThrow("Weights1 has different head count 4 than Weights2 (2)");
   });
 });
@@ -239,23 +239,23 @@ describe("validateSameWeightShape", () => {
 describe("operateWeights", () => {
   it("applies the operation across embeddings, unembeddings, attention, and MLP weights", () => {
     const operatedWeights = operateCombinedWeights(
-      createWeightsWithValue(2),
-      createWeightsWithValue(3),
+      createModelWithValue(2),
+      createModelWithValue(3),
       (value1, value2) => value1 + value2,
     );
 
-    expect(operatedWeights).toEqual(createWeightsWithValue(5));
+    expect(operatedWeights).toEqual(createModelWithValue(5));
   });
 
   it("rejects weights with the same shape but a different vocabulary order", () => {
-    const weightsWithReorderedVocabulary = createWeights({
+    const weightsWithReorderedVocabulary = createModel({
       vocabulary: ["world", "hello", "beer", END_OF_SEQUENCE_TOKEN],
     });
 
     expect(() =>
       operateCombinedWeights(
         weightsWithReorderedVocabulary,
-        createWeights(),
+        createModel(),
         (value1, value2) => value1 + value2,
       ),
     ).toThrow();

@@ -7,27 +7,27 @@ import {
 } from "../shared/matrices.ts";
 import type { TransformerWeights, Model } from "./types.ts";
 
-export const extractHiddenDimensionSize = (weights: Model) => {
-  const embeddingsArray = Object.values(weights.embeddings);
+export const extractHiddenDimensionSize = (model: Model) => {
+  const embeddingsArray = Object.values(model.embeddings);
   return embeddingsArray[0]!.length;
 };
 
-export const validateWeights = (weights: Model) => {
-  if (weights.vocabulary.length === 0) {
+export const validateModel = (model: Model) => {
+  if (model.vocabulary.length === 0) {
     throw new Error("Provided vocabulary cannot be empty");
   }
 
-  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
-  if (weights.headsCount <= 0) {
+  if (model.headsCount <= 0) {
     throw new Error("headsCount must be a positive integer");
   }
 
-  divideToWhole(hiddenDimensionsSize, weights.headsCount);
+  divideToWhole(hiddenDimensionsSize, model.headsCount);
 
-  const tokensDeduped = new Set(weights.vocabulary);
+  const tokensDeduped = new Set(model.vocabulary);
 
-  const duplicateCount = weights.vocabulary.length - tokensDeduped.size;
+  const duplicateCount = model.vocabulary.length - tokensDeduped.size;
 
   if (duplicateCount > 0) {
     throw new Error(`Provided weights have ${duplicateCount} duplicate tokens`);
@@ -39,18 +39,14 @@ export const validateWeights = (weights: Model) => {
     );
   }
 
+  validateSize(model.embeddings, model.vocabulary.length, hiddenDimensionsSize);
   validateSize(
-    weights.embeddings,
-    weights.vocabulary.length,
+    model.unembeddings,
     hiddenDimensionsSize,
-  );
-  validateSize(
-    weights.unembeddings,
-    hiddenDimensionsSize,
-    weights.vocabulary.length,
+    model.vocabulary.length,
   );
 
-  for (const transformer of weights.transformers) {
+  for (const transformer of model.transformers) {
     validateSize(
       transformer.attention.Q,
       hiddenDimensionsSize,
