@@ -6,6 +6,7 @@ import {
   addVectorsInMatrix,
   applyScalarToMatrix,
   applyScalarToVector,
+  createMatrix,
   flipMatrix,
   multiplyMatrixWithVector,
   multiplyMatrices,
@@ -13,6 +14,35 @@ import {
   validateConsistentNestedArrayLength,
   validateSize,
 } from "./matrices.ts";
+
+describe("createMatrix", () => {
+  it("creates a matrix with the requested vector and dimension counts", () => {
+    expect(createMatrix(2, 3)).toEqual([
+      [0, 0, 0],
+      [0, 0, 0],
+    ]);
+  });
+
+  it("creates independent row arrays", () => {
+    const matrix = createMatrix(2, 2);
+
+    matrix[0]![0] = 1;
+
+    expect(matrix).toEqual([
+      [1, 0],
+      [0, 0],
+    ]);
+    expect(matrix[0]).not.toBe(matrix[1]);
+  });
+
+  it("handles zero vectors", () => {
+    expect(createMatrix(0, 3)).toEqual([]);
+  });
+
+  it("handles zero dimensions", () => {
+    expect(createMatrix(2, 0)).toEqual([[], []]);
+  });
+});
 
 describe("multiplyMatrices", () => {
   it("multiplies two 1x1 matrices", () => {
