@@ -93,7 +93,7 @@ describe("runLlm", () => {
       eosStoppingWeights,
     );
 
-    expect(runLlm("hello", MODEL_NAME)).toBe("");
+    expect(runLlm("hello", MODEL_NAME)).toEqual([]);
   });
 });
 
@@ -144,6 +144,7 @@ describe("weights validation contract", () => {
         embeddings: [
           [1, 1, 1, 1],
           [1, 1, 1],
+          [1, 1, 1, 1],
           [1, 1, 1, 1],
           [1, 1, 1, 1],
           [1, 1, 1, 1],
