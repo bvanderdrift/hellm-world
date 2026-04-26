@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "run": "node index.ts run",
+    "llm": "node index.ts run",
     "train": "node index.ts train",
     "test": "vitest run",
     "typecheck": "tsc"
