@@ -64,10 +64,7 @@ export const initializeModel = ({
                 hiddenDimensionCount * mlpMultiple,
                 weightRandomNumberGenerator,
               ),
-              biasVector: createVector(
-                hiddenDimensionCount * mlpMultiple,
-                weightRandomNumberGenerator,
-              ),
+              biasVector: createVector(hiddenDimensionCount * mlpMultiple),
             },
             wDown: {
               weightsMatrix: createMatrix(
@@ -75,10 +72,7 @@ export const initializeModel = ({
                 hiddenDimensionCount,
                 weightRandomNumberGenerator,
               ),
-              biasVector: createVector(
-                hiddenDimensionCount,
-                weightRandomNumberGenerator,
-              ),
+              biasVector: createVector(hiddenDimensionCount),
             },
           },
         };
