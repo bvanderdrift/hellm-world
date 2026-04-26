@@ -9,15 +9,17 @@ import type { MultilayerPerceptronWeights } from "../model/types.ts";
 export const getMultilayerPerceptronUpdateMatrix = (
   encoding: number[][],
   perceptron: MultilayerPerceptronWeights,
+  mlpMultiple: number,
 ) => {
   return encoding.map((vector) =>
-    getMultilayerPerceptronUpdateVector(vector, perceptron),
+    getMultilayerPerceptronUpdateVector(vector, perceptron, mlpMultiple),
   );
 };
 
 export const getMultilayerPerceptronUpdateVector = (
   encodingVector: number[],
   perceptron: MultilayerPerceptronWeights,
+  mlpMultiple: number,
 ) => {
   // We identify knowledge from the incoming vectors
   const upped = multiplyMatrices(
@@ -27,7 +29,7 @@ export const getMultilayerPerceptronUpdateVector = (
 
   const hiddenDimensionSize = encodingVector.length;
 
-  validateSize(upped, 1, hiddenDimensionSize * 4);
+  validateSize(upped, 1, hiddenDimensionSize * mlpMultiple);
 
   // We normalize directions
   const uppedBiased = addVectors(upped[0]!, perceptron.wUp.biasVector);

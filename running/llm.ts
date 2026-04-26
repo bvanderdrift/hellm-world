@@ -132,6 +132,7 @@ export const llmForwardPass = (startState: number[][], weights: Model) => {
       // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
       normalize(intermediateState),
       transformer.multilayerPerceptron,
+      weights.mlpMultiple,
     );
 
     // Apply updated knowledge

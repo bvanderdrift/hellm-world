@@ -14,27 +14,40 @@ const vector = (length: number, value = 1) => new Array(length).fill(value);
 const matrix = (rows: number, columns: number, value = 1) =>
   new Array(rows).fill(null).map(() => vector(columns, value));
 
+const HIDDEN_DIMENSION_SIZE = 4;
+const DEFAULT_MLP_MULTIPLE = 4;
+const DEFAULT_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * DEFAULT_MLP_MULTIPLE;
+const SMALLER_MLP_MULTIPLE = 2;
+const SMALLER_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * SMALLER_MLP_MULTIPLE;
+
 const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
-  embeddings: matrix(4, 4),
-  unembeddings: matrix(4, 4),
+  mlpMultiple: DEFAULT_MLP_MULTIPLE,
+  embeddings: matrix(4, HIDDEN_DIMENSION_SIZE),
+  unembeddings: matrix(HIDDEN_DIMENSION_SIZE, 4),
   transformers: [
     {
       attention: {
-        Q: matrix(4, 4),
-        K: matrix(4, 4),
-        V: matrix(4, 4),
-        out: matrix(4, 4),
+        Q: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        K: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        V: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        out: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
       },
       multilayerPerceptron: {
         wUp: {
-          weightsMatrix: matrix(4, 16),
-          biasVector: vector(16),
+          weightsMatrix: matrix(
+            HIDDEN_DIMENSION_SIZE,
+            DEFAULT_MLP_DIMENSION_SIZE,
+          ),
+          biasVector: vector(DEFAULT_MLP_DIMENSION_SIZE),
         },
         wDown: {
-          weightsMatrix: matrix(16, 4),
-          biasVector: vector(4),
+          weightsMatrix: matrix(
+            DEFAULT_MLP_DIMENSION_SIZE,
+            HIDDEN_DIMENSION_SIZE,
+          ),
+          biasVector: vector(HIDDEN_DIMENSION_SIZE),
         },
       },
     },
@@ -48,24 +61,32 @@ const createModel = (overrides: Partial<Model> = {}): Model => ({
 
 const createModelWithValue = (value: number): Model => ({
   ...validModel,
-  embeddings: matrix(4, 4, value),
-  unembeddings: matrix(4, 4, value),
+  embeddings: matrix(4, HIDDEN_DIMENSION_SIZE, value),
+  unembeddings: matrix(HIDDEN_DIMENSION_SIZE, 4, value),
   transformers: [
     {
       attention: {
-        Q: matrix(4, 4, value),
-        K: matrix(4, 4, value),
-        V: matrix(4, 4, value),
-        out: matrix(4, 4, value),
+        Q: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        K: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        V: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        out: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
       },
       multilayerPerceptron: {
         wUp: {
-          weightsMatrix: matrix(4, 16, value),
-          biasVector: vector(16, value),
+          weightsMatrix: matrix(
+            HIDDEN_DIMENSION_SIZE,
+            DEFAULT_MLP_DIMENSION_SIZE,
+            value,
+          ),
+          biasVector: vector(DEFAULT_MLP_DIMENSION_SIZE, value),
         },
         wDown: {
-          weightsMatrix: matrix(16, 4, value),
-          biasVector: vector(4, value),
+          weightsMatrix: matrix(
+            DEFAULT_MLP_DIMENSION_SIZE,
+            HIDDEN_DIMENSION_SIZE,
+            value,
+          ),
+          biasVector: vector(HIDDEN_DIMENSION_SIZE, value),
         },
       },
     },
@@ -181,6 +202,45 @@ describe("validateWeights", () => {
 
     expect(() => validateModel(malformedWeights)).toThrow(
       "headsCount must be a positive integer",
+    );
+  });
+
+  it("uses mlpMultiple from metadata when validating MLP shapes", () => {
+    const modelWithSmallerMlp = createModel({
+      mlpMultiple: SMALLER_MLP_MULTIPLE,
+      transformers: [
+        {
+          ...structuredClone(validModel.transformers[0]!),
+          multilayerPerceptron: {
+            wUp: {
+              weightsMatrix: matrix(
+                HIDDEN_DIMENSION_SIZE,
+                SMALLER_MLP_DIMENSION_SIZE,
+              ),
+              biasVector: vector(SMALLER_MLP_DIMENSION_SIZE),
+            },
+            wDown: {
+              weightsMatrix: matrix(
+                SMALLER_MLP_DIMENSION_SIZE,
+                HIDDEN_DIMENSION_SIZE,
+              ),
+              biasVector: vector(HIDDEN_DIMENSION_SIZE),
+            },
+          },
+        },
+      ],
+    });
+
+    expect(() => validateModel(modelWithSmallerMlp)).not.toThrow();
+  });
+
+  it("rejects MLP shapes that do not match mlpMultiple metadata", () => {
+    const malformedWeights = createModel({
+      mlpMultiple: SMALLER_MLP_MULTIPLE,
+    });
+
+    expect(() => validateModel(malformedWeights)).toThrow(
+      `m has unexpected vector depth ${DEFAULT_MLP_DIMENSION_SIZE}, expected ${SMALLER_MLP_DIMENSION_SIZE}`,
     );
   });
 });

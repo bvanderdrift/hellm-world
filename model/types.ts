@@ -30,6 +30,7 @@ export type Weights = {
 export type ModelMetadata = {
   vocabulary: string[];
   headsCount: number;
+  mlpMultiple: number;
 };
 
 export type Model = ModelMetadata & Weights;

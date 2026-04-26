@@ -73,17 +73,17 @@ export const validateModel = (model: Model) => {
     validateSize(
       transformer.multilayerPerceptron.wUp.weightsMatrix,
       hiddenDimensionsSize,
-      hiddenDimensionsSize * 4,
+      hiddenDimensionsSize * model.mlpMultiple,
     );
     validateSize(
       [transformer.multilayerPerceptron.wUp.biasVector],
       1,
-      hiddenDimensionsSize * 4,
+      hiddenDimensionsSize * model.mlpMultiple,
     );
 
     validateSize(
       transformer.multilayerPerceptron.wDown.weightsMatrix,
-      hiddenDimensionsSize * 4,
+      hiddenDimensionsSize * model.mlpMultiple,
       hiddenDimensionsSize,
     );
     validateSize(
