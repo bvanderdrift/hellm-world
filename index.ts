@@ -45,19 +45,25 @@ program
     const headsCount = await number({
       message: "Attention Head Count",
       required: true,
-      default: 32,
+      default: 8,
+      min: 1,
+      step: 1,
     });
 
     const hiddenDimensionCount = await number({
       message: "Hidden Dimension Count",
       required: true,
-      default: 1024,
+      default: 512,
+      min: 16,
+      step: 1,
     });
 
     const transformerCount = await number({
       message: "Transformer Count",
       required: true,
-      default: 12,
+      default: 6,
+      min: 1,
+      step: 1,
     });
 
     const vocabularySingleString = await input({
