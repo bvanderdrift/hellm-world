@@ -93,7 +93,7 @@ describe("runLlm", () => {
       eosStoppingWeights,
     );
 
-    expect(runLlm("hello", MODEL_NAME)).toEqual([]);
+    expect(Array.from(runLlm("hello", MODEL_NAME))).toEqual([]);
   });
 });
 
@@ -160,7 +160,7 @@ describe("weights validation contract", () => {
       malformedWeights,
     );
 
-    expect(() => runLlm("hello", MODEL_NAME)).toThrow(
+    expect(() => Array.from(runLlm("hello", MODEL_NAME))).toThrow(
       "Vector at index 1 has unexpected depth 3 (expected 4)",
     );
   });
