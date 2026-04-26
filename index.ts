@@ -1,6 +1,9 @@
 import { program } from "commander";
+import { input, number } from "@inquirer/prompts";
 import { runLlm } from "./running/llm.ts";
 import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
+import { writeNewModel } from "./model/model-io.ts";
+import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 
 program
   .name("llm")
@@ -26,6 +29,67 @@ program
   )
   .action((modelName: string, opts: { steps: number }) => {
     doTrainingLoopAndStoreCheckpoint(modelName, opts.steps);
+  });
+
+program
+  .name("init-model")
+  .command("init-model")
+  .action(async () => {
+    const modelName = await input({
+      message: "Model name",
+      required: true,
+      pattern: /^[a-zA-Z0-9_-]+$/,
+      patternError: "Only alphanumerical characters, - and _ are allowed",
+    });
+
+    const headsCount = await number({
+      message: "Attention Head Count",
+      required: true,
+      default: 32,
+    });
+
+    const hiddenDimensionCount = await number({
+      message: "Hidden Dimension Count",
+      required: true,
+      default: 1024,
+    });
+
+    const transformerCount = await number({
+      message: "Transformer Count",
+      required: true,
+      default: 12,
+    });
+
+    const vocabularySingleString = await input({
+      message: "comma-seperated vocabulary list",
+      required: true,
+      validate(value) {
+        const tokens = decodeVocab(value);
+
+        if (!tokens.length) {
+          return "No valid tokens found";
+        }
+
+        const tokensUnique = new Set(tokens);
+
+        if (tokensUnique.size !== tokens.length) {
+          return "Duplicate tokens found";
+        }
+
+        return true;
+      },
+    });
+
+    const vocabulary = decodeVocab(vocabularySingleString);
+
+    const newModel = initializeModel({
+      headsCount,
+      hiddenDimensionCount,
+      transformerCount,
+      vocabulary,
+    });
+
+    writeNewModel(modelName, newModel);
   });
 
 program.parse();

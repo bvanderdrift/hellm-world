@@ -1,11 +1,12 @@
-import { readdirSync, readFileSync, writeFileSync } from "fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "fs";
 import { join } from "path";
-import type {
-  Weights,
-  ModelMetadata,
-  Model,
-  ModelCheckpoint,
-} from "./types.ts";
+import type { ModelMetadata, Model, ModelCheckpoint } from "./types.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";
@@ -83,6 +84,24 @@ export const writeNewCheckpoint = (
   modelName: string,
   checkpoint: ModelCheckpoint,
 ) => {
+  const modelFolderPath = join(import.meta.dirname, modelName);
+  const lastFile = getLatestCheckpointFile(modelFolderPath);
+
+  const [_, numberAsStringWithExtension] = lastFile.split("_");
+
+  const lastNumber = Number(numberAsStringWithExtension?.replace(".json", ""));
+  const newNumber = lastNumber + 1;
+
+  writeCheckpoint(modelFolderPath, newNumber, checkpoint);
+};
+
+const writeCheckpoint = (
+  modelFolderPath: string,
+  newNumber: number,
+  checkpoint: ModelCheckpoint,
+) => {
+  const newFileName = `checkpoint_${newNumber.toString().padStart(6, "0")}.json`;
+
   // layman's pick operation
   const cleanPayload: ModelCheckpoint = {
     historyLosses: checkpoint.historyLosses,
@@ -92,18 +111,41 @@ export const writeNewCheckpoint = (
       unembeddings: checkpoint.weights.unembeddings,
     },
   };
-  const modelFolderPath = join(import.meta.dirname, modelName);
-  const lastFile = getLatestCheckpointFile(modelFolderPath);
-
-  const [_, numberAsStringWithExtension] = lastFile.split("_");
-
-  const lastNumber = Number(numberAsStringWithExtension?.replace(".json", ""));
-  const newNumber = lastNumber + 1;
-
-  const newFileName = `checkpoint_${newNumber.toString().padStart(6, "0")}.json`;
 
   writeFileSync(
     join(modelFolderPath, newFileName),
     JSON.stringify(cleanPayload),
   );
+};
+
+export const writeNewModel = (modelName: string, model: Model) => {
+  const modelFolderPath = join(import.meta.dirname, modelName);
+
+  if (existsSync(modelFolderPath)) {
+    throw new Error(`Model ${modelName} already has an existing folder`);
+  }
+
+  mkdirSync(modelFolderPath);
+
+  const metadata: ModelMetadata = {
+    vocabulary: model.vocabulary,
+    headsCount: model.headsCount,
+    mlpMultiple: model.mlpMultiple,
+  };
+
+  writeFileSync(
+    join(modelFolderPath, METADATA_FILE_NAME),
+    JSON.stringify(metadata, null, 2),
+  );
+
+  writeFileSync(
+    join(modelFolderPath, TRAINING_DATA_FILE_NAME),
+    "", // Initialize empty file
+  );
+
+  // First checkpoint file
+  writeCheckpoint(modelFolderPath, 0, {
+    historyLosses: [],
+    weights: model,
+  });
 };

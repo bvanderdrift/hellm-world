@@ -7,6 +7,7 @@
   "scripts": {
     "llm": "node index.ts run",
     "train": "node index.ts train",
+    "init-model": "node index.ts init-model",
     "test": "vitest run",
     "typecheck": "tsc"
   },
@@ -15,6 +16,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
+    "@inquirer/prompts": "^8.4.2",
     "commander": "^14.0.3"
   },
   "devDependencies": {
