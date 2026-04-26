@@ -61,7 +61,7 @@ export const divideToWhole = (nominator: number, denominator: number) => {
 
   if (divisionRemainder !== 0) {
     throw new Error(
-      `Can't perfectly divide the nominator by denominator (${denominator})`,
+      `Can't perfectly divide the nominator ${nominator} by denominator (${denominator})`,
     );
   }
 

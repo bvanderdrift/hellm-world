@@ -122,7 +122,7 @@ describe("validateWeights", () => {
     });
 
     expect(() => validateModel(malformedWeights)).toThrow(
-      "Can't perfectly divide the nominator by denominator (3)",
+      "Can't perfectly divide the nominator 4 by denominator (3)",
     );
   });
 
