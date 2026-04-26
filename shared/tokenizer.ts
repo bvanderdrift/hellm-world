@@ -14,7 +14,7 @@ export const tokenize = <T extends string>(
     }
 
     matchedTokens.push(match);
-    temp = temp.replace(match, "").trim();
+    temp = temp.replace(match, "");
   }
 
   return matchedTokens;

@@ -1,4 +1,4 @@
 {
-  "vocabulary": ["hello", "world", "my", "name", "is", "beer", "<EOS>"],
+  "vocabulary": ["hello", "world", "my", "name", "is", "beer", " ", "<EOS>"],
   "headsCount": 2
 }

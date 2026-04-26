@@ -45,7 +45,7 @@ export const runLlm = (input: string, modelName: string) => {
     outputTokens.push(nextToken);
   }
 
-  return outputTokens.join(" ");
+  return outputTokens;
 };
 
 export const llmForwardPassByTokens = (input: string[], weights: Model) => {
