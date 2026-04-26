@@ -8,7 +8,12 @@ program
   .argument("<model>", "model to run")
   .argument("<input...>", "raw input to complete")
   .action((modelName: string, inputSeperated: string[]) => {
-    console.log(runLlm(inputSeperated.join(" "), modelName));
+    const tokenGenerator = runLlm(inputSeperated.join(" "), modelName);
+
+    for (const token of tokenGenerator) {
+      process.stdout.write(token);
+    }
+    process.stdout.write("\n");
   });
 
 program

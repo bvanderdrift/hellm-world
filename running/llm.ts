@@ -21,7 +21,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 
 const contextTimeout = 100;
 
-export const runLlm = (input: string, modelName: string) => {
+export const runLlm = function* (input: string, modelName: string) {
   let outputTokens: string[] = [];
 
   const { model } = getLatestCheckpointModel(modelName);
@@ -43,9 +43,9 @@ export const runLlm = (input: string, modelName: string) => {
     }
 
     outputTokens.push(nextToken);
-  }
 
-  return outputTokens;
+    yield nextToken;
+  }
 };
 
 export const llmForwardPassByTokens = (input: string[], weights: Model) => {
