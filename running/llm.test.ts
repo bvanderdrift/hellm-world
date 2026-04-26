@@ -77,6 +77,7 @@ describe("runLlm", () => {
       model: {
         vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
         headsCount: 1,
+        mlpMultiple: 1,
         embeddings: [
           [0, 0],
           [0, 0],
@@ -141,6 +142,7 @@ describe("weights validation contract", () => {
       model: {
         vocabulary: [...toyModel.vocabulary],
         headsCount: toyModel.headsCount,
+        mlpMultiple: toyModel.mlpMultiple,
         embeddings: [
           [1, 1, 1, 1],
           [1, 1, 1],
