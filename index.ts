@@ -17,8 +17,9 @@ program
     "-s, --steps <steps>",
     "Amount of steps before storing another checkpoint",
   )
-  .action((opts: { steps: number }) => {
-    doTrainingLoopAndStoreCheckpoint("toy_model", opts.steps);
+  .argument("<model>", "model to run")
+  .action((modelName: string, opts: { steps: number }) => {
+    doTrainingLoopAndStoreCheckpoint(modelName, opts.steps);
   });
 
 program.parse();
