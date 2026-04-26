@@ -67,3 +67,18 @@ export const divideToWhole = (nominator: number, denominator: number) => {
 
   return Math.round(nominator / denominator);
 };
+
+export const randomNormalDistribution = (
+  mean: number,
+  standardDeviation: number,
+) => {
+  const uniform1 = Math.random() || Number.EPSILON; // Epsilon to prevent a 0 since we're going to take a log
+  const uniform2 = Math.random();
+
+  const radius = Math.sqrt(-2 * Math.log(uniform1)); //
+  const angle = 2 * Math.PI * uniform2; // Random angle on a circle
+
+  const noMeanStdOf1 = radius * Math.cos(angle);
+
+  return mean + standardDeviation * noMeanStdOf1;
+};

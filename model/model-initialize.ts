@@ -1,4 +1,5 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
+import { randomNormalDistribution } from "../shared/math.ts";
 import { createMatrix, createVector } from "../shared/matrices.ts";
 import { validateModel } from "./model-helpers.ts";
 import type { AttentionWeights, Model, TransformerWeights } from "./types.ts";
@@ -24,6 +25,8 @@ export const initializeModel = ({
     new Set([...vocabularyWithoutEosMaybe, END_OF_SEQUENCE_TOKEN]),
   );
 
+  const weightRandomNumberGenerator = () => randomNormalDistribution(0, 0.02);
+
   const model: Model = {
     vocabulary,
     headsCount,
@@ -33,31 +36,63 @@ export const initializeModel = ({
       .map((_): TransformerWeights => {
         return {
           attention: {
-            Q: createMatrix(hiddenDimensionCount, hiddenDimensionCount),
-            K: createMatrix(hiddenDimensionCount, hiddenDimensionCount),
-            V: createMatrix(hiddenDimensionCount, hiddenDimensionCount),
-            out: createMatrix(hiddenDimensionCount, hiddenDimensionCount),
+            Q: createMatrix(
+              hiddenDimensionCount,
+              hiddenDimensionCount,
+              weightRandomNumberGenerator,
+            ),
+            K: createMatrix(
+              hiddenDimensionCount,
+              hiddenDimensionCount,
+              weightRandomNumberGenerator,
+            ),
+            V: createMatrix(
+              hiddenDimensionCount,
+              hiddenDimensionCount,
+              weightRandomNumberGenerator,
+            ),
+            out: createMatrix(
+              hiddenDimensionCount,
+              hiddenDimensionCount,
+              weightRandomNumberGenerator,
+            ),
           },
           multilayerPerceptron: {
             wUp: {
               weightsMatrix: createMatrix(
                 hiddenDimensionCount,
                 hiddenDimensionCount * mlpMultiple,
+                weightRandomNumberGenerator,
               ),
-              biasVector: createVector(hiddenDimensionCount * mlpMultiple),
+              biasVector: createVector(
+                hiddenDimensionCount * mlpMultiple,
+                weightRandomNumberGenerator,
+              ),
             },
             wDown: {
               weightsMatrix: createMatrix(
                 hiddenDimensionCount * mlpMultiple,
                 hiddenDimensionCount,
+                weightRandomNumberGenerator,
               ),
-              biasVector: createVector(hiddenDimensionCount),
+              biasVector: createVector(
+                hiddenDimensionCount,
+                weightRandomNumberGenerator,
+              ),
             },
           },
         };
       }),
-    embeddings: createMatrix(vocabulary.length, hiddenDimensionCount),
-    unembeddings: createMatrix(hiddenDimensionCount, vocabulary.length),
+    embeddings: createMatrix(
+      vocabulary.length,
+      hiddenDimensionCount,
+      weightRandomNumberGenerator,
+    ),
+    unembeddings: createMatrix(
+      hiddenDimensionCount,
+      vocabulary.length,
+      weightRandomNumberGenerator,
+    ),
   };
 
   validateModel(model);

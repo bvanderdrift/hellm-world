@@ -1,12 +1,18 @@
 import { calculateStandardDeviation } from "./math.ts";
 
-export const createVector = (dimensionCount: number) =>
-  new Array(dimensionCount).fill(0);
+export const createVector = (
+  dimensionCount: number,
+  fillFunction: () => number = () => 0,
+) => new Array(dimensionCount).fill(0).map(fillFunction);
 
-export const createMatrix = (vectorCount: number, dimensionCount: number) => {
+export const createMatrix = (
+  vectorCount: number,
+  dimensionCount: number,
+  fillFunction?: () => number,
+) => {
   return new Array(vectorCount)
     .fill(0)
-    .map((_) => createVector(dimensionCount));
+    .map((_) => createVector(dimensionCount, fillFunction));
 };
 
 export const validateSize = (
