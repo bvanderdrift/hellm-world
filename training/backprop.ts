@@ -5,7 +5,7 @@ import { calculateLoss } from "./calculateLoss.ts";
 import type { Activations } from "../model/activations-types.ts";
 
 export const backprop = (
-  inputTokensLength: number,
+  inputTokens: string[],
   correctOutputToken: string,
   weights: Model,
   activations: Activations,
@@ -14,11 +14,11 @@ export const backprop = (
   gradients: Model;
 } => {
   const outputLogits =
-    activations.unembeddingsOutputLogits[inputTokensLength - 1];
+    activations.unembeddingsOutputLogits[inputTokens.length - 1];
 
   if (!outputLogits) {
     throw new Error(
-      `Couldn't find output logits in activations. Activations vector count: ${activations.unembeddingsOutputLogits.length}, inputTokensLength: ${inputTokensLength}`,
+      `Couldn't find output logits in activations. Activations vector count: ${activations.unembeddingsOutputLogits.length}, inputTokensLength: ${inputTokens.length}`,
     );
   }
 

@@ -58,8 +58,11 @@ export const doSingleTrainingPass = (
   adjustedWeights: Model;
 } => {
   const flatTrainingSize = sum(
-    // Add one for the EOS special token
-    trainingData.map((sequence) => sequence.length + 1),
+    trainingData.map(
+      (sequence) =>
+        // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
+        sequence.length - 1,
+    ),
   );
 
   if (flatTrainingSize === 0) {
@@ -76,11 +79,16 @@ export const doSingleTrainingPass = (
 
       const summedLossWithGradientsWithinSequence = sequence.reduce(
         (acc, _, index) => {
+          if (index === sequence.length - 1) {
+            // We're at last, nothing more to predict so stop here
+            return acc;
+          }
+
           const inputTokens = sequence.slice(0, index + 1);
-          const expectedOutput = sequence[index + 1] ?? END_OF_SEQUENCE_TOKEN;
+          const expectedOutput = sequence[index + 1]!; // Type-safe b/c of check above
 
           const backpropResults = backprop(
-            inputTokens.length,
+            inputTokens,
             expectedOutput,
             weights,
             activations,
