@@ -10,7 +10,7 @@ import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
-import type { Activations, Model } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
@@ -18,6 +18,7 @@ import {
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { validateModel } from "../model/model-validation.ts";
+import type { Activations } from "../model/activations-types.ts";
 
 const contextTimeout = 100;
 

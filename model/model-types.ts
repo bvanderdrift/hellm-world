@@ -40,8 +40,3 @@ export type ModelCheckpoint = {
   historyLosses: number[];
   weights: Weights;
 };
-
-export type Activations = {
-  // TODO
-  outputLogits: number[][];
-};

@@ -1,7 +1,8 @@
 import { validateSize } from "../shared/matrices.ts";
-import type { Activations, Model } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import { makeZeroVersion } from "../model/model-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
+import type { Activations } from "../model/activations-types.ts";
 
 export const backprop = (
   inputTokensLength: number,
