@@ -165,3 +165,20 @@ export const normalize = (matrix: number[][]): number[][] => {
     ); // to prevent 0-divisions
   });
 };
+
+export const getMatrixSize = (matrix: number[][]) => {
+  const vectors = Object.values(matrix);
+
+  const firstVector = vectors[0];
+
+  return {
+    vectorCount: vectors.length,
+    dimensionsCount: firstVector ? firstVector.length : 0,
+  };
+};
+
+export const getMatrixParameterCount = (matrix: number[][]) => {
+  const size = getMatrixSize(matrix);
+
+  return size.vectorCount * size.dimensionsCount;
+};

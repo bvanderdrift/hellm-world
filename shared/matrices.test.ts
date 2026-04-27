@@ -8,6 +8,7 @@ import {
   applyScalarToVector,
   createMatrix,
   flipMatrix,
+  getMatrixSize,
   multiplyMatrixWithVector,
   multiplyMatrices,
   normalize,
@@ -41,6 +42,34 @@ describe("createMatrix", () => {
 
   it("handles zero dimensions", () => {
     expect(createMatrix(2, 0)).toEqual([[], []]);
+  });
+});
+
+describe("getMatrixSize", () => {
+  it("returns the vector count and dimension count for a matrix", () => {
+    expect(
+      getMatrixSize([
+        [1, 2, 3],
+        [4, 5, 6],
+      ]),
+    ).toEqual({
+      vectorCount: 2,
+      dimensionsCount: 3,
+    });
+  });
+
+  it("returns zero dimensions for an empty matrix", () => {
+    expect(getMatrixSize([])).toEqual({
+      vectorCount: 0,
+      dimensionsCount: 0,
+    });
+  });
+
+  it("uses the first vector width as the dimension count", () => {
+    expect(getMatrixSize([[], []])).toEqual({
+      vectorCount: 2,
+      dimensionsCount: 0,
+    });
   });
 });
 
