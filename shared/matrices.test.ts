@@ -7,7 +7,7 @@ import {
   applyScalarToMatrix,
   applyScalarToVector,
   createMatrix,
-  flipMatrix,
+  transpose,
   getMatrixSize,
   multiplyMatrixWithVector,
   multiplyMatrices,
@@ -160,12 +160,12 @@ describe("multiplyMatrixWithVector", () => {
   it("multiplies a vector by a matrix", () => {
     expect(
       multiplyMatrixWithVector(
+        [7, 8, 9],
         [
           [1, 2],
           [3, 4],
           [5, 6],
         ],
-        [7, 8, 9],
       ),
     ).toEqual([76, 100]);
   });
@@ -173,19 +173,19 @@ describe("multiplyMatrixWithVector", () => {
   it("throws when the vector length does not match the matrix row count", () => {
     expect(() =>
       multiplyMatrixWithVector(
+        [5],
         [
           [1, 2],
           [3, 4],
         ],
-        [5],
       ),
     ).toThrow("matrix vector count (2) doesn't match expected vector count 1");
   });
 });
 
-describe("flipMatrix", () => {
+describe("transpose", () => {
   it("should flip square matrix", () => {
-    const flipped = flipMatrix([
+    const flipped = transpose([
       [1, 2],
       [3, 4],
     ]);
@@ -197,7 +197,7 @@ describe("flipMatrix", () => {
   });
 
   it("should flip non-square matrix", () => {
-    const flipped = flipMatrix([
+    const flipped = transpose([
       [1, 2, 3],
       [4, 5, 6],
     ]);

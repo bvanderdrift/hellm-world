@@ -89,8 +89,8 @@ export const multiplyMatrices = (
 };
 
 export const multiplyMatrixWithVector = (
-  matrix: number[][],
   vector: number[],
+  matrix: number[][],
 ): number[] => {
   const multipliedMatrix = multiplyMatrices([vector], matrix);
 
@@ -145,7 +145,7 @@ export const addVectorsInMatrix = (matrix: number[][]) => {
 export const addMatrices = (matrix1: number[][], matrix2: number[][]) =>
   operateOnMatrices(matrix1, matrix2, (value1, value2) => value1 + value2);
 
-export const flipMatrix = (matrix: number[][]): number[][] => {
+export const transpose = (matrix: number[][]): number[][] => {
   const vectors = matrix.length;
   const depth = matrix[0]!.length;
 
