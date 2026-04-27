@@ -1,8 +1,10 @@
-import { divideToWhole, dotProduct, softmax } from "../shared/math.ts";
+import { divideToWhole, softmax } from "../shared/math.ts";
 import {
   addVectorsInMatrix,
   applyScalarToVector,
+  transpose,
   multiplyMatrices,
+  multiplyMatrixWithVector,
   validateSize,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
@@ -72,8 +74,13 @@ export const runSelfAttentionHead = (
     const lookbackKeys = inputHeadK.slice(0, index + 1); // inclusive
     const lookbackValues = inputHeadV.slice(0, index + 1); // inclusive
 
-    const matchingKeyProducts = lookbackKeys.map(
-      (key) => dotProduct(vectorQ, key) / Math.sqrt(headDimensionCount),
+    const relevancyVector = multiplyMatrixWithVector(
+      vectorQ,
+      transpose(lookbackKeys),
+    );
+
+    const matchingKeyProducts = relevancyVector.map(
+      (value) => value / Math.sqrt(headDimensionCount),
     );
 
     const matchingKeyProductPadded = [
