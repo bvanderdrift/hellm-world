@@ -1,8 +1,22 @@
-import { validateSize } from "../shared/matrices.ts";
-import type { Model } from "../model/model-types.ts";
+import {
+  addVectorsInMatrix,
+  getMatrixSize,
+  operateOnMatrices,
+  operateOnMatrix,
+  transpose,
+  validateSize,
+} from "../shared/matrices.ts";
+import type {
+  Model,
+  MultilayerPerceptronWeights,
+} from "../model/model-types.ts";
 import { makeZeroVersion } from "../model/model-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
-import type { Activations } from "../model/activations-types.ts";
+import type {
+  Activations,
+  MultilayerPerceptronActivations,
+} from "../model/activations-types.ts";
+import { sum } from "../shared/math.ts";
 
 export const backprop = (
   inputTokens: string[],
@@ -28,4 +42,43 @@ export const backprop = (
     loss: calculateLoss(outputLogits, correctOutputToken, weights.vocabulary),
     gradients: makeZeroVersion(weights),
   };
+};
+
+export const matrixBackprop = (
+  weights: number[][],
+  inputActivations: number[][],
+  outputGradients: number[][],
+) => {
+  const inputsByDimension = transpose(inputActivations);
+
+  return weights.map((incomingDimensionVector, incomingDimension) =>
+    incomingDimensionVector.map((_, outgoingDimension) => {
+      return sum(
+        inputsByDimension[incomingDimension]!.map(
+          (activation, tokenIndex) =>
+            activation * outputGradients[tokenIndex]![outgoingDimension]!,
+        ),
+      );
+    }),
+  );
+};
+
+export const reluBackprop = (
+  inputActivations: number[][],
+  outputGradients: number[][],
+) => {
+  const inputSize = getMatrixSize(inputActivations);
+  validateSize(
+    outputGradients,
+    inputSize.vectorCount,
+    inputSize.dimensionsCount,
+  );
+
+  return outputGradients.map((gradientVector, vectorIndex) =>
+    gradientVector.map((gradient, dimensionIndex) => {
+      const inputActivation = inputActivations[vectorIndex]![dimensionIndex]!;
+
+      return inputActivation > 0 ? gradient : 0;
+    }),
+  );
 };

@@ -19,6 +19,7 @@ export type MultilayerPerceptronActivations = {
   normalizedInputToUpping: number[][];
   /** Already biased - can reverse-calculate subtracting bias weights */
   uppingToNonLinear: number[][];
+  /** C x 4D matrix */
   nonLinearToDowning: number[][];
   /** Already biased - can reverse-calculate subtracting bias weights */
   downingOutput: number[][];

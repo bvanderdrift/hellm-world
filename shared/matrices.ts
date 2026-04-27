@@ -123,6 +123,13 @@ export const operateOnMatrices = (
   );
 };
 
+export const operateOnMatrix = (
+  m1: number[][],
+  operation: (v: number) => number,
+): number[][] => {
+  return m1.map((vector1) => vector1.map(operation));
+};
+
 export const applyScalarToVector = (scalar: number, vector: number[]) =>
   vector.map((value) => value * scalar);
 
