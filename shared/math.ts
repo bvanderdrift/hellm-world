@@ -1,3 +1,5 @@
+import { operateOnMatrices } from "./matrices.ts";
+
 export const sum = (values: number[]) => {
   return values.reduce((partialSum, e) => e + partialSum, 0);
 };
@@ -36,8 +38,8 @@ export const softmax = (logits: number[]) => {
 };
 
 /** Rectified Linear Unit */
-export const relu = (values: number[]) =>
-  values.map((value) => Math.max(value, 0));
+export const relu = (matrix: number[][]) =>
+  operateOnMatrices(matrix, matrix, (value) => Math.max(value, 0));
 
 export const mean = (values: number[]) => {
   return sum(values) / values.length;

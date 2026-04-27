@@ -43,10 +43,16 @@ describe("softmax", () => {
 });
 
 describe("relu", () => {
-  it("limits at or above 0", () => {
-    const output = relu([-1, 5, -33.2, 0, 12]);
+  it("limits each matrix value at or above 0", () => {
+    const output = relu([
+      [-1, 5, -33.2],
+      [0, 12, -0.5],
+    ]);
 
-    expect(output).toEqual([0, 5, 0, 0, 12]);
+    expect(output).toEqual([
+      [0, 5, 0],
+      [0, 12, 0],
+    ]);
   });
 });
 

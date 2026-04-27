@@ -1,6 +1,7 @@
 import { relu } from "../shared/math.ts";
 import {
   addVectors,
+  getMatrixSize,
   multiplyMatrices,
   validateSize,
 } from "../shared/matrices.ts";
@@ -11,42 +12,36 @@ export const getMultilayerPerceptronUpdateMatrix = (
   perceptron: MultilayerPerceptronWeights,
   mlpMultiple: number,
 ) => {
-  return encoding.map((vector) =>
-    getMultilayerPerceptronUpdateVector(vector, perceptron, mlpMultiple),
+  const inputSize = getMatrixSize(encoding);
+
+  const upped = multiplyMatrices(encoding, perceptron.wUp.weightsMatrix);
+
+  validateSize(
+    upped,
+    inputSize.vectorCount,
+    inputSize.dimensionsCount * mlpMultiple,
   );
-};
-
-export const getMultilayerPerceptronUpdateVector = (
-  encodingVector: number[],
-  perceptron: MultilayerPerceptronWeights,
-  mlpMultiple: number,
-) => {
-  // We identify knowledge from the incoming vectors
-  const upped = multiplyMatrices(
-    [encodingVector],
-    perceptron.wUp.weightsMatrix,
-  );
-
-  const hiddenDimensionSize = encodingVector.length;
-
-  validateSize(upped, 1, hiddenDimensionSize * mlpMultiple);
 
   // We normalize directions
-  const uppedBiased = addVectors(upped[0]!, perceptron.wUp.biasVector);
+  const uppedBiased = upped.map((upVector) =>
+    addVectors(upVector, perceptron.wUp.biasVector),
+  );
 
   // We activate neurons
   const nonLinearalized = relu(uppedBiased);
 
   // We select new knowledge to enrich
   const downed = multiplyMatrices(
-    [nonLinearalized],
+    nonLinearalized,
     perceptron.wDown.weightsMatrix,
   );
 
-  validateSize(downed, 1, hiddenDimensionSize);
+  validateSize(downed, inputSize.vectorCount, inputSize.dimensionsCount);
 
   // Not sure what this bias does
-  const downedBiased = addVectors(downed[0]!, perceptron.wDown.biasVector);
+  const downedBiased = downed.map((downedVector) =>
+    addVectors(downedVector, perceptron.wDown.biasVector),
+  );
 
   return downedBiased;
 };
