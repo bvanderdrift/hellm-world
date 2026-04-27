@@ -6,7 +6,12 @@ import {
   pickToken,
   runLlm,
 } from "./llm.ts";
-import { multiplyMatrices, validateSize } from "../shared/matrices.ts";
+import {
+  addMatrices,
+  multiplyMatrices,
+  normalize,
+  validateSize,
+} from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import {
   extractHiddenDimensionSize,
@@ -14,6 +19,7 @@ import {
 } from "../model/model-helpers.ts";
 import * as weightReading from "../model/model-io.ts";
 import type { Model } from "../model/model-types.ts";
+import { getPositionEncoding } from "./position-encoding.ts";
 
 const MODEL_NAME = "toy_model";
 const { model: toyModel } = weightReading.getLatestCheckpointModel(MODEL_NAME);
@@ -34,6 +40,80 @@ const getStartState = (input: string) => {
       (value) => value * Math.sqrt(hiddenDimensionsSize),
     ),
   );
+};
+
+const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
+  expect(actual).toHaveLength(expected.length);
+
+  for (const [rowIndex, expectedRow] of expected.entries()) {
+    const actualRow = actual[rowIndex];
+
+    expect(actualRow).toHaveLength(expectedRow.length);
+
+    for (const [columnIndex, expectedValue] of expectedRow.entries()) {
+      expect(actualRow?.[columnIndex]).toBeCloseTo(expectedValue, 10);
+    }
+  }
+};
+
+const attentionOnlyModel: Model = {
+  vocabulary: ["hello", "world", "beer"],
+  headsCount: 1,
+  mlpMultiple: 1,
+  embeddings: [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ],
+  unembeddings: [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ],
+  transformers: [
+    {
+      attention: {
+        Q: [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        K: [
+          [0, 0, 0],
+          [0, 0, 0],
+          [0, 0, 0],
+        ],
+        V: [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ],
+        out: [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ],
+      },
+      multilayerPerceptron: {
+        wUp: {
+          weightsMatrix: [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+          biasVector: [0, 0, 0],
+        },
+        wDown: {
+          weightsMatrix: [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+          biasVector: [0, 0, 0],
+        },
+      },
+    },
+  ],
 };
 
 afterEach(() => {
@@ -64,9 +144,93 @@ describe("llmForwardPass", () => {
   it("returns one vocab-sized logit vector per input position", () => {
     const startState = getStartState("hello world beer");
 
-    const logitsByPosition = llmForwardPass(startState, toyModel);
+    const { embeddings: logitsByPosition } = llmForwardPass(
+      startState,
+      toyModel,
+      false,
+    );
 
     validateSize(logitsByPosition, startState.length, vocabSize);
+  });
+
+  it("returns the activation operands needed to backprop through one transformer", () => {
+    const startState = [
+      [1, 0, 0],
+      [0, 1, 0],
+    ];
+
+    const { activations } = llmForwardPass(
+      startState,
+      attentionOnlyModel,
+      true,
+    );
+
+    expect(activations).not.toBeNull();
+
+    const transformerActivations = activations!.transformerActivations[0]!;
+    const attentionActivations = transformerActivations.attention;
+    const headActivations = attentionActivations.heads[0]!;
+
+    expect(activations!.tokensToPosition).toEqual(startState);
+    expect(activations!.positionToTransformers).toEqual(
+      getPositionEncoding(2, 3),
+    );
+
+    expectMatrixCloseTo(
+      transformerActivations.transformerInput,
+      addMatrices(startState, activations!.positionToTransformers),
+    );
+
+    validateSize(attentionActivations.normalizedInput, 2, 3);
+    validateSize(attentionActivations.inputQ, 2, 3);
+    validateSize(attentionActivations.inputK, 2, 3);
+    validateSize(attentionActivations.inputV, 2, 3);
+    validateSize(attentionActivations.output, 2, 3);
+    expect(attentionActivations.heads).toHaveLength(1);
+
+    validateSize(headActivations.attentionRelevancyOutput, 2, 2);
+    validateSize(headActivations.softmaxOutput, 2, 2);
+    validateSize(headActivations.output, 2, 3);
+    expect(headActivations.lookbackUpdateVectors).toHaveLength(2);
+    validateSize(headActivations.lookbackUpdateVectors[0]!, 2, 3);
+    validateSize(headActivations.lookbackUpdateVectors[1]!, 2, 3);
+
+    validateSize(transformerActivations.mlp.normalizedInputToUpping, 2, 3);
+    validateSize(transformerActivations.mlp.uppingToNonLinear, 2, 3);
+    validateSize(transformerActivations.mlp.nonLinearToDowning, 2, 3);
+    validateSize(transformerActivations.mlp.downingOutput, 2, 3);
+
+    validateSize(activations!.transformersToUnembeddings, 2, 3);
+    validateSize(activations!.unembeddingsOutputLogits, 2, 3);
+  });
+
+  it("unembeds the transformer state after both attention and MLP residual updates", () => {
+    const startState = [
+      [1, 0, 0],
+      [0, 1, 0],
+    ];
+
+    const { embeddings: logitsByPosition, activations } = llmForwardPass(
+      startState,
+      attentionOnlyModel,
+      true,
+    );
+
+    const transformerActivations = activations!.transformerActivations[0]!;
+    const expectedFinalTransformerState = addMatrices(
+      addMatrices(
+        transformerActivations.transformerInput,
+        transformerActivations.attention.output,
+      ),
+      transformerActivations.mlp.downingOutput,
+    );
+    const expectedLogits = multiplyMatrices(
+      normalize(expectedFinalTransformerState),
+      attentionOnlyModel.unembeddings,
+    );
+
+    expectMatrixCloseTo(logitsByPosition, expectedLogits);
+    expectMatrixCloseTo(activations!.unembeddingsOutputLogits, expectedLogits);
   });
 });
 

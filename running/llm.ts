@@ -7,7 +7,7 @@ import {
   validateSize,
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
+import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import type { Model } from "../model/model-types.ts";
@@ -18,7 +18,10 @@ import {
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { validateModel } from "../model/model-validation.ts";
-import type { Activations } from "../model/activations-types.ts";
+import type {
+  Activations,
+  TransformerActivations,
+} from "../model/activations-types.ts";
 
 const contextTimeout = 100;
 
@@ -32,10 +35,10 @@ export const runLlm = function* (input: string, modelName: string) {
   const inputTokens = tokenize(input, model.vocabulary);
 
   for (let index = 0; index < contextTimeout; index++) {
-    const probabilities = generateProbabilities(
-      [...inputTokens, ...outputTokens],
-      model,
-    );
+    const nextInput = [...inputTokens, ...outputTokens];
+    const logits = generateLogits(nextInput, model);
+
+    const probabilities = softmax(logits);
 
     const nextToken = pickToken(probabilities, model.vocabulary);
 
@@ -49,7 +52,11 @@ export const runLlm = function* (input: string, modelName: string) {
   }
 };
 
-export const llmForwardPassByTokens = (input: string[], weights: Model) => {
+export const llmForwardPassByTokens = (
+  input: string[],
+  weights: Model,
+  withActivations: boolean,
+) => {
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
 
   const startState = input.map((token) => {
@@ -60,11 +67,15 @@ export const llmForwardPassByTokens = (input: string[], weights: Model) => {
     return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
   });
 
-  return llmForwardPass(startState, weights);
+  return llmForwardPass(startState, weights, withActivations);
 };
 
-export const generateLogits = (input: string[], weights: Model) => {
-  const unembeddedState = llmForwardPassByTokens(input, weights);
+const generateLogits = (input: string[], weights: Model) => {
+  const { embeddings: unembeddedState } = llmForwardPassByTokens(
+    input,
+    weights,
+    false,
+  );
 
   // Last vector is probability logits
   const logits = unembeddedState[unembeddedState.length - 1];
@@ -74,12 +85,6 @@ export const generateLogits = (input: string[], weights: Model) => {
   }
 
   return logits;
-};
-
-export const generateProbabilities = (input: string[], weights: Model) => {
-  const logits = generateLogits(input, weights);
-
-  return softmax(logits);
 };
 
 export const getHighestValueIndex = (values: number[]) => {
@@ -101,7 +106,14 @@ export const getHighestValueIndex = (values: number[]) => {
   ).index;
 };
 
-export const llmForwardPass = (startState: number[][], weights: Model) => {
+export const llmForwardPass = (
+  startState: number[][],
+  weights: Model,
+  withActivations: boolean,
+): {
+  embeddings: number[][];
+  activations: Activations | null;
+} => {
   const contextSize = startState.length;
 
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
@@ -113,41 +125,95 @@ export const llmForwardPass = (startState: number[][], weights: Model) => {
     hiddenDimensionsSize,
   );
 
-  let intermediateState = addMatrices(startState, positionalEncoding);
+  const embeddingsPositionallyEncoded = addMatrices(
+    startState,
+    positionalEncoding,
+  );
 
-  validateSize(intermediateState, contextSize, hiddenDimensionsSize);
+  validateSize(
+    embeddingsPositionallyEncoded,
+    contextSize,
+    hiddenDimensionsSize,
+  );
 
-  for (const transformer of weights.transformers) {
-    const attentionUpdateMatrix = runSelfAttentionMechanism(
-      // Normalize input only, don't normalize the intermediateState iself
-      // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      normalize(intermediateState),
-      weights.headsCount,
-      transformer.attention,
-    );
+  const transformerActivations: TransformerActivations[] = [];
 
-    intermediateState = addMatrices(intermediateState, attentionUpdateMatrix);
+  const embeddingsAfterTransformers = weights.transformers.reduce(
+    (inputEmbeddings, transformer) => {
+      const attentionInputEmbeddings = normalize(inputEmbeddings);
 
-    const mlpUpdateMatrix = getMultilayerPerceptronUpdateMatrix(
-      // Normalize input only, don't normalize the intermediateState iself
-      // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      normalize(intermediateState),
-      transformer.multilayerPerceptron,
-      weights.mlpMultiple,
-    );
+      const attentionActivations = runSelfAttentionMechanism(
+        // Normalize input only, don't normalize the intermediateState iself
+        // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
+        attentionInputEmbeddings,
+        weights.headsCount,
+        transformer.attention,
+      );
 
-    // Apply updated knowledge
-    intermediateState = addMatrices(intermediateState, mlpUpdateMatrix);
-  }
+      const embeddingsWithAttentionUpdates = addMatrices(
+        inputEmbeddings,
+        attentionActivations.output,
+      );
+
+      const mlpInputEmbeddings = normalize(embeddingsWithAttentionUpdates);
+
+      const mlpActivations = getMultilayerPerceptronActivations(
+        // Normalize input only, don't normalize the intermediateState iself
+        // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
+        mlpInputEmbeddings,
+        transformer.multilayerPerceptron,
+        weights.mlpMultiple,
+      );
+
+      if (withActivations) {
+        // We only store this when the flag is true; so we don't overflow memory during inference
+        transformerActivations.push({
+          transformerInput: inputEmbeddings,
+          attention: attentionActivations,
+          mlp: mlpActivations,
+        });
+      }
+
+      // Apply updated knowledge
+      return addMatrices(
+        embeddingsWithAttentionUpdates,
+        mlpActivations.downingOutput,
+      );
+    },
+    embeddingsPositionallyEncoded,
+  );
+
+  const normalizedTransformersOutput = normalize(embeddingsAfterTransformers);
 
   const unembeddedState = multiplyMatrices(
-    normalize(intermediateState),
+    normalizedTransformersOutput,
     weights.unembeddings,
   );
 
   validateSize(unembeddedState, contextSize, weights.vocabulary.length);
 
-  return unembeddedState;
+  const missingTransformerActivationsCount =
+    weights.transformers.length - transformerActivations.length;
+
+  if (withActivations && missingTransformerActivationsCount > 0) {
+    // One sanity check, the rest is available either way
+    throw new Error(
+      `Missing ${missingTransformerActivationsCount} transformer activations`,
+    );
+  }
+
+  return {
+    embeddings: unembeddedState,
+    activations: withActivations
+      ? {
+          tokensToPosition: startState,
+          positionToTransformers: positionalEncoding,
+          transformerActivations,
+          transformersToUnembeddings: normalizedTransformersOutput,
+          unembeddingsOutputLogits: unembeddedState,
+        }
+      : null,
+  };
 };
 
 export const pickToken = (probabilities: number[], vocabulary: string[]) => {

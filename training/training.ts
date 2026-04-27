@@ -68,7 +68,11 @@ export const doSingleTrainingPass = (
 
   const summedLossWithGradients = trainingData.reduce(
     (acc, sequence) => {
-      const embeddings = llmForwardPassByTokens(sequence, weights);
+      const { activations } = llmForwardPassByTokens(sequence, weights, true);
+
+      if (!activations) {
+        throw new Error(`No activations returned during LLM Forward pass`);
+      }
 
       const summedLossWithGradientsWithinSequence = sequence.reduce(
         (acc, _, index) => {
@@ -79,9 +83,7 @@ export const doSingleTrainingPass = (
             inputTokens.length,
             expectedOutput,
             weights,
-            {
-              outputLogits: embeddings,
-            },
+            activations,
           );
 
           return {

@@ -6,12 +6,13 @@ import {
   validateSize,
 } from "../shared/matrices.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
+import type { MultilayerPerceptronActivations } from "../model/activations-types.ts";
 
-export const getMultilayerPerceptronUpdateMatrix = (
+export const getMultilayerPerceptronActivations = (
   encoding: number[][],
   perceptron: MultilayerPerceptronWeights,
   mlpMultiple: number,
-) => {
+): MultilayerPerceptronActivations => {
   const inputSize = getMatrixSize(encoding);
 
   const upped = multiplyMatrices(encoding, perceptron.wUp.weightsMatrix);
@@ -43,5 +44,10 @@ export const getMultilayerPerceptronUpdateMatrix = (
     addVectors(downedVector, perceptron.wDown.biasVector),
   );
 
-  return downedBiased;
+  return {
+    normalizedInputToUpping: encoding,
+    uppingToNonLinear: uppedBiased,
+    nonLinearToDowning: nonLinearalized,
+    downingOutput: downedBiased,
+  };
 };

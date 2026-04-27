@@ -41,7 +41,7 @@ describe("runSelfAttentionHead", () => {
       ],
     );
 
-    expectMatrixCloseTo(output, [
+    expectMatrixCloseTo(output.output, [
       [1, 10, 100, 1000],
       [1.5, 15, 150, 1500],
     ]);
@@ -54,13 +54,13 @@ describe("runSelfAttentionHead", () => {
       [[1], [2]],
     );
 
-    expectMatrixCloseTo(output, [[1], [4 / 3]]);
+    expectMatrixCloseTo(output.output, [[1], [4 / 3]]);
   });
 
   it("does not attend to future keys and values", () => {
     const output = runSelfAttentionHead([[1], [0]], [[0], [10]], [[1], [5]]);
 
-    expectMatrixCloseTo(output, [[1], [3]]);
+    expectMatrixCloseTo(output.output, [[1], [3]]);
   });
 });
 
@@ -95,7 +95,7 @@ describe("runSelfAttentionMechanism", () => {
 
     const output = runSelfAttentionMechanism(input, 2, twoHeadAttention);
 
-    expectMatrixCloseTo(output, [
+    expectMatrixCloseTo(output.output, [
       [1, 10, 0, 0],
       [2, 20, 0, 0],
     ]);

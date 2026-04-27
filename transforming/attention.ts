@@ -8,12 +8,16 @@ import {
   validateSize,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
+import type {
+  AttentionActivations,
+  AttentionHeadActivations,
+} from "../model/activations-types.ts";
 
 export const runSelfAttentionMechanism = (
   input: number[][],
   headsCount: number,
   attentionWeights: AttentionWeights,
-) => {
+): AttentionActivations => {
   const contextLength = input.length;
   const hiddenDimensionsCount = input[0]?.length ?? -1;
 
@@ -31,7 +35,7 @@ export const runSelfAttentionMechanism = (
       ),
     );
 
-  const headOutputs = new Array(headsCount).fill([]).map((_, headIndex) => {
+  const headActivations = new Array(headsCount).fill([]).map((_, headIndex) => {
     return runSelfAttentionHead(
       sliceRows(inputQ, headIndex),
       sliceRows(inputK, headIndex),
@@ -39,9 +43,12 @@ export const runSelfAttentionMechanism = (
     );
   });
 
-  const headsConcatenated = headOutputs.reduce(
+  const headsConcatenated = headActivations.reduce(
     (partial, head) =>
-      partial.map((vector, vectorIndex) => [...vector, ...head[vectorIndex]!]),
+      partial.map((vector, vectorIndex) => [
+        ...vector,
+        ...head.output[vectorIndex]!,
+      ]),
     new Array(contextLength).fill([]),
   );
 
@@ -52,59 +59,92 @@ export const runSelfAttentionMechanism = (
 
   validateSize(attentionUpdate, contextLength, hiddenDimensionsCount);
 
-  return attentionUpdate;
+  return {
+    normalizedInput: input,
+    inputK,
+    inputV,
+    inputQ,
+    heads: headActivations,
+    output: attentionUpdate,
+  };
 };
 
 export const runSelfAttentionHead = (
   inputHeadQ: number[][],
   inputHeadK: number[][],
   inputHeadV: number[][],
-) => {
+): AttentionHeadActivations => {
   const contextLength = inputHeadQ.length;
   const headDimensionCount = inputHeadQ[0]?.length ?? -1;
 
-  const attentionMatrix = inputHeadQ.map((vectorQ, index) => {
-    const lookbackKeys = inputHeadK.slice(0, index + 1); // inclusive
-    const lookbackValues = inputHeadV.slice(0, index + 1); // inclusive
+  const headActivations = inputHeadQ.reduce<AttentionHeadActivations>(
+    (partialActivations, vectorQ, index): AttentionHeadActivations => {
+      const lookbackKeys = inputHeadK.slice(0, index + 1); // inclusive
+      const lookbackValues = inputHeadV.slice(0, index + 1); // inclusive
 
-    const relevancyVector = multiplyMatrixWithVector(
-      vectorQ,
-      transpose(lookbackKeys),
-    );
-
-    const matchingKeyProducts = relevancyVector.map(
-      (value) => value / Math.sqrt(headDimensionCount),
-    );
-
-    const matchingKeyProductPadded = [
-      ...matchingKeyProducts,
-      // We now did a lookback only. We need to pad the key matching array with -Infinity for the full length of input to match length
-      ...new Array<number>(contextLength - (index + 1)).fill(-Infinity),
-    ];
-
-    if (matchingKeyProductPadded.length !== contextLength) {
-      throw new Error(
-        `Expected key matching vector to be of dimension ${contextLength}, received ${matchingKeyProductPadded.length}`,
+      const relevancyVector = multiplyMatrixWithVector(
+        vectorQ,
+        transpose(lookbackKeys),
       );
-    }
 
-    const matchingKeyDistribution = softmax(matchingKeyProductPadded);
+      const matchingKeyProducts = relevancyVector.map(
+        (value) => value / Math.sqrt(headDimensionCount),
+      );
 
-    const vectorUpdatePayload = matchingKeyDistribution.map((scalar, index) => {
-      const value = lookbackValues[index];
+      const matchingKeyProductPadded = [
+        ...matchingKeyProducts,
+        // We now did a lookback only. We need to pad the key matching array with -Infinity for the full length of input to match length
+        ...new Array<number>(contextLength - (index + 1)).fill(-Infinity),
+      ];
 
-      if (!value) {
-        // attempting to look-forward - return 0-vector
-        return new Array<number>(headDimensionCount).fill(0);
+      if (matchingKeyProductPadded.length !== contextLength) {
+        throw new Error(
+          `Expected key matching vector to be of dimension ${contextLength}, received ${matchingKeyProductPadded.length}`,
+        );
       }
 
-      return applyScalarToVector(scalar, value);
-    });
+      const matchingKeyDistribution = softmax(matchingKeyProductPadded);
 
-    return addVectorsInMatrix(vectorUpdatePayload);
-  });
+      const vectorUpdatePayload = matchingKeyDistribution.map(
+        (scalar, index) => {
+          const value = lookbackValues[index];
 
-  validateSize(attentionMatrix, contextLength, headDimensionCount);
+          if (!value) {
+            // attempting to look-forward - return 0-vector
+            return new Array<number>(headDimensionCount).fill(0);
+          }
 
-  return attentionMatrix;
+          return applyScalarToVector(scalar, value);
+        },
+      );
+
+      const updateVector = addVectorsInMatrix(vectorUpdatePayload);
+
+      return {
+        attentionRelevancyOutput: [
+          ...partialActivations.attentionRelevancyOutput,
+          matchingKeyProductPadded,
+        ],
+        softmaxOutput: [
+          ...partialActivations.softmaxOutput,
+          matchingKeyDistribution,
+        ],
+        lookbackUpdateVectors: [
+          ...partialActivations.lookbackUpdateVectors,
+          vectorUpdatePayload,
+        ],
+        output: [...partialActivations.output, updateVector],
+      };
+    },
+    {
+      attentionRelevancyOutput: [],
+      softmaxOutput: [],
+      lookbackUpdateVectors: [],
+      output: [],
+    } satisfies AttentionHeadActivations,
+  );
+
+  validateSize(headActivations.output, contextLength, headDimensionCount);
+
+  return headActivations;
 };

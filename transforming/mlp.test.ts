@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getMultilayerPerceptronUpdateMatrix } from "./mlp.ts";
+import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 
 const DEFAULT_MLP_MULTIPLE = 4;
@@ -58,33 +58,33 @@ const threeDimPerceptron: MultilayerPerceptronWeights = {
 describe("getMultilayerPerceptronUpdateMatrix", () => {
   it("supports hidden states wider than 1 feature", () => {
     expect(
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         [[2, -1]],
         twoDimPerceptron,
         DEFAULT_MLP_MULTIPLE,
-      ),
+      ).downingOutput,
     ).toEqual([[0.5, 3.5]]);
   });
 
   it("handles a 3-feature input with a 12-neuron intermediate layer", () => {
     expect(
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         [[1, 2, -1]],
         threeDimPerceptron,
         DEFAULT_MLP_MULTIPLE,
-      ),
+      ).downingOutput,
     ).toEqual([[3, -1, -4]]);
   });
 
   it("uses the provided MLP multiple when validating the expanded width", () => {
     expect(() =>
-      getMultilayerPerceptronUpdateMatrix([[2, -1]], twoDimPerceptron, 3),
+      getMultilayerPerceptronActivations([[2, -1]], twoDimPerceptron, 3),
     ).toThrow("m has unexpected vector depth 8, expected 6");
   });
 
   it("throws when wDown does not project back to the input width", () => {
     expect(() =>
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         [[1, 2, -1]],
         {
           ...threeDimPerceptron,
@@ -115,17 +115,17 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
     const input = [[2, -1]];
 
     expect(
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         input,
         twoDimPerceptron,
         DEFAULT_MLP_MULTIPLE,
-      ),
+      ).downingOutput,
     ).not.toEqual([[4.5, 1.5]]);
   });
 
   it("runs the same MLP independently on each row vector", () => {
     expect(
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         [
           [2, -1],
           [-1, 3],
@@ -133,7 +133,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
         ],
         twoDimPerceptron,
         DEFAULT_MLP_MULTIPLE,
-      ),
+      ).downingOutput,
     ).toEqual([
       [0.5, 3.5],
       [38.5, 22.5],
@@ -148,11 +148,11 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
     ];
 
     expect(
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         input,
         twoDimPerceptron,
         DEFAULT_MLP_MULTIPLE,
-      ),
+      ).downingOutput,
     ).not.toEqual([
       [4.5, 1.5],
       [1.5, -1.5],
@@ -161,7 +161,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
 
   it("throws for an empty input matrix", () => {
     expect(() =>
-      getMultilayerPerceptronUpdateMatrix(
+      getMultilayerPerceptronActivations(
         [],
         twoDimPerceptron,
         DEFAULT_MLP_MULTIPLE,

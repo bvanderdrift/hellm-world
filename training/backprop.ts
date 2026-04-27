@@ -13,11 +13,12 @@ export const backprop = (
   loss: number;
   gradients: Model;
 } => {
-  const outputLogits = activations.outputLogits[inputTokensLength - 1];
+  const outputLogits =
+    activations.unembeddingsOutputLogits[inputTokensLength - 1];
 
   if (!outputLogits) {
     throw new Error(
-      `Couldn't find output logits in activations. Activations vector count: ${activations.outputLogits.length}, inputTokensLength: ${inputTokensLength}`,
+      `Couldn't find output logits in activations. Activations vector count: ${activations.unembeddingsOutputLogits.length}, inputTokensLength: ${inputTokensLength}`,
     );
   }
 
