@@ -14,10 +14,10 @@ import type { Model } from "../model/types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
-  validateModel,
 } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
+import { validateModel } from "../model/model-validation.ts";
 
 const contextTimeout = 100;
 

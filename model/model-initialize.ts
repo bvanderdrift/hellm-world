@@ -1,8 +1,8 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { randomNormalDistribution } from "../shared/math.ts";
 import { createMatrix, createVector } from "../shared/matrices.ts";
-import { validateModel } from "./model-helpers.ts";
-import type { AttentionWeights, Model, TransformerWeights } from "./types.ts";
+import { validateModel } from "./model-validation.ts";
+import type { Model, TransformerWeights } from "./types.ts";
 
 export const decodeVocab = (input: string) => {
   return input.split(",").filter((token) => !!token);
