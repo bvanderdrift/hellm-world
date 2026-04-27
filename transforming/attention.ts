@@ -23,26 +23,19 @@ export const runSelfAttentionMechanism = (
 
   const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
+  const sliceRows = (matrix: number[][], headIndex: number) =>
+    matrix.map((vector) =>
+      vector.slice(
+        headIndex * headDimensionsCount,
+        (headIndex + 1) * headDimensionsCount,
+      ),
+    );
+
   const headOutputs = new Array(headsCount).fill([]).map((_, headIndex) => {
     return runSelfAttentionHead(
-      inputQ.map((vector) =>
-        vector.slice(
-          headIndex * headDimensionsCount,
-          (headIndex + 1) * headDimensionsCount,
-        ),
-      ),
-      inputK.map((vector) =>
-        vector.slice(
-          headIndex * headDimensionsCount,
-          (headIndex + 1) * headDimensionsCount,
-        ),
-      ),
-      inputV.map((vector) =>
-        vector.slice(
-          headIndex * headDimensionsCount,
-          (headIndex + 1) * headDimensionsCount,
-        ),
-      ),
+      sliceRows(inputQ, headIndex),
+      sliceRows(inputK, headIndex),
+      sliceRows(inputV, headIndex),
     );
   });
 
