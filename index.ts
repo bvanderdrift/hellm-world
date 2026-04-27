@@ -4,6 +4,7 @@ import { runLlm } from "./running/llm.ts";
 import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
 import { writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
+import { getModelParameterCount } from "./model/model-helpers.ts";
 
 program
   .name("llm")
@@ -96,6 +97,16 @@ program
     });
 
     writeNewModel(modelName, newModel);
+
+    const paramCount = getModelParameterCount(newModel);
+
+    const paramCountFormatted = new Intl.NumberFormat("en-US", {
+      notation: "compact",
+      compactDisplay: "short",
+    }).format(paramCount);
+
+    console.log(`\nModel "${modelName}" written to models folder`);
+    console.log(`Model paramter count: ${paramCountFormatted}`);
   });
 
 program.parse();

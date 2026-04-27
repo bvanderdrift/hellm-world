@@ -1,4 +1,8 @@
-import { operateOnMatrices, operateOnVectors } from "../shared/matrices.ts";
+import {
+  getMatrixParameterCount,
+  operateOnMatrices,
+  operateOnVectors,
+} from "../shared/matrices.ts";
 import { validateSameWeightShape } from "./model-validation.ts";
 import type { TransformerWeights, Model } from "./types.ts";
 
@@ -106,6 +110,47 @@ export const operateCombinedWeights = (
 export const makeZeroVersion = (weights: Model) =>
   operateSingleWeights(weights, () => 0);
 
-export const getParameterCount = (model: Model) => {
-  const embeddingsParameterCount = mode
-}
+export const getModelParameterCount = (model: Model) => {
+  const transformersParameterCount = model.transformers.reduce(
+    (sum, transformer) => {
+      // All 4 should be same size, but let's just calculate each seperately just to be sure
+      const kSize = getMatrixParameterCount(transformer.attention.K);
+      const vSize = getMatrixParameterCount(transformer.attention.V);
+      const qSize = getMatrixParameterCount(transformer.attention.Q);
+      const outSize = getMatrixParameterCount(transformer.attention.out);
+
+      const mlpUpSize = getMatrixParameterCount(
+        transformer.multilayerPerceptron.wUp.weightsMatrix,
+      );
+      const mlpUpBiasSize = getMatrixParameterCount([
+        transformer.multilayerPerceptron.wUp.biasVector,
+      ]);
+
+      const mlpDownSize = getMatrixParameterCount(
+        transformer.multilayerPerceptron.wDown.weightsMatrix,
+      );
+      const mlpDownBiasSize = getMatrixParameterCount([
+        transformer.multilayerPerceptron.wDown.biasVector,
+      ]);
+
+      const transformerParamterType =
+        kSize +
+        vSize +
+        qSize +
+        outSize +
+        mlpUpSize +
+        mlpUpBiasSize +
+        mlpDownSize +
+        mlpDownBiasSize;
+
+      return sum + transformerParamterType;
+    },
+    0,
+  );
+
+  return (
+    getMatrixParameterCount(model.embeddings) +
+    transformersParameterCount +
+    getMatrixParameterCount(model.unembeddings)
+  );
+};
