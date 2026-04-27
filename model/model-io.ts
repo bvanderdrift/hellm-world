@@ -6,7 +6,7 @@ import {
   writeFileSync,
 } from "fs";
 import { join } from "path";
-import type { ModelMetadata, Model, ModelCheckpoint } from "./types.ts";
+import type { ModelMetadata, Model, ModelCheckpoint } from "./model-types.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";

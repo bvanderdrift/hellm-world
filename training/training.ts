@@ -1,7 +1,7 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
-import type { Model } from "../model/types.ts";
+import type { Model } from "../model/model-types.ts";
 import {
   makeZeroVersion,
   operateCombinedWeights,

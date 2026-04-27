@@ -5,7 +5,7 @@ import {
   findTokenIndex,
   operateCombinedWeights,
 } from "./model-helpers.ts";
-import type { Model } from "./types.ts";
+import type { Model } from "./model-types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);
 

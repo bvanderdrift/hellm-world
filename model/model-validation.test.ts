@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { validateModel, validateSameWeightShape } from "./model-validation.ts";
-import type { Model } from "./types.ts";
+import type { Model } from "./model-types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);
 

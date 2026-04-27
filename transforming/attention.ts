@@ -5,7 +5,7 @@ import {
   multiplyMatrices,
   validateSize,
 } from "../shared/matrices.ts";
-import type { AttentionWeights } from "../model/types.ts";
+import type { AttentionWeights } from "../model/model-types.ts";
 
 export const runSelfAttentionMechanism = (
   input: number[][],

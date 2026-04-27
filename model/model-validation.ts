@@ -2,7 +2,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
 import { validateSize } from "../shared/matrices.ts";
 import { extractHiddenDimensionSize } from "./model-helpers.ts";
-import type { Model } from "./types.ts";
+import type { Model } from "./model-types.ts";
 
 export const validateModel = (model: Model) => {
   if (model.vocabulary.length === 0) {

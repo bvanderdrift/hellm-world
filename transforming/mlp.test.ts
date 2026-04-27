@@ -3,7 +3,7 @@ import {
   getMultilayerPerceptronUpdateMatrix,
   getMultilayerPerceptronUpdateVector,
 } from "./mlp.ts";
-import type { MultilayerPerceptronWeights } from "../model/types.ts";
+import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 
 const DEFAULT_MLP_MULTIPLE = 4;
 

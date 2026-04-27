@@ -10,7 +10,7 @@ import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronUpdateMatrix } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
-import type { Model } from "../model/types.ts";
+import type { Activations, Model } from "../model/model-types.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,

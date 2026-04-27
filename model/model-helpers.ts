@@ -4,7 +4,7 @@ import {
   operateOnVectors,
 } from "../shared/matrices.ts";
 import { validateSameWeightShape } from "./model-validation.ts";
-import type { TransformerWeights, Model } from "./types.ts";
+import type { TransformerWeights, Model } from "./model-types.ts";
 
 export const extractHiddenDimensionSize = (model: Model) => {
   const embeddingsArray = Object.values(model.embeddings);

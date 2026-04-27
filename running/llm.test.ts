@@ -13,7 +13,7 @@ import {
   findTokenIndex,
 } from "../model/model-helpers.ts";
 import * as weightReading from "../model/model-io.ts";
-import type { Model } from "../model/types.ts";
+import type { Model } from "../model/model-types.ts";
 
 const MODEL_NAME = "toy_model";
 const { model: toyModel } = weightReading.getLatestCheckpointModel(MODEL_NAME);
