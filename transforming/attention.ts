@@ -65,26 +65,15 @@ export const runSelfAttentionHead = (
   inputHeadK: number[][],
   inputHeadV: number[][],
 ) => {
-  const keyValues: {
-    key: number[];
-    value: number[];
-  }[] = [];
-
   const contextLength = inputHeadQ.length;
   const headDimensionCount = inputHeadQ[0]?.length ?? -1;
 
   const attentionMatrix = inputHeadQ.map((vectorQ, index) => {
-    const vectorK = inputHeadK[index]!;
-    const vectorV = inputHeadV[index]!;
+    const lookbackKeys = inputHeadK.slice(0, index + 1); // inclusive
+    const lookbackValues = inputHeadV.slice(0, index + 1); // inclusive
 
-    // Do it BEFORE the dotproducts so it self-matches
-    keyValues.push({
-      key: vectorK,
-      value: vectorV,
-    });
-
-    const matchingKeyProducts = keyValues.map(
-      ({ key }) => dotProduct(vectorQ, key) / Math.sqrt(headDimensionCount),
+    const matchingKeyProducts = lookbackKeys.map(
+      (key) => dotProduct(vectorQ, key) / Math.sqrt(headDimensionCount),
     );
 
     const matchingKeyProductPadded = [
@@ -102,14 +91,14 @@ export const runSelfAttentionHead = (
     const matchingKeyDistribution = softmax(matchingKeyProductPadded);
 
     const vectorUpdatePayload = matchingKeyDistribution.map((scalar, index) => {
-      const entry = keyValues[index];
+      const value = lookbackValues[index];
 
-      if (!entry) {
+      if (!value) {
         // attempting to look-forward - return 0-vector
         return new Array<number>(headDimensionCount).fill(0);
       }
 
-      return applyScalarToVector(scalar, entry.value);
+      return applyScalarToVector(scalar, value);
     });
 
     return addVectorsInMatrix(vectorUpdatePayload);
