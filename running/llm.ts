@@ -209,7 +209,8 @@ export const llmForwardPass = (
           tokensToPosition: startState,
           positionToTransformers: positionalEncoding,
           transformerActivations,
-          transformersToUnembeddings: normalizedTransformersOutput,
+          transformersToNormalizer: embeddingsAfterTransformers,
+          normalizerToUnembeddings: normalizedTransformersOutput,
           unembeddingsOutputLogits: unembeddedState,
         }
       : null,

@@ -200,7 +200,7 @@ describe("llmForwardPass", () => {
     validateSize(transformerActivations.mlp.nonLinearToDowning, 2, 3);
     validateSize(transformerActivations.mlp.downingOutput, 2, 3);
 
-    validateSize(activations!.transformersToUnembeddings, 2, 3);
+    validateSize(activations!.normalizerToUnembeddings, 2, 3);
     validateSize(activations!.unembeddingsOutputLogits, 2, 3);
   });
 

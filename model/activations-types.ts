@@ -36,6 +36,7 @@ export type Activations = {
   tokensToPosition: number[][];
   positionToTransformers: number[][];
   transformerActivations: TransformerActivations[];
-  transformersToUnembeddings: number[][];
+  transformersToNormalizer: number[][];
+  normalizerToUnembeddings: number[][];
   unembeddingsOutputLogits: number[][];
 };

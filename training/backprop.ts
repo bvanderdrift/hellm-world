@@ -9,6 +9,7 @@ import type {
   Model,
   MultilayerPerceptronWeights,
   TransformerWeights,
+  Weights,
 } from "../model/model-types.ts";
 import { makeZeroVersion } from "../model/model-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
@@ -26,7 +27,7 @@ export const backprop = (
   correctTokenIndex: number,
 ): {
   loss: number;
-  gradients: Model;
+  gradients: Weights;
 } => {
   const outputLogits =
     activations.unembeddingsOutputLogits[inputTokens.length - 1];
@@ -51,13 +52,44 @@ export const backprop = (
     activationGradients: unembeddingInputActivationGradients,
   } = matrixBackprop(
     weights.unembeddings,
-    activations.transformersToUnembeddings,
+    activations.normalizerToUnembeddings,
     unembeddingsInputActivationsGradients,
   );
 
+  const preUnembeddingNormalizationGradients = backpropNormalize(
+    unembeddingInputActivationGradients,
+    activations.transformersToNormalizer,
+  );
+
+  const {
+    transformerGradients,
+    inputActivationGradients: transformerInputActivationGradients,
+  } = transformersBackprop(
+    preUnembeddingNormalizationGradients,
+    weights.transformers,
+    activations.transformerActivations,
+  );
+
+  /**
+   * No need to backprop for positional encoding
+   * Since the transformer input is h_i = z_i + a_i where z_i is output of embedding matrix, and a_i is output of positional encoding
+   * we know dL/dz_i = dL/h_i * 1 + 0 since d(z_i)/dz_i = 1 and d(a_i)/dz_i = 0
+   *
+   * So dL/dz_i is just the direct dL/h_i so just the transformer input gradients.
+   *
+   * We don't care about dL/da_i (which is also dL/h_i) since a_i a non-trainable algorithmic output
+   */
+
+  // TODO: embeddings gradient. Embeddings aren't just a matrix multiplication, but rather a token lookup table
+  const embeddingWeightsGradients: number[][] = [];
+
   return {
     loss: calculateLoss(outputLogits, correctTokenIndex, weights.vocabulary),
-    gradients: makeZeroVersion(weights),
+    gradients: {
+      unembeddings: unembeddingWeightGradients,
+      transformers: transformerGradients,
+      embeddings: embeddingWeightsGradients,
+    },
   };
 };
 
@@ -98,7 +130,10 @@ export const transformersBackprop = (
   outputGradients: number[][],
   weights: TransformerWeights[],
   activations: TransformerActivations[],
-) => {
+): {
+  transformerGradients: TransformerWeights[];
+  inputActivationGradients: number[][];
+} => {
   if (weights.length !== activations.length) {
     throw new Error(
       `Transformer weights count ${weights.length} does not equal transformers activations count ${activations.length}`,
@@ -109,6 +144,7 @@ export const transformersBackprop = (
   const reversedActivations = [...activations].reverse();
 
   let lastOutputGradients = outputGradients;
+  let transformerGradients: TransformerWeights[] = [];
 
   for (let index = 0; index < reversedActivations.length; index++) {
     const transformerActivations = reversedActivations[index]!;
@@ -131,12 +167,17 @@ export const transformersBackprop = (
 
     // TODO: Attention Backprop
   }
+
+  return {
+    inputActivationGradients: lastOutputGradients,
+    transformerGradients,
+  };
 };
 
 export const backpropNormalize = (
   outputGradients: number[][],
   inputActivations: number[][],
-): [][] => {
+): number[][] => {
   // TODO
 
   return [];
