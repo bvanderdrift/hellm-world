@@ -18,7 +18,7 @@ import type {
   MultilayerPerceptronActivations,
   TransformerActivations,
 } from "../model/activations-types.ts";
-import { softmax, sum } from "../shared/math.ts";
+import { calculateStandardDeviation, softmax, sum } from "../shared/math.ts";
 
 export const backprop = (
   inputTokens: string[],
@@ -178,9 +178,51 @@ export const backpropNormalize = (
   outputGradients: number[][],
   inputActivations: number[][],
 ): number[][] => {
-  // TODO
+  return inputActivations.map((vector) =>
+    vector.map((value) => {
+      // TODO implement norm derivative in respect to value (h_vi)
+      return 0;
+    }),
+  );
+};
 
-  return [];
+/**
+ * mean = sum(h_0...j) / j
+ * dmean/dh_i = 1 / j
+ */
+const meanDerivative = (values: number[]) => {
+  return 1 / values.length;
+};
+
+/**
+ * std(h_v0...j) = Math.sqrt(mean(Math.pow(h_vj - mean(h_v0...j)))
+ * = Math.sqrt(variance(h_v0...j))
+ * and variance(h_v0...j) = 1/j * sum(Math.pow(h_vj - mean(h_v0...j)))
+ * dstd(h_v0...j)/dh_vi = d/dvariance * dvariance/h_vj
+ *
+ * d/dvariance = (1/ (2 * std))
+ *
+ * dvariance/dh_vi = 1/j * 2 * (h_vi - mean(h_v0...j))
+ *
+ * So dstd/dh_i = (1/ (2 * std)) * 2/j * (h_vi - mean(h_v0...j))
+ *  = 1 / (j * std) * (h_vi - mean)
+ *  = (h_vh - mean) / (j * std)
+ */
+const standardDeviationDerivative = (
+  values: number[],
+  derivativeIndex: number,
+) => {
+  const { average, standardDeviation } = calculateStandardDeviation(values);
+
+  const derivative = values[derivativeIndex]!;
+
+  return (
+    (derivative - average) /
+    (values.length *
+      (standardDeviation +
+        // To stabalize againt 0-division
+        Number.EPSILON))
+  );
 };
 
 export const backpropMlp = (

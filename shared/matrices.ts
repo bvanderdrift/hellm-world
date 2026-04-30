@@ -168,8 +168,12 @@ export const normalize = (matrix: number[][]): number[][] => {
     const { average, standardDeviation } = calculateStandardDeviation(vector);
 
     return vector.map(
-      (scalar) => (scalar - average) / (standardDeviation + Number.EPSILON),
-    ); // to prevent 0-divisions
+      (scalar) =>
+        (scalar - average) /
+        (standardDeviation +
+          // to prevent 0-divisions
+          Number.EPSILON),
+    );
   });
 };
 
