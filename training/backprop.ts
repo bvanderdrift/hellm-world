@@ -181,23 +181,28 @@ export const transformersBackprop = (
  * = (1 / std(h_v0...j)) * (h_vi) - (1 / std(h_v0...j)) * mean(h_v0...j)
  * = std^-1 * h_vi - std^-1 * mean
  *
- * So
- * df/dh = d(std^-1 * h_vi)/dh - d(std^-1 * mean)/dh
+ * So if k is the input index we are taking the derivative for:
  *
- * d(std^-1 * h_vi)/dh = d(std^-1)/dh * h_vi + std^-1 * dh/dh
- *  = d(std^-1)/dh * h_vi + std^-1 * 1
+ * df/dh_k = d(std^-1 * h_vi)/dh_k - d(std^-1 * mean)/dh_k
  *
- * and
- *
- * d(std^-1 * mean)/dh = d(std^-1)/dh * mean + std^-1 * dmean/dh
- *  = d(std^-1)/dh * mean + std^-1 * 1/j
- *  = d(std^-1)/dh * mean + std^-1/j
- *  = d(std^-1)/dh * mean + 1 / (j * std)
+ * d(std^-1 * h_vi)/dh_k = d(std^-1)/dh_k * h_vi + std^-1 * dh_vi/dh_k
+ * where dh_vi/dh_k = 1 if i === k, otherwise 0
  *
  * and
  *
- * d(std^-1)/dh = d(std^-1)/dstd * dstd/dh
- *  = -std^-2 * dstd/dh
+ * d(std^-1 * mean)/dh_k = d(std^-1)/dh_k * mean + std^-1 * dmean/dh_k
+ *  = d(std^-1)/dh_k * mean + std^-1 * 1/j
+ *  = d(std^-1)/dh_k * mean + std^-1/j
+ *  = d(std^-1)/dh_k * mean + 1 / (j * std)
+ *
+ * and
+ *
+ * d(std^-1)/dh_k = d(std^-1)/dstd * dstd/dh_k
+ *  = -std^-2 * dstd/dh_k
+ *
+ * The full backprop step needs every y_i that depends on h_k:
+ *
+ * dL/dh_k = sum_i(dL/dy_i * dy_i/dh_k)
  */
 export const backpropNormalize = (
   outputGradients: number[][],
