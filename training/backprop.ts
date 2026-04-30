@@ -174,24 +174,68 @@ export const transformersBackprop = (
   };
 };
 
+/**
+ * Normalize function is f(h_vi) where h_vi is input activation of vector v at index i
+ *
+ * f(h_vi) = (h_vi - mean(h_v0...j)) / std(h_v0...j)
+ * = (1 / std(h_v0...j)) * (h_vi) - (1 / std(h_v0...j)) * mean(h_v0...j)
+ * = std^-1 * h_vi - std^-1 * mean
+ *
+ * So
+ * df/dh = d(std^-1 * h_vi)/dh - d(std^-1 * mean)/dh
+ *
+ * d(std^-1 * h_vi)/dh = d(std^-1)/dh * h_vi + std^-1 * dh/dh
+ *  = d(std^-1)/dh * h_vi + std^-1 * 1
+ *
+ * and
+ *
+ * d(std^-1 * mean)/dh = d(std^-1)/dh * mean + std^-1 * dmean/dh
+ *  = d(std^-1)/dh * mean + std^-1 * 1/j
+ *  = d(std^-1)/dh * mean + std^-1/j
+ *  = d(std^-1)/dh * mean + 1 / (j * std)
+ *
+ * and
+ *
+ * d(std^-1)/dh = d(std^-1)/dstd * dstd/dh
+ *  = -std^-2 * dstd/dh
+ */
 export const backpropNormalize = (
   outputGradients: number[][],
   inputActivations: number[][],
 ): number[][] => {
-  return inputActivations.map((vector) =>
-    vector.map((value) => {
-      // TODO implement norm derivative in respect to value (h_vi)
-      return 0;
+  return inputActivations.map((vector, vectorIndex) =>
+    vector.map((_, valueIndex) => {
+      const vectorOutputGradients = outputGradients[vectorIndex]!;
+
+      const { average, standardDeviation } = calculateStandardDeviation(vector);
+
+      // To prevent divide-by-0
+      const safeStandardDeviation = standardDeviation + Number.EPSILON;
+
+      const vectorInputGradients = vectorOutputGradients.map(
+        (outputGradient, gradientIndex) => {
+          const dStdDh =
+            -(safeStandardDeviation ** -2) *
+            standardDeviationDerivative(vector, valueIndex);
+
+          const dhiDhk = valueIndex === gradientIndex ? 1 : 0;
+
+          const hi = vector[gradientIndex]!;
+
+          const firstBranch = dStdDh * hi + dhiDhk / safeStandardDeviation;
+
+          const secondBranch =
+            dStdDh * average + 1 / (vector.length * safeStandardDeviation);
+
+          const dyiDh = firstBranch - secondBranch;
+
+          return outputGradient * dyiDh;
+        },
+      );
+
+      return sum(vectorInputGradients);
     }),
   );
-};
-
-/**
- * mean = sum(h_0...j) / j
- * dmean/dh_i = 1 / j
- */
-const meanDerivative = (values: number[]) => {
-  return 1 / values.length;
 };
 
 /**
