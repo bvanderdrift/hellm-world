@@ -15,7 +15,7 @@ describe("matrixBackprop", () => {
       [0, 0],
     ];
 
-    const gradients = matrixBackprop(
+    const { weightGradients } = matrixBackprop(
       weights,
       [
         [1, 2, 3],
@@ -27,14 +27,14 @@ describe("matrixBackprop", () => {
       ],
     );
 
-    expect(gradients).toHaveLength(weights.length);
-    expect(gradients[0]).toHaveLength(weights[0]!.length);
-    expect(gradients[1]).toHaveLength(weights[1]!.length);
-    expect(gradients[2]).toHaveLength(weights[2]!.length);
+    expect(weightGradients).toHaveLength(weights.length);
+    expect(weightGradients[0]).toHaveLength(weights[0]!.length);
+    expect(weightGradients[1]).toHaveLength(weights[1]!.length);
+    expect(weightGradients[2]).toHaveLength(weights[2]!.length);
   });
 
   it("sums each input activation multiplied by the matching output gradient", () => {
-    const gradients = matrixBackprop(
+    const { weightGradients } = matrixBackprop(
       [
         [0, 0],
         [0, 0],
@@ -51,7 +51,7 @@ describe("matrixBackprop", () => {
       ],
     );
 
-    expect(gradients).toEqual([
+    expect(weightGradients).toEqual([
       [1 * 10 + 3 * 30 + 5 * 50, 1 * 20 + 3 * 40 + 5 * 60],
       [2 * 10 + 4 * 30 + 6 * 50, 2 * 20 + 4 * 40 + 6 * 60],
     ]);
@@ -67,17 +67,44 @@ describe("matrixBackprop", () => {
       [13, 17],
     ];
 
-    expect(
-      matrixBackprop(
-        [
-          [0, 0],
-          [0, 0],
-          [0, 0],
-        ],
-        inputActivations,
-        outputGradients,
-      ),
-    ).toEqual(multiplyMatrices(transpose(inputActivations), outputGradients));
+    const { weightGradients } = matrixBackprop(
+      [
+        [0, 0],
+        [0, 0],
+        [0, 0],
+      ],
+      inputActivations,
+      outputGradients,
+    );
+
+    expect(weightGradients).toEqual(
+      multiplyMatrices(transpose(inputActivations), outputGradients),
+    );
+  });
+
+  it("returns activation gradients by multiplying output gradients by transposed weights", () => {
+    const weights = [
+      [2, 3],
+      [5, 7],
+      [11, 13],
+    ];
+    const outputGradients = [
+      [17, 19],
+      [23, 29],
+    ];
+
+    const { activationGradients } = matrixBackprop(
+      weights,
+      [
+        [0, 0, 0],
+        [0, 0, 0],
+      ],
+      outputGradients,
+    );
+
+    expect(activationGradients).toEqual(
+      multiplyMatrices(outputGradients, transpose(weights)),
+    );
   });
 });
 
