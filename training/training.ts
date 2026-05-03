@@ -36,7 +36,11 @@ export const doTrainingLoopAndStoreCheckpoint = (
       trainingData,
     );
 
-    console.log(`Training pass done - average loss: ${averageLoss}`);
+    const indexPadded = index.toString().padStart(steps.toString().length, "0");
+
+    console.log(
+      `(${indexPadded}/${steps}) Training pass done - average loss: ${averageLoss}`,
+    );
     historyLosses.push(averageLoss);
     model = {
       ...model,
