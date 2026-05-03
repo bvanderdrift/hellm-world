@@ -85,28 +85,11 @@ export const runSelfAttentionHead = (
         (value) => value / Math.sqrt(headDimensionCount),
       );
 
-      const matchingKeyProductPadded = [
-        ...matchingKeyProducts,
-        // We now did a lookback only. We need to pad the key matching array with -Infinity for the full length of input to match length
-        ...new Array<number>(contextLength - (index + 1)).fill(-Infinity),
-      ];
-
-      if (matchingKeyProductPadded.length !== contextLength) {
-        throw new Error(
-          `Expected key matching vector to be of dimension ${contextLength}, received ${matchingKeyProductPadded.length}`,
-        );
-      }
-
-      const matchingKeyDistribution = softmax(matchingKeyProductPadded);
+      const matchingKeyDistribution = softmax(matchingKeyProducts);
 
       const vectorUpdatePayload = matchingKeyDistribution.map(
         (scalar, index) => {
-          const valueVector = lookbackValues[index];
-
-          if (!valueVector) {
-            // attempting to look-forward - return 0-vector
-            return new Array<number>(headDimensionCount).fill(0);
-          }
+          const valueVector = lookbackValues[index]!;
 
           return applyScalarToVector(scalar, valueVector);
         },
@@ -118,7 +101,7 @@ export const runSelfAttentionHead = (
         ...partialActivations,
         attentionRelevancyOutput: [
           ...partialActivations.attentionRelevancyOutput,
-          matchingKeyProductPadded,
+          matchingKeyProducts,
         ],
         softmaxOutput: [
           ...partialActivations.softmaxOutput,
