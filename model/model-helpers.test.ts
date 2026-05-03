@@ -117,17 +117,19 @@ describe("operateWeights", () => {
     expect(operatedWeights).toEqual(createModelWithValue(5));
   });
 
-  it("rejects weights with the same shape but a different vocabulary order", () => {
+  it("operates on weights with the same shape without validating vocabulary order", () => {
     const weightsWithReorderedVocabulary = createModel({
       vocabulary: ["world", "hello", "beer", END_OF_SEQUENCE_TOKEN],
     });
 
-    expect(() =>
-      operateCombinedWeights(
-        weightsWithReorderedVocabulary,
-        createModel(),
-        (value1, value2) => value1 + value2,
-      ),
-    ).toThrow();
+    const operatedWeights = operateCombinedWeights(
+      weightsWithReorderedVocabulary,
+      createModel(),
+      (value1, value2) => value1 + value2,
+    );
+
+    expect(operatedWeights.vocabulary).toEqual(
+      weightsWithReorderedVocabulary.vocabulary,
+    );
   });
 });

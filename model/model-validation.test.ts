@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { validateModel, validateSameWeightShape } from "./model-validation.ts";
+import { validateModel, validateSameModelShape } from "./model-validation.ts";
 import type { Model } from "./model-types.ts";
 
 const vector = (length: number, value = 1) => new Array(length).fill(value);
@@ -190,7 +190,7 @@ describe("validateModel", () => {
 describe("validateSameWeightShape", () => {
   it("accepts weights with the same shape", () => {
     expect(() =>
-      validateSameWeightShape(createModel(), createModel()),
+      validateSameModelShape(createModel(), createModel()),
     ).not.toThrow();
   });
 
@@ -200,7 +200,7 @@ describe("validateSameWeightShape", () => {
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithMoreEmbeddings, createModel()),
+      validateSameModelShape(weightsWithMoreEmbeddings, createModel()),
     ).toThrow("matrix vector count (5) doesn't match expected vector count 4");
   });
 
@@ -210,7 +210,7 @@ describe("validateSameWeightShape", () => {
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithWiderEmbeddings, createModel()),
+      validateSameModelShape(weightsWithWiderEmbeddings, createModel()),
     ).toThrow("m has unexpected vector depth 5, expected 4");
   });
 
@@ -223,8 +223,18 @@ describe("validateSameWeightShape", () => {
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithExtraTransformer, createModel()),
+      validateSameModelShape(weightsWithExtraTransformer, createModel()),
     ).toThrow("Weights1 has different transformers count 2 than Weights2 (1)");
+  });
+
+  it("rejects models with the same weight shape but a different vocabulary order", () => {
+    const modelWithReorderedVocabulary = createModel({
+      vocabulary: ["world", "hello", "beer", END_OF_SEQUENCE_TOKEN],
+    });
+
+    expect(() =>
+      validateSameModelShape(modelWithReorderedVocabulary, createModel()),
+    ).toThrow("Vocabularies between weights don't match");
   });
 
   it("rejects different head counts", () => {
@@ -233,7 +243,7 @@ describe("validateSameWeightShape", () => {
     });
 
     expect(() =>
-      validateSameWeightShape(weightsWithDifferentHeadCount, createModel()),
-    ).toThrow("Weights1 has different head count 4 than Weights2 (2)");
+      validateSameModelShape(weightsWithDifferentHeadCount, createModel()),
+    ).toThrow("Model 1 has different head count 4 than Model 2 (2)");
   });
 });

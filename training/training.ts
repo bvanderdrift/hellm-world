@@ -1,7 +1,7 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
-import type { Model } from "../model/model-types.ts";
+import type { Model, Weights } from "../model/model-types.ts";
 import {
   makeZeroVersion,
   operateCombinedWeights,
@@ -39,7 +39,10 @@ export const doTrainingLoopAndStoreCheckpoint = (
 
     console.log(`Training pass done - average loss: ${averageLoss}`);
     historyLosses.push(averageLoss);
-    model = adjustedWeights;
+    model = {
+      ...model,
+      ...adjustedWeights,
+    };
   }
 
   writeNewCheckpoint(modelName, {
@@ -51,11 +54,11 @@ export const doTrainingLoopAndStoreCheckpoint = (
 };
 
 export const doSingleTrainingPass = (
-  weights: Model,
+  model: Model,
   trainingData: string[][],
 ): {
   averageLoss: number;
-  adjustedWeights: Model;
+  adjustedWeights: Weights;
 } => {
   const flatTrainingSize = sum(
     trainingData.map(
@@ -71,7 +74,7 @@ export const doSingleTrainingPass = (
 
   const summedLossWithGradients = trainingData.reduce(
     (acc, sequence) => {
-      const { activations } = llmForwardPassByTokens(sequence, weights, true);
+      const { activations } = llmForwardPassByTokens(sequence, model, true);
 
       if (!activations) {
         throw new Error(`No activations returned during LLM Forward pass`);
@@ -84,15 +87,7 @@ export const doSingleTrainingPass = (
             return acc;
           }
 
-          const inputTokens = sequence.slice(0, index + 1);
-          const expectedOutput = sequence[index + 1]!; // Type-safe b/c of check above
-
-          const backpropResults = backprop(
-            inputTokens,
-            expectedOutput,
-            weights,
-            activations,
-          );
+          const backpropResults = backprop(sequence, model, activations, index);
 
           return {
             loss: acc.loss + backpropResults.loss,
@@ -103,7 +98,7 @@ export const doSingleTrainingPass = (
             ),
           };
         },
-        { loss: 0, gradients: makeZeroVersion(weights) },
+        { loss: 0, gradients: makeZeroVersion(model) },
       );
 
       return {
@@ -115,7 +110,7 @@ export const doSingleTrainingPass = (
         ),
       };
     },
-    { loss: 0, gradients: makeZeroVersion(weights) },
+    { loss: 0, gradients: makeZeroVersion(model) },
   );
 
   const averageLoss = summedLossWithGradients.loss / flatTrainingSize;
@@ -127,7 +122,7 @@ export const doSingleTrainingPass = (
   return {
     averageLoss,
     adjustedWeights: operateCombinedWeights(
-      weights,
+      model,
       averageGradient,
       // Subtraction since we need to go DOWNHILL
       (v1, v2) => v1 - TRAINING_ALPHA * v2,

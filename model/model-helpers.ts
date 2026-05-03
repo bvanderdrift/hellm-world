@@ -3,8 +3,11 @@ import {
   operateOnMatrices,
   operateOnVectors,
 } from "../shared/matrices.ts";
-import { validateSameWeightShape } from "./model-validation.ts";
-import type { TransformerWeights, Model } from "./model-types.ts";
+import {
+  validateSameModelShape,
+  validateSameWeightsShape,
+} from "./model-validation.ts";
+import type { TransformerWeights, Model, Weights } from "./model-types.ts";
 
 export const extractHiddenDimensionSize = (model: Model) => {
   const embeddingsArray = Object.values(model.embeddings);
@@ -22,7 +25,7 @@ export const findTokenIndex = (vocabulary: string[], token: string) => {
 };
 
 export const operateSingleWeights = (
-  weights: Model,
+  weights: Weights,
   operation: (value: number) => number,
 ) => {
   // Hacky solution hihi
@@ -30,11 +33,11 @@ export const operateSingleWeights = (
 };
 
 export const operateCombinedWeights = (
-  weights1: Model,
-  weights2: Model,
+  weights1: Weights,
+  weights2: Weights,
   operation: (v1: number, w2: number) => number,
-): Model => {
-  validateSameWeightShape(weights1, weights2);
+): Weights => {
+  validateSameWeightsShape(weights1, weights2);
 
   return {
     ...weights1,
@@ -107,7 +110,7 @@ export const operateCombinedWeights = (
   };
 };
 
-export const makeZeroVersion = (weights: Model) =>
+export const makeZeroVersion = (weights: Weights) =>
   operateSingleWeights(weights, () => 0);
 
 export const getModelParameterCount = (model: Model) => {

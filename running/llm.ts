@@ -90,21 +90,21 @@ export const getHighestValueIndex = (values: number[]) => {
 
 export const llmForwardPassByTokens = (
   input: string[],
-  weights: Model,
+  model: Model,
   withActivations: boolean,
 ): {
   embeddings: number[][];
   activations: Activations | null;
 } => {
-  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
   /** middle-state needed for backprop */
   const inputPositionToVocabPosition = input.map((token) => {
-    return findTokenIndex(weights.vocabulary, token);
+    return findTokenIndex(model.vocabulary, token);
   });
 
   const startState = inputPositionToVocabPosition.map((vocabIndex) => {
-    const tokenEmbedding = weights.embeddings[vocabIndex]!;
+    const tokenEmbedding = model.embeddings[vocabIndex]!;
 
     return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
   });
@@ -131,7 +131,7 @@ export const llmForwardPassByTokens = (
 
   const transformerActivations: TransformerActivations[] = [];
 
-  const embeddingsAfterTransformers = weights.transformers.reduce(
+  const embeddingsAfterTransformers = model.transformers.reduce(
     (inputEmbeddings, transformer) => {
       const attentionInputEmbeddings = normalize(inputEmbeddings);
 
@@ -139,7 +139,7 @@ export const llmForwardPassByTokens = (
         // Normalize input only, don't normalize the intermediateState iself
         // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
         attentionInputEmbeddings,
-        weights.headsCount,
+        model.headsCount,
         transformer.attention,
       );
 
@@ -155,7 +155,7 @@ export const llmForwardPassByTokens = (
         // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
         mlpInputEmbeddings,
         transformer.multilayerPerceptron,
-        weights.mlpMultiple,
+        model.mlpMultiple,
       );
 
       if (withActivations) {
@@ -180,13 +180,13 @@ export const llmForwardPassByTokens = (
 
   const unembeddedState = multiplyMatrices(
     normalizedTransformersOutput,
-    weights.unembeddings,
+    model.unembeddings,
   );
 
-  validateSize(unembeddedState, contextSize, weights.vocabulary.length);
+  validateSize(unembeddedState, contextSize, model.vocabulary.length);
 
   const missingTransformerActivationsCount =
-    weights.transformers.length - transformerActivations.length;
+    model.transformers.length - transformerActivations.length;
 
   if (withActivations && missingTransformerActivationsCount > 0) {
     // One sanity check, the rest is available either way
