@@ -3,21 +3,13 @@ import { calculateLoss } from "./calculateLoss.ts";
 
 describe("calculateLoss", () => {
   it("returns log vocabulary size when logits produce a uniform distribution", () => {
-    const loss = calculateLoss([0, 0, 0], 1, [
-      "hello",
-      "world",
-      "beer",
-    ]);
+    const loss = calculateLoss([0, 0, 0], 1, ["hello", "world", "beer"]);
 
     expect(loss).toBeCloseTo(Math.log(3), 10);
   });
 
   it("uses the correct token index, not the highest-logit token", () => {
-    const loss = calculateLoss([0, 2, 0], 0, [
-      "hello",
-      "world",
-      "beer",
-    ]);
+    const loss = calculateLoss([0, 2, 0], 0, ["hello", "world", "beer"]);
 
     expect(loss).toBeCloseTo(Math.log(Math.exp(0) + Math.exp(2) + Math.exp(0)));
   });
