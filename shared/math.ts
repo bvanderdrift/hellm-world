@@ -16,25 +16,27 @@ export const dotProduct = (v1: number[], v2: number[]) => {
   return sum(multiples);
 };
 
-export const makeLogitsSafeForExponation = (logits: number[]) => {
+export const safeSumExponatedLogits = (logits: number[]) => {
   const biggestLogit = Math.max(...logits);
   // To prevent overflows. Logits are still related the same since they all subtract the same value
+  const safeLogits = logits.map((logit) => logit - biggestLogit);
+  const exponatedLogits = safeLogits.map((l) => Math.exp(l));
+
   return {
-    safeLogits: logits.map((logit) => logit - biggestLogit),
+    safeLogits,
+    exponatedLogits,
+    summed: sum(exponatedLogits),
     biggestLogit,
   };
 };
 
+/**
+ * s_i = e^l_i / sum(e^l_j)
+ */
 export const softmax = (logits: number[]) => {
-  const { safeLogits } = makeLogitsSafeForExponation(logits);
+  const { safeLogits, summed } = safeSumExponatedLogits(logits);
 
-  const sumExponentials = safeLogits.reduce((sum, logit) => {
-    const exponential = Math.exp(logit);
-
-    return sum + exponential;
-  }, 0);
-
-  return safeLogits.map((logit) => Math.exp(logit) / sumExponentials);
+  return safeLogits.map((logit) => Math.exp(logit) / summed);
 };
 
 /** Rectified Linear Unit */

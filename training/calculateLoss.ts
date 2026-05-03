@@ -1,4 +1,4 @@
-import { makeLogitsSafeForExponation, sum } from "../shared/math.ts";
+import { safeSumExponatedLogits, sum } from "../shared/math.ts";
 import { validateSize } from "../shared/matrices.ts";
 
 /**
@@ -22,15 +22,12 @@ export const calculateLoss = (
 ) => {
   validateSize([outputLogits], 1, vocabulary.length);
 
-  const { safeLogits, biggestLogit } =
-    makeLogitsSafeForExponation(outputLogits);
+  const { summed, biggestLogit } = safeSumExponatedLogits(outputLogits);
 
   const correctTokenLogit = outputLogits[correctTokenIndex]!;
   const correctTokenLogitAdjusted = correctTokenLogit - biggestLogit;
 
-  const baseAdjusted = Math.log(
-    sum(safeLogits.map((logit) => Math.exp(logit))),
-  );
+  const baseAdjusted = Math.log(summed);
 
   return baseAdjusted - correctTokenLogitAdjusted;
 };

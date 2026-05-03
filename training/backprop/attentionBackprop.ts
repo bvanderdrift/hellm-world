@@ -11,6 +11,7 @@ import {
   transpose,
 } from "../../shared/matrices.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
+import { softmaxBackprop } from "./softmaxBackprop.ts";
 
 export const attentionBackprop = (
   weights: AttentionWeights,
@@ -128,8 +129,11 @@ export const attentionHeadBackprop = (
         return applyScalarToVector(scalar, outputGradientVector);
       });
 
-      // TODO: Softmax backprop
-      const softmaxInputGradients: number[] = [];
+      const softmaxInput = activations.attentionRelevancyOutput[vectorIndex]!;
+      const softmaxInputGradients = softmaxBackprop(
+        softmaxInput,
+        outputGradientVector,
+      );
 
       /**
        * Since we do y_i = x_i / Math.sqrt(j)
