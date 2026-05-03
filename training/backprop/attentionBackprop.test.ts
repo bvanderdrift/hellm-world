@@ -158,7 +158,7 @@ describe("attentionHeadBackprop", () => {
 });
 
 describe("attentionBackprop", () => {
-  it("matches finite differences for output and value weights across split heads", () => {
+  it("matches finite differences for weights and inputs across split heads", () => {
     const input = [
       [0.2, -0.4, 0.6, 1.1],
       [-0.3, 0.8, -0.5, 0.7],
@@ -223,10 +223,36 @@ describe("attentionBackprop", () => {
           outputGradients,
         ),
     );
+    const numericalQGradients = finiteDifferenceMatrix(
+      weights.Q,
+      (perturbedQ) =>
+        attentionObjective(
+          input,
+          2,
+          { ...weights, Q: perturbedQ },
+          outputGradients,
+        ),
+    );
+    const numericalKGradients = finiteDifferenceMatrix(
+      weights.K,
+      (perturbedK) =>
+        attentionObjective(
+          input,
+          2,
+          { ...weights, K: perturbedK },
+          outputGradients,
+        ),
+    );
+    const numericalInputGradients = finiteDifferenceMatrix(
+      input,
+      (perturbedInput) =>
+        attentionObjective(perturbedInput, 2, weights, outputGradients),
+    );
 
-    expect(inputGradients).toHaveLength(input.length);
-    expect(inputGradients[0]).toHaveLength(input[0]!.length);
+    expectMatrixCloseTo(inputGradients, numericalInputGradients);
     expectMatrixCloseTo(weightGradients.out, numericalOutGradients);
     expectMatrixCloseTo(weightGradients.V, numericalVGradients);
+    expectMatrixCloseTo(weightGradients.Q, numericalQGradients);
+    expectMatrixCloseTo(weightGradients.K, numericalKGradients);
   });
 });
