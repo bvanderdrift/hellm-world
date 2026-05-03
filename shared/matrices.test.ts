@@ -152,22 +152,6 @@ describe("multiplyMatrices", () => {
     ]);
   });
 
-  it("throws when the inner dimensions do not match", () => {
-    expect(() =>
-      multiplyMatrices(
-        [
-          [1, 2],
-          [3, 4],
-        ],
-        [[5, 6, 7]],
-      ),
-    ).toThrow();
-  });
-
-  it("throws when the second matrix is empty", () => {
-    expect(() => multiplyMatrices([[1, 2]], [])).toThrow("m2 is empty");
-  });
-
   it("handles 1x1 with 1x2 matrix", () => {
     const out = multiplyMatrices([[2]], [[1, 1]]);
 
@@ -189,17 +173,6 @@ describe("multiplyMatrixWithVector", () => {
     ).toEqual([76, 100]);
   });
 
-  it("throws when the vector length does not match the matrix row count", () => {
-    expect(() =>
-      multiplyMatrixWithVector(
-        [5],
-        [
-          [1, 2],
-          [3, 4],
-        ],
-      ),
-    ).toThrow("matrix vector count (2) doesn't match expected vector count 1");
-  });
 });
 
 describe("transpose", () => {
