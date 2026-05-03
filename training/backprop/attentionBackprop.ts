@@ -3,6 +3,7 @@ import type {
   AttentionHeadActivations,
 } from "../../model/activations-types.ts";
 import type { AttentionWeights } from "../../model/model-types.ts";
+import { dotProduct } from "../../shared/math.ts";
 import {
   sliceToEqualSizes,
   concatenateMatricesVertically,
@@ -118,6 +119,7 @@ export const attentionHeadBackprop = (
        * So if we want to find the input gradient of v_i we do
        *
        * dL/dv_i = dL/dx_i * dx_i/dv_i = dL/dx_i * w
+       * dL/dw = sum_j(dL/dx_j * dx_j/dw) = sum_j(dL/dx_j * v_j)
        */
       const inputVGradients = activations.inputV.map((_, valueVectorIndex) => {
         if (valueVectorIndex > vectorIndex) {
@@ -129,10 +131,16 @@ export const attentionHeadBackprop = (
         return applyScalarToVector(scalar, outputGradientVector);
       });
 
+      const softmaxOutputGradients = activations.inputV
+        .slice(0, vectorIndex + 1)
+        .map((inputVAtToken) => {
+          return dotProduct(outputGradientVector, inputVAtToken);
+        });
+
       const softmaxInput = activations.attentionRelevancyOutput[vectorIndex]!;
       const softmaxInputGradients = softmaxBackprop(
         softmaxInput,
-        outputGradientVector,
+        softmaxOutputGradients,
       );
 
       /**
