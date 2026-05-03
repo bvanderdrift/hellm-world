@@ -64,26 +64,22 @@ export const multiplyMatrices = (
   m1: number[][],
   m2: number[][],
 ): number[][] => {
-  const m2FirstVector = m2[0];
+  const m3 = new Array(m1.length)
+    .fill(0)
+    .map(() => new Array(m2[0]!.length).fill(0));
 
-  if (!m2FirstVector) {
-    throw new Error(`m2 is empty`);
+  for (let i = 0; i < m1.length; i++) {
+    const m1Vector = m1[i]!;
+    const m3Vector = m3[i]!;
+    for (let k = 0; k < m1Vector.length; k++) {
+      const scalar = m1Vector[k]!;
+      const m2Vector = m2[k]!;
+
+      for (let j = 0; j < m2Vector.length; j++) {
+        m3Vector[j] += scalar * m2Vector[j]!;
+      }
+    }
   }
-
-  const m2DepthCount = m2FirstVector.length;
-
-  const m1VectorCount = m1.length;
-  const m1DepthCount = m1[0]!.length;
-
-  validateSize(m2, m1DepthCount);
-
-  const m3 = new Array(m1VectorCount).fill(0).map((_, vectorIndexM3) => {
-    return new Array(m2DepthCount).fill(0).map((_, depthIndexM3) => {
-      return m1[vectorIndexM3]!.reduce((sum, e, vectorIndexM1) => {
-        return sum + e * m2[vectorIndexM1]![depthIndexM3]!;
-      }, 0);
-    });
-  });
 
   return m3;
 };
@@ -93,8 +89,6 @@ export const multiplyMatrixWithVector = (
   matrix: number[][],
 ): number[] => {
   const multipliedMatrix = multiplyMatrices([vector], matrix);
-
-  validateSize(multipliedMatrix, 1);
 
   return multipliedMatrix[0]!;
 };
