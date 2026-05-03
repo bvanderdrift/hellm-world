@@ -7,6 +7,7 @@ import {
   sliceToEqualSizes,
   concatenateMatricesVertically,
   addMatrices,
+  applyScalarToVector,
 } from "../../shared/matrices.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 
@@ -77,11 +78,68 @@ export const attentionBackprop = (
   };
 };
 
-const attentionHeadBackprop = (
+export const attentionHeadBackprop = (
   activations: AttentionHeadActivations,
   outputGradients: number[][],
 ): {
   inputKGradients: number[][];
   inputVGradients: number[][];
   inputQGradients: number[][];
-} => {};
+} => {
+  const contextLength = activations.output.length;
+  const headDimensionality = activations.output[0]?.length!;
+  const emptyMatrix = new Array<number[]>(contextLength).fill(
+    new Array(headDimensionality).fill(0),
+  );
+
+  return outputGradients.reduce(
+    (acc, outputGradientVector, vectorIndex) => {
+      const valueScalarInputActivations =
+        activations.softmaxOutput[vectorIndex]!;
+
+      /**
+       * Since `updateVector` is formulized as x_i = a_i + b_i + c_i + ...
+       *
+       * We can for each a_i etc say
+       *
+       * dL/da_i = dL/dx_i * dx_i/da_i = dL/dx_i * 1
+       *
+       * So can just directly take the outputGradientVector for next backprop step
+       */
+
+      /**
+       * So we just do
+       * x_i = w * v_i where w is the weight from the softmax and v_i is the value input activation
+       *
+       * So if we want to find the input gradient of v_i we do
+       *
+       * dL/dv_i = dL/dx_i * dx_i/dv_i = dL/dx_i * w
+       */
+      const inputVGradients = activations.inputV.map((_, valueVectorIndex) => {
+        if (valueVectorIndex > vectorIndex) {
+          return new Array(headDimensionality).fill(0);
+        }
+
+        const scalar = valueScalarInputActivations[valueVectorIndex]!;
+
+        return applyScalarToVector(scalar, outputGradientVector);
+      });
+
+      const inputVGradientsCombined = addMatrices(
+        // Add one more 0-vector for new index
+        acc.inputVGradients,
+        inputVGradients,
+      );
+
+      return {
+        ...acc,
+        inputVGradients: inputVGradientsCombined,
+      };
+    },
+    {
+      inputKGradients: emptyMatrix,
+      inputVGradients: emptyMatrix,
+      inputQGradients: emptyMatrix,
+    },
+  );
+};

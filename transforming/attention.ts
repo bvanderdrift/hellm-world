@@ -101,14 +101,14 @@ export const runSelfAttentionHead = (
 
       const vectorUpdatePayload = matchingKeyDistribution.map(
         (scalar, index) => {
-          const value = lookbackValues[index];
+          const valueVector = lookbackValues[index];
 
-          if (!value) {
+          if (!valueVector) {
             // attempting to look-forward - return 0-vector
             return new Array<number>(headDimensionCount).fill(0);
           }
 
-          return applyScalarToVector(scalar, value);
+          return applyScalarToVector(scalar, valueVector);
         },
       );
 
