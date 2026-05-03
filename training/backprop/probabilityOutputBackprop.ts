@@ -1,18 +1,15 @@
 export const probabilityOutputBackprop = (
   unembeddingsOutputLogits: number[][],
-  outputProbabilitiesVector: number[],
-  contextLength: number,
-  correctTokenIndex: number,
+  outputProbabilities: number[][],
+  correctTokenIndices: number[],
 ) =>
   unembeddingsOutputLogits.map((outputVector, inputTokenIndex) => {
-    if (inputTokenIndex !== contextLength - 1) {
-      // We're not training on these, so no gradients
-      return new Array(outputVector.length).fill(0);
-    }
-
     return outputVector.map((_, vocabIndex) => {
-      const isCorrectToken = vocabIndex === correctTokenIndex;
-      const actualProbability = outputProbabilitiesVector[vocabIndex]!;
+      const isCorrectToken =
+        vocabIndex === correctTokenIndices[inputTokenIndex]!;
+
+      const actualProbability =
+        outputProbabilities[inputTokenIndex]![vocabIndex]!;
       const wantedProbability = isCorrectToken ? 1 : 0;
 
       /**

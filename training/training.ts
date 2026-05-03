@@ -77,54 +77,26 @@ export const doSingleTrainingPass = (
 
   const summedLossWithGradients = trainingData.reduce(
     (acc, sequence) => {
-      const { activations } = llmForwardPassByTokens(sequence, model, true);
+      const inputTokens = sequence.slice(0, sequence.length - 1);
+      const { activations } = llmForwardPassByTokens(inputTokens, model, true);
 
       if (!activations) {
         throw new Error(`No activations returned during LLM Forward pass`);
       }
 
-      const summedLossWithGradientsWithinSequence = sequence.reduce(
-        (acc, _, index) => {
-          if (index === sequence.length - 1) {
-            // We're at last, nothing more to predict so stop here
-            return acc;
-          }
-
+      const correctTokenIndices = inputTokens.map((_, index) => {
           const correctToken = sequence[index + 1]!;
-          const correctTokenIndex = model.vocabulary.indexOf(correctToken);
 
-          if (correctTokenIndex === -1) {
-            throw new Error(
-              `Failed to find token ${correctToken} in model vocab`,
-            );
-          }
+          return model.vocabulary.indexOf(correctToken);
+      });
 
-          const inputTokens = sequence.slice(0, index + 1);
-
-          const backpropResults = backprop(
-            inputTokens,
-            model,
-            activations,
-            correctTokenIndex,
-          );
+      const backpropResults = backprop(model, activations, correctTokenIndices);
 
           return {
             loss: acc.loss + backpropResults.loss,
             gradients: operateCombinedWeights(
               acc.gradients,
               backpropResults.gradients,
-              (v1, v2) => v1 + v2,
-            ),
-          };
-        },
-        { loss: 0, gradients: makeZeroVersion(model) },
-      );
-
-      return {
-        loss: acc.loss + summedLossWithGradientsWithinSequence.loss,
-        gradients: operateCombinedWeights(
-          acc.gradients,
-          summedLossWithGradientsWithinSequence.gradients,
           (v1, v2) => v1 + v2,
         ),
       };

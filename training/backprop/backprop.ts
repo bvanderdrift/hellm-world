@@ -1,7 +1,7 @@
 import type { Model, Weights } from "../../model/model-types.ts";
 import { calculateLoss } from "../calculateLoss.ts";
 import type { Activations } from "../../model/activations-types.ts";
-import { softmax } from "../../shared/math.ts";
+import { softmax, sum } from "../../shared/math.ts";
 import { embeddingsBackprop } from "./embeddingBackprop.ts";
 import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
@@ -9,30 +9,21 @@ import { backpropNormalize } from "./normalizeBackprop.ts";
 import { transformersBackprop } from "./transformersBackprop.ts";
 
 export const backprop = (
-  inputTokens: string[],
   weights: Model,
   activations: Activations,
-  correctTokenIndex: number,
+  correctTokenIndices: number[],
 ): {
   loss: number;
   gradients: Weights;
 } => {
-  const outputLogits =
-    activations.unembeddingsOutputLogits[inputTokens.length - 1];
-
-  if (!outputLogits) {
-    throw new Error(
-      `Couldn't find output logits in activations. Activations vector count: ${activations.unembeddingsOutputLogits.length}, inputTokensLength: ${inputTokens.length}`,
-    );
-  }
-
-  const outputProbabilities = softmax(outputLogits);
+  const outputProbabilities = activations.unembeddingsOutputLogits.map(
+    (outputLogits) => softmax(outputLogits),
+  );
 
   const unembeddingsOutputActivationsGradients = probabilityOutputBackprop(
     activations.unembeddingsOutputLogits,
     outputProbabilities,
-    inputTokens.length,
-    correctTokenIndex,
+    correctTokenIndices,
   );
 
   const {
@@ -59,7 +50,15 @@ export const backprop = (
   );
 
   return {
-    loss: calculateLoss(outputLogits, correctTokenIndex, weights.vocabulary),
+    loss: sum(
+      activations.unembeddingsOutputLogits.map((outputLogits, tokenIndex) =>
+        calculateLoss(
+          outputLogits,
+          correctTokenIndices[tokenIndex]!,
+          weights.vocabulary,
+        ),
+      ),
+    ),
     gradients: {
       unembeddings: unembeddingWeightGradients,
       transformers: transformerGradients,
