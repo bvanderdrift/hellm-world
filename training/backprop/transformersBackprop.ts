@@ -1,5 +1,6 @@
 import type { TransformerActivations } from "../../model/activations-types.ts";
 import type { TransformerWeights } from "../../model/model-types.ts";
+import { addMatrices } from "../../shared/matrices.ts";
 import { attentionBackprop } from "./attentionBackprop.ts";
 import { backpropMlp } from "./mlpBackprop.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
@@ -43,7 +44,10 @@ export const transformersBackprop = (
 
     const preNormalizationInputGradients = backpropNormalize(
       mlpInputGradients,
-      transformerActivations.mlp.normalizedInputToUpping,
+      addMatrices(
+        transformerActivations.attention.output,
+        transformerActivations.transformerInput,
+      ),
     );
 
     const attentionOutputGradients = combineGradients(
