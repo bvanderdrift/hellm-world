@@ -184,11 +184,15 @@ describe("llmForwardPassByTokens", () => {
     validateSize(headActivations.inputQ, 2, 3);
     validateSize(headActivations.inputK, 2, 3);
     validateSize(headActivations.inputV, 2, 3);
-    validateSize(headActivations.attentionRelevancyOutput, 2, 2);
-    validateSize(headActivations.softmaxOutput, 2, 2);
+    expect(headActivations.attentionRelevancyOutput).toHaveLength(2);
+    expect(headActivations.attentionRelevancyOutput[0]).toHaveLength(1);
+    expect(headActivations.attentionRelevancyOutput[1]).toHaveLength(2);
+    expect(headActivations.softmaxOutput).toHaveLength(2);
+    expect(headActivations.softmaxOutput[0]).toHaveLength(1);
+    expect(headActivations.softmaxOutput[1]).toHaveLength(2);
     validateSize(headActivations.output, 2, 3);
     expect(headActivations.lookbackUpdateVectors).toHaveLength(2);
-    validateSize(headActivations.lookbackUpdateVectors[0]!, 2, 3);
+    validateSize(headActivations.lookbackUpdateVectors[0]!, 1, 3);
     validateSize(headActivations.lookbackUpdateVectors[1]!, 2, 3);
 
     validateSize(transformerActivations.mlp.normalizedInputToUpping, 2, 3);
