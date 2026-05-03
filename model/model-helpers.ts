@@ -157,3 +157,14 @@ export const getModelParameterCount = (model: Model) => {
     getMatrixParameterCount(model.unembeddings)
   );
 };
+
+export const describeModelToConsole = (model: Model) => {
+  const paramCount = getModelParameterCount(model);
+
+  const paramCountFormatted = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    compactDisplay: "short",
+  }).format(paramCount);
+
+  console.log(`Model paramter count: ${paramCountFormatted}`);
+};

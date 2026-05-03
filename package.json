@@ -8,6 +8,8 @@
     "llm": "node index.ts run",
     "train": "node index.ts train",
     "init-model": "node index.ts init-model",
+    "describe": "node index.ts describe",
+    "benchmark:matrices": "node scripts/benchmark-matrices.ts",
     "test": "vitest run",
     "typecheck": "tsc"
   },

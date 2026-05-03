@@ -2,9 +2,9 @@ import { program } from "commander";
 import { input, number } from "@inquirer/prompts";
 import { runLlm } from "./running/llm.ts";
 import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
-import { writeNewModel } from "./model/model-io.ts";
+import { getLatestCheckpointModel, writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
-import { getModelParameterCount } from "./model/model-helpers.ts";
+import { describeModelToConsole } from "./model/model-helpers.ts";
 
 program
   .name("llm")
@@ -98,15 +98,19 @@ program
 
     writeNewModel(modelName, newModel);
 
-    const paramCount = getModelParameterCount(newModel);
-
-    const paramCountFormatted = new Intl.NumberFormat("en-US", {
-      notation: "compact",
-      compactDisplay: "short",
-    }).format(paramCount);
+    describeModelToConsole(newModel);
 
     console.log(`\nModel "${modelName}" written to models folder`);
-    console.log(`Model paramter count: ${paramCountFormatted}`);
+  });
+
+program
+  .name("describe")
+  .command("describe")
+  .argument("<model>", "model to describe")
+  .action((modelName: string, opts: { steps: number }) => {
+    const model = getLatestCheckpointModel(modelName).model;
+
+    describeModelToConsole(model);
   });
 
 program.parse();
