@@ -86,7 +86,21 @@ export const doSingleTrainingPass = (
             return acc;
           }
 
-          const backpropResults = backprop(sequence, model, activations, index);
+          const correctToken = sequence[index + 1]!;
+          const correctTokenIndex = model.vocabulary.indexOf(correctToken);
+
+          if (correctTokenIndex === -1) {
+            throw new Error(
+              `Failed to find token ${correctToken} in model vocab`,
+            );
+          }
+
+          const backpropResults = backprop(
+            sequence,
+            model,
+            activations,
+            correctTokenIndex,
+          );
 
           return {
             loss: acc.loss + backpropResults.loss,
