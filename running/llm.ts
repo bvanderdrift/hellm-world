@@ -52,24 +52,6 @@ export const runLlm = function* (input: string, modelName: string) {
   }
 };
 
-export const llmForwardPassByTokens = (
-  input: string[],
-  weights: Model,
-  withActivations: boolean,
-) => {
-  const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
-
-  const startState = input.map((token) => {
-    const tokenIndex = findTokenIndex(weights.vocabulary, token);
-
-    const tokenEmbedding = weights.embeddings[tokenIndex]!;
-
-    return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
-  });
-
-  return llmForwardPass(startState, weights, withActivations);
-};
-
 const generateLogits = (input: string[], weights: Model) => {
   const { embeddings: unembeddedState } = llmForwardPassByTokens(
     input,
@@ -106,17 +88,28 @@ export const getHighestValueIndex = (values: number[]) => {
   ).index;
 };
 
-export const llmForwardPass = (
-  startState: number[][],
+export const llmForwardPassByTokens = (
+  input: string[],
   weights: Model,
   withActivations: boolean,
 ): {
   embeddings: number[][];
   activations: Activations | null;
 } => {
-  const contextSize = startState.length;
-
   const hiddenDimensionsSize = extractHiddenDimensionSize(weights);
+
+  /** middle-state needed for backprop */
+  const inputPositionToVocabPosition = input.map((token) => {
+    return findTokenIndex(weights.vocabulary, token);
+  });
+
+  const startState = inputPositionToVocabPosition.map((vocabIndex) => {
+    const tokenEmbedding = weights.embeddings[vocabIndex]!;
+
+    return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
+  });
+
+  const contextSize = startState.length;
 
   validateSize(startState, contextSize, hiddenDimensionsSize);
 
@@ -206,6 +199,7 @@ export const llmForwardPass = (
     embeddings: unembeddedState,
     activations: withActivations
       ? {
+          inputPositionToVocabPosition,
           tokensToPosition: startState,
           positionToTransformers: positionalEncoding,
           transformerActivations,

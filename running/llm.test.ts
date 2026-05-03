@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import {
   getHighestValueIndex,
-  llmForwardPass,
+  llmForwardPassByTokens,
   pickToken,
   runLlm,
 } from "./llm.ts";
@@ -32,13 +32,11 @@ const getEmbedding = (weights: Model, token: string) => {
   return weights.embeddings[tokenIndex]!;
 };
 
-const getStartState = (input: string) => {
-  const inputTokens = tokenize(input, toyModel.vocabulary);
+const getStartState = (inputTokens: string[], weights: Model) => {
+  const hiddenSize = extractHiddenDimensionSize(weights);
 
   return inputTokens.map((token) =>
-    getEmbedding(toyModel, token).map(
-      (value) => value * Math.sqrt(hiddenDimensionsSize),
-    ),
+    getEmbedding(weights, token).map((value) => value * Math.sqrt(hiddenSize)),
   );
 };
 
@@ -140,27 +138,25 @@ describe("pickToken", () => {
   });
 });
 
-describe("llmForwardPass", () => {
+describe("llmForwardPassByTokens", () => {
   it("returns one vocab-sized logit vector per input position", () => {
-    const startState = getStartState("hello world beer");
+    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
 
-    const { embeddings: logitsByPosition } = llmForwardPass(
-      startState,
+    const { embeddings: logitsByPosition } = llmForwardPassByTokens(
+      inputTokens,
       toyModel,
       false,
     );
 
-    validateSize(logitsByPosition, startState.length, vocabSize);
+    validateSize(logitsByPosition, inputTokens.length, vocabSize);
   });
 
   it("returns the activation operands needed to backprop through one transformer", () => {
-    const startState = [
-      [1, 0, 0],
-      [0, 1, 0],
-    ];
+    const inputTokens = ["hello", "world"];
+    const expectedStartState = getStartState(inputTokens, attentionOnlyModel);
 
-    const { activations } = llmForwardPass(
-      startState,
+    const { activations } = llmForwardPassByTokens(
+      inputTokens,
       attentionOnlyModel,
       true,
     );
@@ -171,14 +167,14 @@ describe("llmForwardPass", () => {
     const attentionActivations = transformerActivations.attention;
     const headActivations = attentionActivations.heads[0]!;
 
-    expect(activations!.tokensToPosition).toEqual(startState);
+    expect(activations!.tokensToPosition).toEqual(expectedStartState);
     expect(activations!.positionToTransformers).toEqual(
       getPositionEncoding(2, 3),
     );
 
     expectMatrixCloseTo(
       transformerActivations.transformerInput,
-      addMatrices(startState, activations!.positionToTransformers),
+      addMatrices(expectedStartState, activations!.positionToTransformers),
     );
 
     validateSize(attentionActivations.normalizedInput, 2, 3);
@@ -205,13 +201,10 @@ describe("llmForwardPass", () => {
   });
 
   it("unembeds the transformer state after both attention and MLP residual updates", () => {
-    const startState = [
-      [1, 0, 0],
-      [0, 1, 0],
-    ];
+    const inputTokens = ["hello", "world"];
 
-    const { embeddings: logitsByPosition, activations } = llmForwardPass(
-      startState,
+    const { embeddings: logitsByPosition, activations } = llmForwardPassByTokens(
+      inputTokens,
       attentionOnlyModel,
       true,
     );

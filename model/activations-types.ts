@@ -33,6 +33,7 @@ export type TransformerActivations = {
 };
 
 export type Activations = {
+  inputPositionToVocabPosition: number[];
   tokensToPosition: number[][];
   positionToTransformers: number[][];
   transformerActivations: TransformerActivations[];
