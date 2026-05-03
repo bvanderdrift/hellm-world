@@ -12,7 +12,6 @@ import type {
   TransformerWeights,
   Weights,
 } from "../model/model-types.ts";
-import { makeZeroVersion } from "../model/model-helpers.ts";
 import { calculateLoss } from "./calculateLoss.ts";
 import type {
   Activations,
