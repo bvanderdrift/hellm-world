@@ -13,7 +13,7 @@ import {
 import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
-const TRAINING_ALPHA = 0.01;
+const TRAINING_ALPHA = 0.1;
 
 export const doTrainingLoopAndStoreCheckpoint = (
   modelName: string,
@@ -85,18 +85,18 @@ export const doSingleTrainingPass = (
       }
 
       const correctTokenIndices = inputTokens.map((_, index) => {
-          const correctToken = sequence[index + 1]!;
+        const correctToken = sequence[index + 1]!;
 
-          return model.vocabulary.indexOf(correctToken);
+        return model.vocabulary.indexOf(correctToken);
       });
 
       const backpropResults = backprop(model, activations, correctTokenIndices);
 
-          return {
-            loss: acc.loss + backpropResults.loss,
-            gradients: operateCombinedWeights(
-              acc.gradients,
-              backpropResults.gradients,
+      return {
+        loss: acc.loss + backpropResults.loss,
+        gradients: operateCombinedWeights(
+          acc.gradients,
+          backpropResults.gradients,
           (v1, v2) => v1 + v2,
         ),
       };
