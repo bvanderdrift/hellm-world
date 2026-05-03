@@ -144,6 +144,9 @@ export const attentionHeadBackprop = (
 
       const lookbackKeys = activations.inputK.slice(0, vectorIndex + 1); // inclusive
 
+      /**
+       * Since the relevancy vectors are just Q_i @ K_0...i we can find gradients of both Q and K inputs directly using the existing matrixBackprop
+       */
       const {
         weightGradients: inputKGradientsTransposed,
         activationGradients: inputQGradientsMatrix,
