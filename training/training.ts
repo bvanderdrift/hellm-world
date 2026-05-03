@@ -1,5 +1,4 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
-import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { sum } from "../shared/math.ts";
 import type { Model, Weights } from "../model/model-types.ts";
 import {
@@ -11,7 +10,7 @@ import {
   getLatestCheckpointModel,
   writeNewCheckpoint,
 } from "../model/model-io.ts";
-import { backprop } from "./backprop.ts";
+import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
 const TRAINING_ALPHA = 0.0001;
