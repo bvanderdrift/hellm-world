@@ -187,19 +187,36 @@ export const transformersBackprop = (
     const transformerActivations = reversedActivations[index]!;
     const transformerWeights = weights[weights.length - index - 1]!;
 
-    const updateActivationsGradients: number[][] = [
-      /** TODO */
-    ];
-
     const { inputActivationGradients, weightGradients } = backpropMlp(
       transformerWeights.multilayerPerceptron,
       transformerActivations.mlp,
-      updateActivationsGradients,
+      /**
+       * z_i = h_i + m_i
+       * So to determine dL/dm_i we just need dL/dz_i which is lastOutputGradients
+       */
+      lastOutputGradients,
     );
 
     const preNormalizationInputGradients = backpropNormalize(
       inputActivationGradients,
       transformerActivations.mlp.normalizedInputToUpping,
+    );
+
+    /**
+     * z_i = h_i + m_i where h_i is residual embedding and m_i is update values from mlp.
+     *
+     * dL/dh_i = dL/dz_i * dz_i/dh_i + dL/dm_i becaude m_i is a product of h_i
+     *  = dL/dz_i * 1 + attentionOutputGradients_i
+     */
+    const attentionOutputGradients = lastOutputGradients.map(
+      (lastOutputGradientVector, vectorIndex) => {
+        return lastOutputGradientVector.map((dLdz_i, dimensionIndex) => {
+          return (
+            dLdz_i +
+            preNormalizationInputGradients[vectorIndex]![dimensionIndex]!
+          );
+        });
+      },
     );
 
     // TODO: Attention Backprop
