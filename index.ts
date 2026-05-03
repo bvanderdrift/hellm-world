@@ -5,6 +5,7 @@ import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
 import { getLatestCheckpointModel, writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
+import { writeLossChart } from "./scripts/chart-loss.ts";
 
 program
   .name("llm")
@@ -111,6 +112,15 @@ program
     const model = getLatestCheckpointModel(modelName).model;
 
     describeModelToConsole(model);
+  });
+
+program
+  .name("chart-loss")
+  .command("chart-loss")
+  .argument("<model>", "model to chart")
+  .argument("[checkpoint]", "checkpoint file", "checkpoint_000007.json")
+  .action(async (modelName: string, checkpointName: string) => {
+    console.log(await writeLossChart(modelName, checkpointName));
   });
 
 program.parse();
