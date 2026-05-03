@@ -13,7 +13,7 @@ import {
 import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
-const TRAINING_ALPHA = 0.0001;
+const TRAINING_ALPHA = 0.01;
 
 export const doTrainingLoopAndStoreCheckpoint = (
   modelName: string,
@@ -95,8 +95,10 @@ export const doSingleTrainingPass = (
             );
           }
 
+          const inputTokens = sequence.slice(0, index + 1);
+
           const backpropResults = backprop(
-            sequence,
+            inputTokens,
             model,
             activations,
             correctTokenIndex,
