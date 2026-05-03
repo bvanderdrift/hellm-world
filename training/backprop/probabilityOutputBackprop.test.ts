@@ -4,28 +4,39 @@ import { calculateLoss } from "../calculateLoss.ts";
 import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 
 describe("probabilityOutputBackprop", () => {
-  it("places cross-entropy logit gradients only on the last context position", () => {
+  it("places cross-entropy logit gradients on every trained context position", () => {
     const logits = [
       [9, 8, 7, 6],
       [3, 2, 1, 0],
       [0.7, -1.1, 2.2, -0.4],
     ];
-    const outputProbabilities = softmax(logits[2]!);
-    const correctTokenIndex = 3;
+    const outputProbabilities = logits.map((outputLogits) =>
+      softmax(outputLogits),
+    );
+    const correctTokenIndices = [1, 2, 3];
 
     const gradients = probabilityOutputBackprop(
       logits,
       outputProbabilities,
-      logits.length,
-      correctTokenIndex,
+      correctTokenIndices,
     );
 
-    expect(gradients[0]).toEqual([0, 0, 0, 0]);
-    expect(gradients[1]).toEqual([0, 0, 0, 0]);
-    expect(gradients[2]).toEqual(
-      outputProbabilities.map(
+    expect(gradients[0]).toEqual(
+      outputProbabilities[0]!.map(
         (probability, vocabIndex) =>
-          probability - (vocabIndex === correctTokenIndex ? 1 : 0),
+          probability - (vocabIndex === correctTokenIndices[0] ? 1 : 0),
+      ),
+    );
+    expect(gradients[1]).toEqual(
+      outputProbabilities[1]!.map(
+        (probability, vocabIndex) =>
+          probability - (vocabIndex === correctTokenIndices[1] ? 1 : 0),
+      ),
+    );
+    expect(gradients[2]).toEqual(
+      outputProbabilities[2]!.map(
+        (probability, vocabIndex) =>
+          probability - (vocabIndex === correctTokenIndices[2] ? 1 : 0),
       ),
     );
   });
@@ -35,18 +46,22 @@ describe("probabilityOutputBackprop", () => {
       [0, 0, 0, 0],
       [0.7, -1.1, 2.2, -0.4],
     ];
-    const outputProbabilities = softmax(logits[1]!);
+    const outputProbabilities = logits.map((outputLogits) =>
+      softmax(outputLogits),
+    );
     const correctTokenIndex = 3;
 
     const gradients = probabilityOutputBackprop(
       logits,
       outputProbabilities,
-      logits.length,
-      correctTokenIndex,
+      [0, correctTokenIndex],
     );
 
-    expect(gradients[1]![1]).toBeCloseTo(outputProbabilities[1]!, 10);
-    expect(gradients[1]![3]).toBeCloseTo(outputProbabilities[3]! - 1, 10);
+    expect(gradients[1]![1]).toBeCloseTo(outputProbabilities[1]![1]!, 10);
+    expect(gradients[1]![3]).toBeCloseTo(
+      outputProbabilities[1]![3]! - 1,
+      10,
+    );
   });
 
   it("matches finite differences of calculateLoss for trained-position logits", () => {
@@ -56,14 +71,15 @@ describe("probabilityOutputBackprop", () => {
     ];
     const vocabulary = ["alpha", "beta", "gamma"];
     const correctTokenIndex = 2;
-    const outputProbabilities = softmax(logits[1]!);
+    const outputProbabilities = logits.map((outputLogits) =>
+      softmax(outputLogits),
+    );
     const epsilon = 0.000001;
 
     const gradients = probabilityOutputBackprop(
       logits,
       outputProbabilities,
-      logits.length,
-      correctTokenIndex,
+      [0, correctTokenIndex],
     );
 
     for (const [vocabIndex] of logits[1]!.entries()) {

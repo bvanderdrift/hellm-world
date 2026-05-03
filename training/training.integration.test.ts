@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { findTokenIndex } from "../model/model-helpers.ts";
-import type { Model, TransformerWeights, Weights } from "../model/model-types.ts";
+import type {
+  Model,
+  TransformerWeights,
+  Weights,
+} from "../model/model-types.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { calculateLoss } from "./calculateLoss.ts";
@@ -132,12 +136,7 @@ describe("training/backprop integration readiness", () => {
       throw new Error("Expected activations for backprop integration check");
     }
 
-    const { loss, gradients } = backprop(
-      promptOnlyInput,
-      model,
-      activations,
-      targetIndex,
-    );
+    const { loss, gradients } = backprop(model, activations, [targetIndex]);
 
     expect(Number.isFinite(loss)).toBe(true);
     expectWeightsToBeFinite(gradients);

@@ -18,7 +18,7 @@ const expectMatrixToBeCloseTo = (actual: number[][], expected: number[][]) => {
 };
 
 describe("backprop", () => {
-  it("uses only the final position for loss and unembedding gradients", () => {
+  it("uses every trained position for loss and unembedding gradients", () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", "gamma", "delta"],
       headsCount: 1,
@@ -60,37 +60,45 @@ describe("backprop", () => {
         [0.7, -1.1, 2.2, -0.4],
       ],
     };
-    const correctTokenIndex = 3;
+    const correctTokenIndices = [1, 3];
 
     const { loss, gradients } = backprop(
-      ["alpha", "beta"],
       model,
       activations,
-      correctTokenIndex,
+      correctTokenIndices,
     );
 
-    const trainedPositionProbabilities = softmax(
-      activations.unembeddingsOutputLogits[1]!,
+    const outputGradients = activations.unembeddingsOutputLogits.map(
+      (outputLogits, tokenIndex) =>
+        softmax(outputLogits).map(
+          (probability, vocabIndex) =>
+            probability -
+            (vocabIndex === correctTokenIndices[tokenIndex] ? 1 : 0),
+        ),
     );
-    const outputGradients = trainedPositionProbabilities.map(
-      (probability, vocabIndex) =>
-        probability - (vocabIndex === correctTokenIndex ? 1 : 0),
-    );
-    const trainedActivation = activations.normalizerToUnembeddings[1]!;
     const expectedUnembeddingGradients = model.unembeddings.map(
       (weightsForIncomingDimension, incomingDimension) =>
-        weightsForIncomingDimension.map(
-          (_, outgoingDimension) =>
-            trainedActivation[incomingDimension]! *
-            outputGradients[outgoingDimension]!,
+        weightsForIncomingDimension.map((_, outgoingDimension) =>
+          activations.normalizerToUnembeddings.reduce(
+            (sum, trainedActivation, tokenIndex) =>
+              sum +
+              trainedActivation[incomingDimension]! *
+                outputGradients[tokenIndex]![outgoingDimension]!,
+            0,
+          ),
         ),
     );
 
     expect(loss).toBeCloseTo(
-      calculateLoss(
-        activations.unembeddingsOutputLogits[1]!,
-        correctTokenIndex,
-        model.vocabulary,
+      activations.unembeddingsOutputLogits.reduce(
+        (sum, outputLogits, tokenIndex) =>
+          sum +
+          calculateLoss(
+            outputLogits,
+            correctTokenIndices[tokenIndex]!,
+            model.vocabulary,
+          ),
+        0,
       ),
       10,
     );
@@ -105,9 +113,11 @@ describe("backprop", () => {
       expect(gradients.embeddings[rowIndex]).toHaveLength(row.length);
     }
 
-    expect(gradients.embeddings[0]).toEqual([0, 0, 0]);
     expect(gradients.embeddings[2]).toEqual([0, 0, 0]);
     expect(gradients.embeddings[3]).toEqual([0, 0, 0]);
+    expect(
+      gradients.embeddings[0]!.some((value) => Math.abs(value) > 1e-12),
+    ).toBe(true);
     expect(
       gradients.embeddings[1]!.some((value) => Math.abs(value) > 1e-12),
     ).toBe(true);
