@@ -6,6 +6,8 @@ import {
   multiplyMatrices,
   multiplyMatrixWithVector,
   validateSize,
+  concatenateMatricesVertically,
+  sliceRows,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type {
@@ -27,29 +29,23 @@ export const runSelfAttentionMechanism = (
 
   const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
-  const sliceRows = (matrix: number[][], headIndex: number) =>
-    matrix.map((vector) =>
-      vector.slice(
-        headIndex * headDimensionsCount,
-        (headIndex + 1) * headDimensionsCount,
-      ),
+  const sliceForHead = (matrix: number[][], headIndex: number) =>
+    sliceRows(
+      matrix,
+      headIndex * headDimensionsCount,
+      (headIndex + 1) * headDimensionsCount,
     );
 
   const headActivations = new Array(headsCount).fill([]).map((_, headIndex) => {
     return runSelfAttentionHead(
-      sliceRows(inputQ, headIndex),
-      sliceRows(inputK, headIndex),
-      sliceRows(inputV, headIndex),
+      sliceForHead(inputQ, headIndex),
+      sliceForHead(inputK, headIndex),
+      sliceForHead(inputV, headIndex),
     );
   });
 
-  const headsConcatenated = headActivations.reduce(
-    (partial, head) =>
-      partial.map((vector, vectorIndex) => [
-        ...vector,
-        ...head.output[vectorIndex]!,
-      ]),
-    new Array(contextLength).fill([]),
+  const headsConcatenated = concatenateMatricesVertically(
+    headActivations.map((h) => h.output),
   );
 
   const attentionUpdate = multiplyMatrices(
@@ -65,6 +61,7 @@ export const runSelfAttentionMechanism = (
     inputV,
     inputQ,
     heads: headActivations,
+    outMatrixInputActivations: headsConcatenated,
     output: attentionUpdate,
   };
 };

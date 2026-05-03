@@ -1,4 +1,4 @@
-import { calculateStandardDeviation } from "./math.ts";
+import { calculateStandardDeviation, divideToWhole } from "./math.ts";
 
 export const createVector = (
   dimensionCount: number,
@@ -192,4 +192,37 @@ export const getMatrixParameterCount = (matrix: number[][]) => {
   const size = getMatrixSize(matrix);
 
   return size.vectorCount * size.dimensionsCount;
+};
+
+export const concatenateMatricesVertically = (matrices: number[][][]) => {
+  const vectors = matrices[0]!.length;
+
+  return matrices.reduce(
+    (partial, matrix) =>
+      partial.map((vector, vectorIndex) => [
+        ...vector,
+        ...matrix[vectorIndex]!,
+      ]),
+    new Array<number[]>(vectors).fill([]),
+  );
+};
+
+export const sliceRows = (matrix: number[][], start: number, end: number) => {
+  return matrix.map((vector) => vector.slice(start, end));
+};
+
+export const sliceToEqualSizes = (matrix: number[][], sectionCount: number) => {
+  const matrixDimensionality = matrix[0]!.length;
+  const singleSectionDimensionality = divideToWhole(
+    matrixDimensionality,
+    sectionCount,
+  );
+
+  return new Array(sectionCount).fill(0).map((_, sectionIndex) => {
+    return sliceRows(
+      matrix,
+      sectionIndex * singleSectionDimensionality,
+      (sectionIndex + 1) * singleSectionDimensionality,
+    );
+  });
 };

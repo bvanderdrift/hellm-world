@@ -6,12 +6,16 @@ import {
   addVectorsInMatrix,
   applyScalarToMatrix,
   applyScalarToVector,
+  concatenateMatricesVertically,
   createMatrix,
+  getMatrixParameterCount,
   transpose,
   getMatrixSize,
   multiplyMatrixWithVector,
   multiplyMatrices,
   normalize,
+  sliceRows,
+  sliceToEqualSizes,
   validateConsistentNestedArrayLength,
   validateSize,
 } from "./matrices.ts";
@@ -70,6 +74,21 @@ describe("getMatrixSize", () => {
       vectorCount: 2,
       dimensionsCount: 0,
     });
+  });
+});
+
+describe("getMatrixParameterCount", () => {
+  it("counts every scalar value in a rectangular matrix", () => {
+    expect(
+      getMatrixParameterCount([
+        [1, 2, 3],
+        [4, 5, 6],
+      ]),
+    ).toBe(6);
+  });
+
+  it("returns zero for an empty matrix", () => {
+    expect(getMatrixParameterCount([])).toBe(0);
   });
 });
 
@@ -457,5 +476,188 @@ describe("validateConsistentNestedArrayLength", () => {
         [3, 4, 5],
       ]),
     ).toThrow("Vector at index 1 has unexpected depth 3 (expected 2)");
+  });
+});
+
+describe("concatenateMatricesVertically", () => {
+  it("joins matching rows from each matrix into wider rows", () => {
+    expect(
+      concatenateMatricesVertically([
+        [
+          [1, 2],
+          [3, 4],
+        ],
+        [
+          [10],
+          [20],
+        ],
+        [
+          [100, 200, 300],
+          [400, 500, 600],
+        ],
+      ]),
+    ).toEqual([
+      [1, 2, 10, 100, 200, 300],
+      [3, 4, 20, 400, 500, 600],
+    ]);
+  });
+
+  it("returns new row arrays without mutating the input matrices", () => {
+    const left = [
+      [1],
+      [2],
+    ];
+    const right = [
+      [3],
+      [4],
+    ];
+
+    const concatenated = concatenateMatricesVertically([left, right]);
+
+    expect(concatenated).toEqual([
+      [1, 3],
+      [2, 4],
+    ]);
+    expect(left).toEqual([[1], [2]]);
+    expect(right).toEqual([[3], [4]]);
+    expect(concatenated[0]).not.toBe(left[0]);
+    expect(concatenated[1]).not.toBe(left[1]);
+  });
+
+  it("preserves row count when concatenating empty-width matrices", () => {
+    expect(concatenateMatricesVertically([[[], []], [[], []]])).toEqual([
+      [],
+      [],
+    ]);
+  });
+});
+
+describe("sliceRows", () => {
+  it("slices the same dimension range from every row", () => {
+    expect(
+      sliceRows(
+        [
+          [1, 2, 3, 4],
+          [10, 20, 30, 40],
+        ],
+        1,
+        3,
+      ),
+    ).toEqual([
+      [2, 3],
+      [20, 30],
+    ]);
+  });
+
+  it("supports JavaScript slice indexes like omitted middle ranges", () => {
+    expect(
+      sliceRows(
+        [
+          [1, 2, 3, 4],
+          [10, 20, 30, 40],
+        ],
+        -3,
+        -1,
+      ),
+    ).toEqual([
+      [2, 3],
+      [20, 30],
+    ]);
+  });
+
+  it("returns new row arrays without mutating the input matrix", () => {
+    const matrix = [
+      [1, 2, 3],
+      [4, 5, 6],
+    ];
+
+    const sliced = sliceRows(matrix, 0, 2);
+
+    expect(sliced).toEqual([
+      [1, 2],
+      [4, 5],
+    ]);
+    expect(matrix).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+    ]);
+    expect(sliced).not.toBe(matrix);
+    expect(sliced[0]).not.toBe(matrix[0]);
+  });
+});
+
+describe("sliceToEqualSizes", () => {
+  it("splits each row into the requested number of equal-width matrices", () => {
+    expect(
+      sliceToEqualSizes(
+        [
+          [1, 2, 3, 4, 5, 6],
+          [10, 20, 30, 40, 50, 60],
+        ],
+        3,
+      ),
+    ).toEqual([
+      [
+        [1, 2],
+        [10, 20],
+      ],
+      [
+        [3, 4],
+        [30, 40],
+      ],
+      [
+        [5, 6],
+        [50, 60],
+      ],
+    ]);
+  });
+
+  it("handles a single section by returning one full-width matrix", () => {
+    expect(
+      sliceToEqualSizes(
+        [
+          [1, 2, 3],
+          [4, 5, 6],
+        ],
+        1,
+      ),
+    ).toEqual([
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+    ]);
+  });
+
+  it("throws when the row width cannot be split evenly", () => {
+    expect(() => sliceToEqualSizes([[1, 2, 3, 4, 5]], 2)).toThrow(
+      "Can't perfectly divide the nominator 5 by denominator (2)",
+    );
+  });
+
+  it("returns new row arrays without mutating the input matrix", () => {
+    const matrix = [
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+    ];
+
+    const sections = sliceToEqualSizes(matrix, 2);
+
+    expect(sections).toEqual([
+      [
+        [1, 2],
+        [5, 6],
+      ],
+      [
+        [3, 4],
+        [7, 8],
+      ],
+    ]);
+    expect(matrix).toEqual([
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+    ]);
+    expect(sections[0]).not.toBe(matrix);
+    expect(sections[0]?.[0]).not.toBe(matrix[0]);
   });
 });
