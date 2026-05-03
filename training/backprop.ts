@@ -7,6 +7,7 @@ import {
   validateSize,
 } from "../shared/matrices.ts";
 import type {
+  AttentionWeights,
   Model,
   MultilayerPerceptronWeights,
   TransformerWeights,
@@ -15,6 +16,7 @@ import type {
 import { calculateLoss } from "./calculateLoss.ts";
 import type {
   Activations,
+  AttentionActivations,
   MultilayerPerceptronActivations,
   TransformerActivations,
 } from "../model/activations-types.ts";
@@ -187,7 +189,10 @@ export const transformersBackprop = (
     const transformerActivations = reversedActivations[index]!;
     const transformerWeights = weights[weights.length - index - 1]!;
 
-    const { inputActivationGradients, weightGradients } = backpropMlp(
+    const {
+      inputActivationGradients: mlpInputGradients,
+      weightGradients: mlpWeightGradients,
+    } = backpropMlp(
       transformerWeights.multilayerPerceptron,
       transformerActivations.mlp,
       /**
@@ -198,28 +203,41 @@ export const transformersBackprop = (
     );
 
     const preNormalizationInputGradients = backpropNormalize(
-      inputActivationGradients,
+      mlpInputGradients,
       transformerActivations.mlp.normalizedInputToUpping,
     );
 
-    /**
-     * z_i = h_i + m_i where h_i is residual embedding and m_i is update values from mlp.
-     *
-     * dL/dh_i = dL/dz_i * dz_i/dh_i + dL/dm_i becaude m_i is a product of h_i
-     *  = dL/dz_i * 1 + attentionOutputGradients_i
-     */
-    const attentionOutputGradients = lastOutputGradients.map(
-      (lastOutputGradientVector, vectorIndex) => {
-        return lastOutputGradientVector.map((dLdz_i, dimensionIndex) => {
-          return (
-            dLdz_i +
-            preNormalizationInputGradients[vectorIndex]![dimensionIndex]!
-          );
-        });
-      },
+    const attentionOutputGradients = combineGradients(
+      lastOutputGradients,
+      preNormalizationInputGradients,
     );
 
-    // TODO: Attention Backprop
+    const {
+      inputGradients: attentionInputGradients,
+      weightGradients: attentionWeightGradients,
+    } = attentionBackprop(
+      transformerWeights.attention,
+      attentionOutputGradients,
+      transformerActivations.attention,
+    );
+
+    const preAttentionNormInputGradients = backpropNormalize(
+      attentionInputGradients,
+      transformerActivations.transformerInput,
+    );
+
+    const transformerInputGradients = combineGradients(
+      attentionOutputGradients,
+      preAttentionNormInputGradients,
+    );
+
+    // We traverse in reverse and we want to add in correct order, so we unshift instead of push
+    transformerGradients.unshift({
+      attention: attentionWeightGradients,
+      multilayerPerceptron: mlpWeightGradients,
+    });
+
+    lastOutputGradients = transformerInputGradients;
   }
 
   return {
@@ -227,6 +245,31 @@ export const transformersBackprop = (
     transformerGradients,
   };
 };
+
+/**
+ * z_i = h_i + b_i where h_i is residual embedding and b_i is update values from branch.
+ *
+ * dL/dh_i = dL/dz_i * dz_i/dh_i + dL/db_i becaude b_i is a product of h_i
+ *  = dL/dz_i * 1 + combinedOutputGradients_i
+ */
+const combineGradients = (
+  combinedOutputGradients: number[][],
+  branchInputGradients: number[][],
+) =>
+  combinedOutputGradients.map((outputGradientVector, vectorIndex) => {
+    return outputGradientVector.map((dLdz_i, dimensionIndex) => {
+      return dLdz_i + branchInputGradients[vectorIndex]![dimensionIndex]!;
+    });
+  });
+
+const attentionBackprop = (
+  weights: AttentionWeights,
+  outputGradients: number[][],
+  activations: AttentionActivations,
+): {
+  weightGradients: AttentionWeights;
+  inputGradients: number[][];
+} => {};
 
 /**
  * Normalize function is f(h_vi) where h_vi is input activation of vector v at index i
