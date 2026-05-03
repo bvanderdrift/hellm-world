@@ -8,6 +8,7 @@ import {
   concatenateMatricesVertically,
   addMatrices,
   applyScalarToVector,
+  transpose,
 } from "../../shared/matrices.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 
@@ -78,21 +79,23 @@ export const attentionBackprop = (
   };
 };
 
-export const attentionHeadBackprop = (
-  activations: AttentionHeadActivations,
-  outputGradients: number[][],
-): {
+type AttentionHeadInputGradients = {
   inputKGradients: number[][];
   inputVGradients: number[][];
   inputQGradients: number[][];
-} => {
+};
+
+export const attentionHeadBackprop = (
+  activations: AttentionHeadActivations,
+  outputGradients: number[][],
+): AttentionHeadInputGradients => {
   const contextLength = activations.output.length;
   const headDimensionality = activations.output[0]?.length!;
   const emptyMatrix = new Array<number[]>(contextLength).fill(
     new Array(headDimensionality).fill(0),
   );
 
-  return outputGradients.reduce(
+  return outputGradients.reduce<AttentionHeadInputGradients>(
     (acc, outputGradientVector, vectorIndex) => {
       const valueScalarInputActivations =
         activations.softmaxOutput[vectorIndex]!;
@@ -125,21 +128,54 @@ export const attentionHeadBackprop = (
         return applyScalarToVector(scalar, outputGradientVector);
       });
 
-      const inputVGradientsCombined = addMatrices(
-        // Add one more 0-vector for new index
-        acc.inputVGradients,
-        inputVGradients,
+      // TODO: Softmax backprop
+      const softmaxInputGradients: number[] = [];
+
+      /**
+       * Since we do y_i = x_i / Math.sqrt(j)
+       * we determine dL/dx_i as
+       *
+       * dL/dx_i = dL/dy_i * dy_i/dx_i
+       *   = softmaxInputGradients_i * 1 / Math.sqrt(j)
+       */
+      const relevancyVectorGradients = softmaxInputGradients.map(
+        (outputGradient) => outputGradient / Math.sqrt(headDimensionality),
       );
 
+      const lookbackKeys = activations.inputK.slice(0, vectorIndex + 1); // inclusive
+
+      const {
+        weightGradients: inputKGradientsTransposed,
+        activationGradients: inputQGradientsMatrix,
+      } = matrixBackprop(
+        transpose(lookbackKeys),
+        [activations.inputQ[vectorIndex]!],
+        [relevancyVectorGradients],
+      );
+
+      if (inputQGradientsMatrix.length !== 1) {
+        throw new Error(`Expected only a single vector from Q vector backprop`);
+      }
+
+      const inputQGradients = inputQGradientsMatrix[0]!;
+
+      const inputKGradients = [
+        ...transpose(inputKGradientsTransposed),
+        ...new Array(outputGradients.length - vectorIndex - 1).fill(
+          new Array(headDimensionality).fill(0),
+        ),
+      ];
+
       return {
-        ...acc,
-        inputVGradients: inputVGradientsCombined,
+        inputKGradients: addMatrices(acc.inputKGradients, inputKGradients),
+        inputVGradients: addMatrices(acc.inputVGradients, inputVGradients),
+        inputQGradients: [...acc.inputQGradients, inputQGradients],
       };
     },
     {
-      inputKGradients: emptyMatrix,
-      inputVGradients: emptyMatrix,
-      inputQGradients: emptyMatrix,
+      inputKGradients: emptyMatrix, // We sum this so create a full starting matrix with 0-values
+      inputVGradients: emptyMatrix, // We sum this so create a full starting matrix with 0-values
+      inputQGradients: [] satisfies number[][], // We concatenate this so make a 0-vector matrix (empty array)
     },
   );
 };
