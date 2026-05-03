@@ -178,12 +178,12 @@ describe("llmForwardPassByTokens", () => {
     );
 
     validateSize(attentionActivations.normalizedInput, 2, 3);
-    validateSize(attentionActivations.inputQ, 2, 3);
-    validateSize(attentionActivations.inputK, 2, 3);
-    validateSize(attentionActivations.inputV, 2, 3);
     validateSize(attentionActivations.output, 2, 3);
     expect(attentionActivations.heads).toHaveLength(1);
 
+    validateSize(headActivations.inputQ, 2, 3);
+    validateSize(headActivations.inputK, 2, 3);
+    validateSize(headActivations.inputV, 2, 3);
     validateSize(headActivations.attentionRelevancyOutput, 2, 2);
     validateSize(headActivations.softmaxOutput, 2, 2);
     validateSize(headActivations.output, 2, 3);

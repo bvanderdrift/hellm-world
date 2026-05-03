@@ -1,4 +1,7 @@
 export type AttentionHeadActivations = {
+  inputK: number[][];
+  inputV: number[][];
+  inputQ: number[][];
   attentionRelevancyOutput: number[][];
   softmaxOutput: number[][];
   /** An array of matrixes; one matrix for each embedding vector  */
@@ -8,10 +11,8 @@ export type AttentionHeadActivations = {
 
 export type AttentionActivations = {
   normalizedInput: number[][];
-  inputQ: number[][];
-  inputK: number[][];
-  inputV: number[][];
   heads: AttentionHeadActivations[];
+  outMatrixInputActivations: number[][];
   output: number[][];
 };
 

@@ -57,9 +57,6 @@ export const runSelfAttentionMechanism = (
 
   return {
     normalizedInput: input,
-    inputK,
-    inputV,
-    inputQ,
     heads: headActivations,
     outMatrixInputActivations: headsConcatenated,
     output: attentionUpdate,
@@ -118,6 +115,7 @@ export const runSelfAttentionHead = (
       const updateVector = addVectorsInMatrix(vectorUpdatePayload);
 
       return {
+        ...partialActivations,
         attentionRelevancyOutput: [
           ...partialActivations.attentionRelevancyOutput,
           matchingKeyProductPadded,
@@ -134,6 +132,9 @@ export const runSelfAttentionHead = (
       };
     },
     {
+      inputK: inputHeadK,
+      inputV: inputHeadV,
+      inputQ: inputHeadQ,
       attentionRelevancyOutput: [],
       softmaxOutput: [],
       lookbackUpdateVectors: [],
