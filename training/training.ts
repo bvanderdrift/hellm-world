@@ -36,7 +36,9 @@ export const doTrainingLoopAndStoreCheckpoint = (
       trainingData,
     );
 
-    const indexPadded = index.toString().padStart(steps.toString().length, "0");
+    const indexPadded = (index + 1)
+      .toString()
+      .padStart(steps.toString().length, "0");
 
     console.log(
       `(${indexPadded}/${steps}) Training pass done - average loss: ${averageLoss}`,
@@ -76,7 +78,7 @@ export const doSingleTrainingPass = (
   }
 
   const summedLossWithGradients = trainingData.reduce(
-    (acc, sequence) => {
+    (acc, sequence, index) => {
       const inputTokens = sequence.slice(0, sequence.length - 1);
       const { activations } = llmForwardPassByTokens(inputTokens, model, true);
 
@@ -91,6 +93,10 @@ export const doSingleTrainingPass = (
       });
 
       const backpropResults = backprop(model, activations, correctTokenIndices);
+
+      console.log(
+        `backprop ${(((index + 1) * 100) / trainingData.length).toFixed(2)}%`,
+      );
 
       return {
         loss: acc.loss + backpropResults.loss,
