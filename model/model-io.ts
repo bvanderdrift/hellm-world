@@ -28,8 +28,8 @@ export const getLatestCheckpointModel = (
 };
 
 const getLatestCheckpointFile = (modelFolderPath: string): string => {
-  const checkpointFiles = readdirSync(modelFolderPath).filter(
-    (file) => file !== METADATA_FILE_NAME,
+  const checkpointFiles = readdirSync(modelFolderPath).filter((file) =>
+    file.startsWith("checkpoint_"),
   );
 
   const sortedCheckpoints = checkpointFiles.sort((a, b) => b.localeCompare(a));
