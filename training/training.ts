@@ -94,10 +94,6 @@ export const doSingleTrainingPass = (
 
       const backpropResults = backprop(model, activations, correctTokenIndices);
 
-      console.log(
-        `backprop ${(((index + 1) * 100) / trainingData.length).toFixed(2)}%`,
-      );
-
       return {
         loss: acc.loss + backpropResults.loss,
         gradients: operateCombinedWeights(
