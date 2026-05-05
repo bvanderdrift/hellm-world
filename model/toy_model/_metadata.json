@@ -1,5 +1,14 @@
 {
-  "vocabulary": ["hello", "world", "my", "name", "is", "beer", " ", "<EOS>"],
+  "vocabulary": [
+    "red",
+    "orange",
+    "yellow",
+    "green",
+    "blue",
+    "violet",
+    " ",
+    "<EOS>"
+  ],
   "headsCount": 2,
   "mlpMultiple": 4
 }

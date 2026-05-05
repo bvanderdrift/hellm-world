@@ -1,5 +1,5 @@
-hello hello hello hello hello<EOS>
-my my my my my<EOS>
-name name name name name<EOS>
-is is is is is<EOS>
-beer beer beer beer beer<EOS>
+red red red red red<EOS>
+orange orange orange orange orange<EOS>
+yellow yellow yellow yellow yellow<EOS>
+green green green green green<EOS>
+blue blue blue blue blue<EOS>
