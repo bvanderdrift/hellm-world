@@ -21,10 +21,11 @@ import * as weightReading from "../model/model-io.ts";
 import type { Model } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 
-const MODEL_NAME = "toy_model";
-const { model: toyModel } = weightReading.getLatestCheckpointModel(MODEL_NAME);
-const hiddenDimensionsSize = extractHiddenDimensionSize(toyModel);
-const vocabSize = toyModel.vocabulary.length;
+const MODEL_NAME = "timmy";
+const { model: timmyModel } =
+  weightReading.getLatestCheckpointModel(MODEL_NAME);
+const hiddenDimensionsSize = extractHiddenDimensionSize(timmyModel);
+const vocabSize = timmyModel.vocabulary.length;
 
 const getEmbedding = (weights: Model, token: string) => {
   const tokenIndex = findTokenIndex(weights.vocabulary, token);
@@ -134,17 +135,17 @@ describe("getHighestValueIndex", () => {
 
 describe("pickToken", () => {
   it("returns the token behind the highest logit", () => {
-    expect(pickToken([0, 5, 1, -3, 2, 4], toyModel.vocabulary)).toBe("world");
+    expect(pickToken([0, 5, 1, -3, 2, 4], timmyModel.vocabulary)).toBe("world");
   });
 });
 
 describe("llmForwardPassByTokens", () => {
   it("returns one vocab-sized logit vector per input position", () => {
-    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
 
     const { embeddings: logitsByPosition } = llmForwardPassByTokens(
       inputTokens,
-      toyModel,
+      timmyModel,
       false,
     );
 
@@ -207,11 +208,8 @@ describe("llmForwardPassByTokens", () => {
   it("unembeds the transformer state after both attention and MLP residual updates", () => {
     const inputTokens = ["hello", "world"];
 
-    const { embeddings: logitsByPosition, activations } = llmForwardPassByTokens(
-      inputTokens,
-      attentionOnlyModel,
-      true,
-    );
+    const { embeddings: logitsByPosition, activations } =
+      llmForwardPassByTokens(inputTokens, attentionOnlyModel, true);
 
     const transformerActivations = activations!.transformerActivations[0]!;
     const expectedFinalTransformerState = addMatrices(
@@ -261,35 +259,35 @@ describe("runLlm", () => {
 
 describe("llm pipeline contracts", () => {
   it("embeds each input token into the hidden dimension", () => {
-    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyModel, token),
+      getEmbedding(timmyModel, token),
     );
 
     validateSize(embeddedState, inputTokens.length, hiddenDimensionsSize);
   });
 
   it("keeps one hidden-state row per context position after the hidden projection", () => {
-    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyModel, token),
+      getEmbedding(timmyModel, token),
     );
     const unembeddedState = multiplyMatrices(
       embeddedState,
-      toyModel.unembeddings,
+      timmyModel.unembeddings,
     );
 
     validateSize(unembeddedState, inputTokens.length, vocabSize);
   });
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
-    const inputTokens = tokenize("hello world beer", toyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(toyModel, token),
+      getEmbedding(timmyModel, token),
     );
     const logitsByPosition = multiplyMatrices(
       embeddedState,
-      toyModel.unembeddings,
+      timmyModel.unembeddings,
     );
 
     validateSize(logitsByPosition, inputTokens.length, vocabSize);
@@ -301,9 +299,9 @@ describe("weights validation contract", () => {
     const malformedWeights: { historyLosses: number[]; model: Model } = {
       historyLosses: [3],
       model: {
-        vocabulary: [...toyModel.vocabulary],
-        headsCount: toyModel.headsCount,
-        mlpMultiple: toyModel.mlpMultiple,
+        vocabulary: [...timmyModel.vocabulary],
+        headsCount: timmyModel.headsCount,
+        mlpMultiple: timmyModel.mlpMultiple,
         embeddings: [
           [1, 1, 1, 1],
           [1, 1, 1],
@@ -314,8 +312,8 @@ describe("weights validation contract", () => {
           [1, 1, 1, 1],
           [1, 1, 1, 1],
         ],
-        unembeddings: toyModel.unembeddings,
-        transformers: toyModel.transformers,
+        unembeddings: timmyModel.unembeddings,
+        transformers: timmyModel.transformers,
       },
     };
 

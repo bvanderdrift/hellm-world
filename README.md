@@ -21,8 +21,8 @@ The goal is to not use any AI-generated code or dependencies for the actual infe
 
 I know JS is not optimal for heavy linear algebra and mathematics. But, I'm here to learn at the highest speed possible; and am most comfortable in JS. Thus the choice to write in this.
 
-## Toy Model
+## Timmy - a 16k model
 
-I've written about the process of training the model here: [http://its.beer/thoughts/toy-model](http://its.beer/thoughts/toy-model).
+I've written about the process of training the model here: [http://its.beer/thoughts/training-timmy](http://its.beer/thoughts/training-timmy).
 
-![Training curve of the toy model](./model/toy_model/checkpoint_000007_loss.png)
+![Training curve of Timmy](./model/timmy/checkpoint_000007_loss.png)
