@@ -16,7 +16,7 @@ import { prepareTrainingData } from "./prepareTrainingData.ts";
 const TRAINING_ALPHA = 0.03;
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
-export const doTrainingLoopAndStoreCheckpoint = (
+export const doTrainingLoopAndStoreCheckpoint = async (
   modelName: string,
   steps: number,
 ) => {
@@ -43,7 +43,7 @@ export const doTrainingLoopAndStoreCheckpoint = (
       offset + MAX_TRAINING_DATA_PER_PASS,
     );
 
-    const { averageLoss, adjustedWeights } = doSingleTrainingPass(
+    const { averageLoss, adjustedWeights } = await doSingleTrainingPass(
       model,
       trainingDataToWorkWith,
     );
@@ -73,15 +73,16 @@ export const doTrainingLoopAndStoreCheckpoint = (
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
-export const doSingleTrainingPass = (
+export const doSingleTrainingPass = async (
   model: Model,
   trainingData: string[][],
-): {
+): Promise<{
   averageLoss: number;
   adjustedWeights: Weights;
-} => {
-  const summedLossWithGradients = trainingData.reduce(
-    (acc, sequence) => {
+}> => {
+  const summedLossWithGradients = await trainingData.reduce(
+    async (accP, sequence) => {
+      const acc = await accP;
       const { activations } = llmForwardPassByTokens(sequence, model, true);
 
       if (!activations) {
@@ -107,7 +108,11 @@ export const doSingleTrainingPass = (
         ),
       };
     },
-    { loss: 0, flatTrainingSize: 0, gradients: makeZeroVersion(model) },
+    Promise.resolve({
+      loss: 0,
+      flatTrainingSize: 0,
+      gradients: makeZeroVersion(model),
+    }),
   );
 
   const averageLoss =
