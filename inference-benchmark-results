@@ -1,0 +1,15 @@
+inference benchmark
+  model=addy  tokens=[1, 2, 3, 4, 5]  iters=10
+
+  run 1: 67.136ms
+  run 2: 55.609ms
+  run 3: 54.940ms
+  run 4: 52.892ms
+  run 5: 52.155ms
+  run 6: 51.652ms
+  run 7: 50.777ms
+  run 8: 53.017ms
+  run 9: 53.205ms
+  run 10: 52.926ms
+
+  mean=54.431ms  median=53.017ms  min=50.777ms  max=67.136ms
