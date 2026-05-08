@@ -13,7 +13,7 @@ import {
 import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
-const TRAINING_ALPHA = 0.1;
+const TRAINING_ALPHA = 0.03;
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
 export const doTrainingLoopAndStoreCheckpoint = (
@@ -80,28 +80,15 @@ export const doSingleTrainingPass = (
   averageLoss: number;
   adjustedWeights: Weights;
 } => {
-  const flatTrainingSize = sum(
-    trainingData.map(
-      (sequence) =>
-        // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
-        sequence.length - 1,
-    ),
-  );
-
-  if (flatTrainingSize === 0) {
-    throw new Error(`No training data present`);
-  }
-
   const summedLossWithGradients = trainingData.reduce(
-    (acc, sequence, index) => {
-      const inputTokens = sequence.slice(0, sequence.length - 1);
-      const { activations } = llmForwardPassByTokens(inputTokens, model, true);
+    (acc, sequence) => {
+      const { activations } = llmForwardPassByTokens(sequence, model, true);
 
       if (!activations) {
         throw new Error(`No activations returned during LLM Forward pass`);
       }
 
-      const correctTokenIndices = inputTokens.map((_, index) => {
+      const correctTokenIndices = sequence.map((_, index) => {
         const correctToken = sequence[index + 1]!;
 
         return model.vocabulary.indexOf(correctToken);
@@ -111,6 +98,8 @@ export const doSingleTrainingPass = (
 
       return {
         loss: acc.loss + backpropResults.loss,
+        // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
+        flatTrainingSize: acc.flatTrainingSize + sequence.length - 1,
         gradients: operateCombinedWeights(
           acc.gradients,
           backpropResults.gradients,
@@ -118,13 +107,14 @@ export const doSingleTrainingPass = (
         ),
       };
     },
-    { loss: 0, gradients: makeZeroVersion(model) },
+    { loss: 0, flatTrainingSize: 0, gradients: makeZeroVersion(model) },
   );
 
-  const averageLoss = summedLossWithGradients.loss / flatTrainingSize;
+  const averageLoss =
+    summedLossWithGradients.loss / summedLossWithGradients.flatTrainingSize;
   const averageGradient = operateSingleWeights(
     summedLossWithGradients.gradients,
-    (v1) => v1 / flatTrainingSize,
+    (v1) => v1 / summedLossWithGradients.flatTrainingSize,
   );
 
   return {
