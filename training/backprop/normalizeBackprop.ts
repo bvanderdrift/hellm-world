@@ -34,21 +34,21 @@ export const backpropNormalize = (
   outputGradients: number[][],
   inputActivations: number[][],
 ): number[][] => {
-  return inputActivations.map((vector, vectorIndex) =>
-    vector.map((_, valueIndex) => {
-      const vectorOutputGradients = outputGradients[vectorIndex]!;
+  return inputActivations.map((vector, vectorIndex) => {
+    const { average, standardDeviation } = calculateStandardDeviation(vector);
 
-      const { average, standardDeviation } = calculateStandardDeviation(vector);
+    return vector.map((_, valueIndex) => {
+      const vectorOutputGradients = outputGradients[vectorIndex]!;
 
       // To prevent divide-by-0
       const safeStandardDeviation = standardDeviation + Number.EPSILON;
 
+      const dStdDh =
+        -(safeStandardDeviation ** -2) *
+        standardDeviationDerivative(vector, valueIndex);
+
       const vectorInputGradients = vectorOutputGradients.map(
         (outputGradient, gradientIndex) => {
-          const dStdDh =
-            -(safeStandardDeviation ** -2) *
-            standardDeviationDerivative(vector, valueIndex);
-
           const dhiDhk = valueIndex === gradientIndex ? 1 : 0;
 
           const hi = vector[gradientIndex]!;
@@ -65,8 +65,8 @@ export const backpropNormalize = (
       );
 
       return sum(vectorInputGradients);
-    }),
-  );
+    });
+  });
 };
 
 /**
