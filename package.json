@@ -19,12 +19,15 @@
   "packageManager": "pnpm@10.32.1",
   "dependencies": {
     "@inquirer/prompts": "^8.4.2",
-    "commander": "^14.0.3"
+    "commander": "^14.0.3",
+    "typegpu": "^0.11.3"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "@webgpu/types": "^0.1.69",
     "sharp": "^0.34.5",
     "typescript": "^6.0.2",
+    "unplugin-typegpu": "^0.11.3",
     "vitest": "^4.1.4"
   }
 }
