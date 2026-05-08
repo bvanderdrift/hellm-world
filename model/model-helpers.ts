@@ -160,11 +160,15 @@ export const getModelParameterCount = (model: Model) => {
 
 export const describeModelToConsole = (model: Model) => {
   const paramCount = getModelParameterCount(model);
+  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
   const paramCountFormatted = new Intl.NumberFormat("en-US", {
     notation: "compact",
     compactDisplay: "short",
   }).format(paramCount);
 
-  console.log(`Model paramter count: ${paramCountFormatted}`);
+  console.log(`Parameter count: ${paramCountFormatted}`);
+  console.log(`Transformer count: ${model.transformers.length}`);
+  console.log(`Attention head count: ${model.headsCount}`);
+  console.log(`Hidden dimensions size: ${hiddenDimensionsSize}`);
 };
