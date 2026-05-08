@@ -7,7 +7,7 @@ import type {
 } from "../model/model-types.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { calculateLoss } from "./calculateLoss.ts";
+import { softmax } from "../shared/math.ts";
 import { backprop } from "./backprop/backprop.ts";
 import { doSingleTrainingPass } from "./training.ts";
 
@@ -111,15 +111,15 @@ const lossForNextToken = (
     throw new Error("Expected the forward pass to return final logits");
   }
 
-  return calculateLoss(
-    finalLogits,
-    findTokenIndex(currentModel.vocabulary, targetToken),
-    currentModel.vocabulary,
+  return -Math.log(
+    softmax(finalLogits)[
+      findTokenIndex(currentModel.vocabulary, targetToken)
+    ]!,
   );
 };
 
 describe("training/backprop integration readiness", () => {
-  it("keeps gradients and adjusted weights finite, then nudges the trained next-token objective downhill", () => {
+  it("keeps gradients and adjusted weights finite, then nudges the trained next-token objective downhill", async () => {
     const prompt = "prompt";
     const target = "answer";
     const targetIndex = findTokenIndex(model.vocabulary, target);
@@ -143,7 +143,7 @@ describe("training/backprop integration readiness", () => {
     expect(flattenWeights(gradients).some((value) => value !== 0)).toBe(true);
 
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
-    const { averageLoss, adjustedWeights } = doSingleTrainingPass(model, [
+    const { averageLoss, adjustedWeights } = await doSingleTrainingPass(model, [
       trainingSequence,
     ]);
     const trainedModel: Model = { ...model, ...adjustedWeights };

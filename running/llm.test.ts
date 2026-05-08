@@ -22,10 +22,29 @@ import type { Model } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 
 const MODEL_NAME = "timmy";
-const { model: timmyModel } =
-  weightReading.getLatestCheckpointModel(MODEL_NAME);
-const hiddenDimensionsSize = extractHiddenDimensionSize(timmyModel);
-const vocabSize = timmyModel.vocabulary.length;
+
+const testModel: Model = {
+  vocabulary: ["hello", "world", " ", "beer", "!", END_OF_SEQUENCE_TOKEN],
+  headsCount: 1,
+  mlpMultiple: 1,
+  embeddings: [
+    [0.1, 0.2, 0.3, 0.4],
+    [0.5, 0.6, 0.7, 0.8],
+    [0.9, 1.0, 1.1, 1.2],
+    [1.3, 1.4, 1.5, 1.6],
+    [1.7, 1.8, 1.9, 2.0],
+    [2.1, 2.2, 2.3, 2.4],
+  ],
+  unembeddings: [
+    [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+    [0.7, 0.8, 0.9, 1.0, 1.1, 1.2],
+    [1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
+    [1.9, 2.0, 2.1, 2.2, 2.3, 2.4],
+  ],
+  transformers: [],
+};
+const hiddenDimensionsSize = extractHiddenDimensionSize(testModel);
+const vocabSize = testModel.vocabulary.length;
 
 const getEmbedding = (weights: Model, token: string) => {
   const tokenIndex = findTokenIndex(weights.vocabulary, token);
@@ -135,17 +154,17 @@ describe("getHighestValueIndex", () => {
 
 describe("pickToken", () => {
   it("returns the token behind the highest logit", () => {
-    expect(pickToken([0, 5, 1, -3, 2, 4], timmyModel.vocabulary)).toBe("world");
+    expect(pickToken([0, 5, 1, -3, 2, 4], testModel.vocabulary)).toBe("world");
   });
 });
 
 describe("llmForwardPassByTokens", () => {
   it("returns one vocab-sized logit vector per input position", () => {
-    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", testModel.vocabulary);
 
     const { embeddings: logitsByPosition } = llmForwardPassByTokens(
       inputTokens,
-      timmyModel,
+      testModel,
       false,
     );
 
@@ -259,35 +278,35 @@ describe("runLlm", () => {
 
 describe("llm pipeline contracts", () => {
   it("embeds each input token into the hidden dimension", () => {
-    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", testModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(timmyModel, token),
+      getEmbedding(testModel, token),
     );
 
     validateSize(embeddedState, inputTokens.length, hiddenDimensionsSize);
   });
 
   it("keeps one hidden-state row per context position after the hidden projection", () => {
-    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", testModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(timmyModel, token),
+      getEmbedding(testModel, token),
     );
     const unembeddedState = multiplyMatrices(
       embeddedState,
-      timmyModel.unembeddings,
+      testModel.unembeddings,
     );
 
     validateSize(unembeddedState, inputTokens.length, vocabSize);
   });
 
   it("projects the hidden state to one vocab-sized logit vector per position", () => {
-    const inputTokens = tokenize("hello world beer", timmyModel.vocabulary);
+    const inputTokens = tokenize("hello world beer", testModel.vocabulary);
     const embeddedState = inputTokens.map((token) =>
-      getEmbedding(timmyModel, token),
+      getEmbedding(testModel, token),
     );
     const logitsByPosition = multiplyMatrices(
       embeddedState,
-      timmyModel.unembeddings,
+      testModel.unembeddings,
     );
 
     validateSize(logitsByPosition, inputTokens.length, vocabSize);
@@ -299,9 +318,9 @@ describe("weights validation contract", () => {
     const malformedWeights: { historyLosses: number[]; model: Model } = {
       historyLosses: [3],
       model: {
-        vocabulary: [...timmyModel.vocabulary],
-        headsCount: timmyModel.headsCount,
-        mlpMultiple: timmyModel.mlpMultiple,
+        vocabulary: [...testModel.vocabulary],
+        headsCount: testModel.headsCount,
+        mlpMultiple: testModel.mlpMultiple,
         embeddings: [
           [1, 1, 1, 1],
           [1, 1, 1],
@@ -309,11 +328,9 @@ describe("weights validation contract", () => {
           [1, 1, 1, 1],
           [1, 1, 1, 1],
           [1, 1, 1, 1],
-          [1, 1, 1, 1],
-          [1, 1, 1, 1],
         ],
-        unembeddings: timmyModel.unembeddings,
-        transformers: timmyModel.transformers,
+        unembeddings: testModel.unembeddings,
+        transformers: testModel.transformers,
       },
     };
 

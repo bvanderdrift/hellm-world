@@ -3,11 +3,11 @@ import type { Model } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { calculateLoss } from "./calculateLoss.ts";
+import { softmax } from "../shared/math.ts";
 import { doSingleTrainingPass } from "./training.ts";
 
 describe("doSingleTrainingPass", () => {
-  it("averages loss over predictions, not raw token count", () => {
+  it("averages loss over predictions, not raw token count", async () => {
     const model: Model = {
       vocabulary: ["hello", "world", END_OF_SEQUENCE_TOKEN],
       headsCount: 1,
@@ -17,14 +17,14 @@ describe("doSingleTrainingPass", () => {
       transformers: [],
     };
 
-    const { averageLoss } = doSingleTrainingPass(model, [
+    const { averageLoss } = await doSingleTrainingPass(model, [
       ["hello", "world", END_OF_SEQUENCE_TOKEN],
     ]);
 
     expect(averageLoss).toBeCloseTo(Math.log(model.vocabulary.length), 10);
   });
 
-  it("uses each context position to predict the following token", () => {
+  it("uses each context position to predict the following token", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", END_OF_SEQUENCE_TOKEN],
       headsCount: 1,
@@ -49,24 +49,24 @@ describe("doSingleTrainingPass", () => {
     );
 
     const expectedAverageLoss =
-      (calculateLoss(
-        logitsByPosition[0]!,
-        findTokenIndex(model.vocabulary, "beta"),
-        model.vocabulary,
+      (-Math.log(
+        softmax(logitsByPosition[0]!)[
+          findTokenIndex(model.vocabulary, "beta")
+        ]!,
       ) +
-        calculateLoss(
-          logitsByPosition[1]!,
-          findTokenIndex(model.vocabulary, END_OF_SEQUENCE_TOKEN),
-          model.vocabulary,
+        -Math.log(
+          softmax(logitsByPosition[1]!)[
+            findTokenIndex(model.vocabulary, END_OF_SEQUENCE_TOKEN)
+          ]!,
         )) /
       2;
 
-    const { averageLoss } = doSingleTrainingPass(model, [sequence]);
+    const { averageLoss } = await doSingleTrainingPass(model, [sequence]);
 
     expect(averageLoss).toBeCloseTo(expectedAverageLoss, 10);
   });
 
-  it("does not update the target token embedding when it is not in the context", () => {
+  it("does not update the target token embedding when it is not in the context", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta"],
       headsCount: 1,
@@ -83,7 +83,7 @@ describe("doSingleTrainingPass", () => {
     };
     const betaIndex = findTokenIndex(model.vocabulary, "beta");
 
-    const { adjustedWeights } = doSingleTrainingPass(model, [
+    const { adjustedWeights } = await doSingleTrainingPass(model, [
       ["alpha", "beta"],
     ]);
 

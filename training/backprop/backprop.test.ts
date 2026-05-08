@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
 import type { Model } from "../../model/model-types.ts";
-import { softmax } from "../../shared/math.ts";
-import { calculateLoss } from "../calculateLoss.ts";
+import { softmax, sum } from "../../shared/math.ts";
 import { backprop } from "./backprop.ts";
 
 const expectMatrixToBeCloseTo = (actual: number[][], expected: number[][]) => {
@@ -89,19 +88,13 @@ describe("backprop", () => {
         ),
     );
 
-    expect(loss).toBeCloseTo(
-      activations.unembeddingsOutputLogits.reduce(
-        (sum, outputLogits, tokenIndex) =>
-          sum +
-          calculateLoss(
-            outputLogits,
-            correctTokenIndices[tokenIndex]!,
-            model.vocabulary,
-          ),
-        0,
+    const expectedLoss = sum(
+      activations.unembeddingsOutputLogits.map(
+        (outputLogits, tokenIndex) =>
+          -Math.log(softmax(outputLogits)[correctTokenIndices[tokenIndex]!]!),
       ),
-      10,
     );
+    expect(loss).toBeCloseTo(expectedLoss, 10);
     expectMatrixToBeCloseTo(
       gradients.unembeddings,
       expectedUnembeddingGradients,
@@ -121,5 +114,36 @@ describe("backprop", () => {
     expect(
       gradients.embeddings[1]!.some((value) => Math.abs(value) > 1e-12),
     ).toBe(true);
+  });
+
+  it("stays finite when the correct token logit is far below the dominant logit", () => {
+    const model: Model = {
+      vocabulary: ["dominant", "tiny"],
+      headsCount: 1,
+      mlpMultiple: 1,
+      embeddings: [
+        [1, 0],
+        [0, 1],
+      ],
+      unembeddings: [
+        [1, 0],
+        [0, 1],
+      ],
+      transformers: [],
+    };
+    const activations: Activations = {
+      inputPositionToVocabPosition: [0],
+      tokensToPosition: [[1, 0]],
+      positionToTransformers: [[1, 0]],
+      transformerActivations: [],
+      transformersToNormalizer: [[1, 0]],
+      normalizerToUnembeddings: [[1, 0]],
+      unembeddingsOutputLogits: [[0, -1000]],
+    };
+
+    const { loss } = backprop(model, activations, [1]);
+
+    expect(Number.isFinite(loss)).toBe(true);
+    expect(loss).toBeCloseTo(1000, 0);
   });
 });

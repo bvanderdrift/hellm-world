@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { softmax } from "../../shared/math.ts";
-import { calculateLoss } from "../calculateLoss.ts";
 import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 
 describe("probabilityOutputBackprop", () => {
@@ -64,17 +63,18 @@ describe("probabilityOutputBackprop", () => {
     );
   });
 
-  it("matches finite differences of calculateLoss for trained-position logits", () => {
+  it("matches finite differences of cross-entropy loss for trained-position logits", () => {
     const logits = [
       [10, -10, 5],
       [1.2, -0.7, 0.3],
     ];
-    const vocabulary = ["alpha", "beta", "gamma"];
     const correctTokenIndex = 2;
     const outputProbabilities = logits.map((outputLogits) =>
       softmax(outputLogits),
     );
     const epsilon = 0.000001;
+
+    const loss = (l: number[]) => -Math.log(softmax(l)[correctTokenIndex]!);
 
     const gradients = probabilityOutputBackprop(
       logits,
@@ -90,9 +90,7 @@ describe("probabilityOutputBackprop", () => {
       decreasedLogits[vocabIndex]! -= epsilon;
 
       const numericalGradient =
-        (calculateLoss(increasedLogits, correctTokenIndex, vocabulary) -
-          calculateLoss(decreasedLogits, correctTokenIndex, vocabulary)) /
-        (2 * epsilon);
+        (loss(increasedLogits) - loss(decreasedLogits)) / (2 * epsilon);
 
       expect(gradients[1]![vocabIndex]).toBeCloseTo(numericalGradient, 5);
     }
