@@ -5,12 +5,11 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "llm": "node index.ts run",
-    "train": "node index.ts train",
-    "init-model": "node index.ts init-model",
-    "describe": "node index.ts describe",
-    "chart-loss": "node index.ts chart-loss",
-    "benchmark:matrices": "node scripts/benchmark-matrices.ts",
+    "llm": "bun index.ts run",
+    "train": "bun index.ts train",
+    "init-model": "bun index.ts init-model",
+    "describe": "bun index.ts describe",
+    "chart-loss": "bun index.ts chart-loss",
     "test": "vitest run",
     "typecheck": "tsc"
   },
