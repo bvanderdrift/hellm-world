@@ -14,6 +14,7 @@ import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
 const TRAINING_ALPHA = 0.1;
+const MAX_TRAINING_DATA_PER_PASS = 100;
 
 export const doTrainingLoopAndStoreCheckpoint = (
   modelName: string,
@@ -28,14 +29,23 @@ export const doTrainingLoopAndStoreCheckpoint = (
     throw new Error(`steps has to be a positive integer, received: ${steps}`);
   }
 
-  const trainingData = prepareTrainingData(modelName, model.vocabulary);
+  const trainingData = shuffleArray(
+    prepareTrainingData(modelName, model.vocabulary),
+  );
 
   const startTime = Date.now();
 
   for (let index = 0; index < steps; index++) {
+    const offset =
+      Math.random() * (trainingData.length - MAX_TRAINING_DATA_PER_PASS);
+    const trainingDataToWorkWith = trainingData.slice(
+      offset,
+      offset + MAX_TRAINING_DATA_PER_PASS,
+    );
+
     const { averageLoss, adjustedWeights } = doSingleTrainingPass(
       model,
-      trainingData,
+      trainingDataToWorkWith,
     );
 
     const indexPadded = (index + 1)
@@ -127,3 +137,9 @@ export const doSingleTrainingPass = (
     ),
   };
 };
+
+const shuffleArray = <T>(values: T[]): T[] =>
+  values
+    .map((value) => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
