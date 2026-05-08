@@ -1,0 +1,89 @@
+==== Measuring including memory moving
+
+   tiny    64x64 * 64x64
+    baseline   mean=0.327ms median=0.327ms min=0.313ms stddev=0.009ms
+    candidate  mean=1.146ms median=1.044ms min=0.794ms stddev=0.361ms
+    -> candidate is 3.19x slower (median)
+
+  small  128x128 * 128x128
+    baseline   mean=2.882ms median=2.786ms min=2.771ms stddev=0.197ms
+    candidate  mean=1.583ms median=1.423ms min=1.345ms stddev=0.429ms
+    -> candidate is 1.96x faster (median)
+
+  med    256x256 * 256x256
+    baseline   mean=22.210ms median=21.941ms min=20.864ms stddev=1.086ms
+    candidate  mean=5.278ms median=5.396ms min=4.394ms stddev=0.794ms
+    -> candidate is 4.07x faster (median)
+
+  large  512x512 * 512x512
+    baseline   mean=198.152ms median=186.214ms min=167.922ms stddev=49.233ms
+    candidate  mean=20.899ms median=19.797ms min=17.404ms stddev=3.114ms
+    -> candidate is 9.41x faster (median)
+
+  tall   512x128 * 128x512
+    baseline   mean=45.227ms median=43.348ms min=42.001ms stddev=5.657ms
+    candidate  mean=11.205ms median=8.837ms min=8.021ms stddev=5.379ms
+    -> candidate is 4.91x faster (median)
+
+
+==== Measuring computation only (no memory moving)
+
+matmul A/B benchmark
+  baseline = multiplyMatrices, candidate = multiplyMatricesOnGPU
+  warmup=3, measure=10 iters
+
+
+  tiny    64x64 * 64x64
+    baseline   mean=0.451ms median=0.383ms min=0.321ms stddev=0.264ms
+    candidate  mean=0.121ms median=0.119ms min=0.084ms stddev=0.027ms
+    -> candidate is 3.23x faster (median)
+
+  small  128x128 * 128x128
+    baseline   mean=2.783ms median=2.749ms min=2.729ms stddev=0.086ms
+    candidate  mean=0.139ms median=0.131ms min=0.079ms stddev=0.064ms
+    -> candidate is 20.98x faster (median)
+
+  med    256x256 * 256x256
+    baseline   mean=23.025ms median=23.290ms min=22.007ms stddev=0.611ms
+    candidate  mean=0.243ms median=0.252ms min=0.190ms stddev=0.036ms
+    -> candidate is 92.53x faster (median)
+
+  large  512x512 * 512x512
+    baseline   mean=182.793ms median=180.783ms min=173.721ms stddev=6.771ms
+    candidate  mean=0.294ms median=0.310ms min=0.228ms stddev=0.035ms
+    -> candidate is 582.31x faster (median)
+
+  tall   512x128 * 128x512
+    baseline   mean=46.210ms median=46.241ms min=43.653ms stddev=2.390ms
+    candidate  mean=0.232ms median=0.226ms min=0.183ms stddev=0.033ms
+    -> candidate is 204.83x faster (median)
+
+
+--- crossover search (binary search on square dimension) ---
+  probe n=272 (params=147968): baseline=27.597ms candidate=0.243ms
+  probe n=152 (params=46208): baseline=4.887ms candidate=0.196ms
+  probe n=92 (params=16928): baseline=1.134ms candidate=0.100ms
+  probe n=62 (params=7688): baseline=0.341ms candidate=0.062ms
+  probe n=47 (params=4418): baseline=0.139ms candidate=0.172ms
+  probe n=55 (params=6050): baseline=0.244ms candidate=0.126ms
+  probe n=51 (params=5202): baseline=0.188ms candidate=0.079ms
+  probe n=49 (params=4802): baseline=0.178ms candidate=0.059ms
+  probe n=48 (params=4608): baseline=0.147ms candidate=0.052ms
+
+  crossover at n=48 (square 48x48), parameter count=4608
+
+--- shape comparison (same ~param count, different shapes) ---
+  target param count ≈ 4608
+
+  1×P * P×1 (dot product)  (1×2304 * 2304×1, params=4608, output=1 cells)
+    SKIPPED — GPU error: 'output' is a resource required to populate bind group layout 'paramsLayout'.
+  4×K * K×4  (4×576 * 576×4, params=4608, output=16 cells)
+    baseline=0.017ms candidate=0.218ms → CPU wins (13.01x)
+  16×K * K×16  (16×144 * 144×16, params=4608, output=256 cells)
+    baseline=0.054ms candidate=0.057ms → CPU wins (1.05x)
+  64×K * K×64  (64×36 * 36×64, params=4608, output=4096 cells)
+    baseline=0.212ms candidate=0.047ms → GPU wins (4.48x)
+  48×48 (square)  (48×48 * 48×48, params=4608, output=2304 cells)
+    baseline=0.147ms candidate=0.046ms → GPU wins (3.19x)
+  wide 1×K * K×256  (1×18 * 18×256, params=4626, output=256 cells)
+    baseline=0.006ms candidate=0.055ms → CPU wins (8.51x)

@@ -78,47 +78,10 @@ const dotProductOnGPU = (i: number, j: number) => {
 
 const dotProductRunner = root.createGuardedComputePipeline(dotProductOnGPU);
 
-/** 
- * Wrote this, benched it but not worth it for now.
- * 
- * On my machine:
- * 
- *   tiny    64x64 * 64x64
-    baseline   mean=0.327ms median=0.327ms min=0.313ms stddev=0.009ms
-    candidate  mean=1.146ms median=1.044ms min=0.794ms stddev=0.361ms
-    -> candidate is 3.19x slower (median)
-
-  small  128x128 * 128x128
-    baseline   mean=2.882ms median=2.786ms min=2.771ms stddev=0.197ms
-    candidate  mean=1.583ms median=1.423ms min=1.345ms stddev=0.429ms
-    -> candidate is 1.96x faster (median)
-
-  med    256x256 * 256x256
-    baseline   mean=22.210ms median=21.941ms min=20.864ms stddev=1.086ms
-    candidate  mean=5.278ms median=5.396ms min=4.394ms stddev=0.794ms
-    -> candidate is 4.07x faster (median)
-
-  large  512x512 * 512x512
-    baseline   mean=198.152ms median=186.214ms min=167.922ms stddev=49.233ms
-    candidate  mean=20.899ms median=19.797ms min=17.404ms stddev=3.114ms
-    -> candidate is 9.41x faster (median)
-
-  tall   512x128 * 128x512
-    baseline   mean=45.227ms median=43.348ms min=42.001ms stddev=5.657ms
-    candidate  mean=11.205ms median=8.837ms min=8.021ms stddev=5.379ms
-    -> candidate is 4.91x faster (median)
-
- * So with 256 dimensionslity but with only 10 tokens input we don't cross the threshold
- * Since with a m x k @ k x n multiplication you can parallize m * n dotproduct which at 10 * 256 = 2.5k 
- * In the 64 x 64 test we were more than 3x and that's at 4.1k dotproducts
- * So not worth it
- * 
- * Only in the future if I truly would move entire transformers to the GPU not having to pass around memory arrays it would be better
- */
 export const multiplyMatricesOnGPU = async (
   m1: number[][],
   m2: number[][],
-): Promise<number[][]> => {
+): Promise<{ durationGpu: number; m3: number[][] }> => {
   const m1Depth = m1[0]!.length;
   const m2Depth = m2[0]!.length;
 
@@ -141,12 +104,14 @@ export const multiplyMatricesOnGPU = async (
     },
   });
 
+  const startGpu = performance.now();
   const params = root.createBindGroup(paramsLayout, {
     input: inputBuffer,
     output: outputBuffer,
   });
 
   dotProductRunner.with(params).dispatchThreads(m1.length, m2Depth);
+  const durationGpu = performance.now() - startGpu;
 
   const m3Flat = await outputBuffer.read();
 
@@ -154,5 +119,5 @@ export const multiplyMatricesOnGPU = async (
     return m3Flat.slice(i * m2Depth, (i + 1) * m2Depth);
   });
 
-  return m3;
+  return { m3, durationGpu };
 };
