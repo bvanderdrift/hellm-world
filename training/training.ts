@@ -30,6 +30,8 @@ export const doTrainingLoopAndStoreCheckpoint = (
 
   const trainingData = prepareTrainingData(modelName, model.vocabulary);
 
+  const startTime = Date.now();
+
   for (let index = 0; index < steps; index++) {
     const { averageLoss, adjustedWeights } = doSingleTrainingPass(
       model,
@@ -40,8 +42,11 @@ export const doTrainingLoopAndStoreCheckpoint = (
       .toString()
       .padStart(steps.toString().length, "0");
 
+    const totalDuration = Date.now() - startTime;
+    const avgDuration = totalDuration / (index + 1);
+
     console.log(
-      `(${indexPadded}/${steps}) Training pass done - average loss: ${averageLoss}`,
+      `(${indexPadded}/${steps}) Training pass done - average loss: ${averageLoss} - avg duration: ${Math.round(avgDuration)} ms`,
     );
     historyLosses.push(averageLoss);
     model = {
