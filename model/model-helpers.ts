@@ -1,5 +1,6 @@
 import {
   getMatrixParameterCount,
+  getMatrixSize,
   operateOnMatrices,
   operateOnVectors,
 } from "../shared/matrices.ts";
@@ -10,8 +11,7 @@ import {
 import type { TransformerWeights, Model, Weights } from "./model-types.ts";
 
 export const extractHiddenDimensionSize = (model: Model) => {
-  const embeddingsArray = Object.values(model.embeddings);
-  return embeddingsArray[0]!.length;
+  return getMatrixSize(model.embeddings).dimensionsCount;
 };
 
 export const findTokenIndex = (vocabulary: string[], token: string) => {
