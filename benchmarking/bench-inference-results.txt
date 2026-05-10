@@ -1,15 +1,19 @@
-inference benchmark
-  model=addy  tokens=[1, 2, 3, 4, 5]  iters=10
+inference CPU vs GPU benchmark
+  model=addy
+  warmup=3, measure=10 iters
 
-  run 1: 67.136ms
-  run 2: 55.609ms
-  run 3: 54.940ms
-  run 4: 52.892ms
-  run 5: 52.155ms
-  run 6: 51.652ms
-  run 7: 50.777ms
-  run 8: 53.017ms
-  run 9: 53.205ms
-  run 10: 52.926ms
 
-  mean=54.431ms  median=53.017ms  min=50.777ms  max=67.136ms
+  tokens=1  [1]
+    CPU        mean=16.040ms median=15.430ms min=14.981ms stddev=1.714ms
+    GPU        mean=2181.476ms median=2203.561ms min=2078.959ms stddev=74.254ms
+    -> GPU is 142.81x slower (median)
+
+  tokens=3  [1, 2, 3]
+    CPU        mean=52.560ms median=50.028ms min=46.650ms stddev=5.554ms
+    GPU        mean=2220.915ms median=2154.430ms min=2112.009ms stddev=136.969ms
+    -> GPU is 43.06x slower (median)
+
+  tokens=5  [1, 2, 3, 4, 5]
+    CPU        mean=85.230ms median=85.267ms min=81.515ms stddev=2.374ms
+    GPU        mean=2325.412ms median=2300.004ms min=2165.395ms stddev=102.941ms
+    -> GPU is 26.97x slower (median)
