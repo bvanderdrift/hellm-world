@@ -1,15 +1,15 @@
-import { multiplyMatricesOnGPU } from "../shared/matrices-gpu.ts";
+import {
+  createMatrixBuffer,
+  extractMatrixBuffer,
+  multiplyMatricesOnGPU,
+} from "../shared/matrices-gpu.ts";
 import { createMatrix, multiplyMatrices } from "../shared/matrices.ts";
+import { gpuContext } from "../shared/gpu-context.ts";
 
 type MatMul = (
   a: number[][],
   b: number[][],
 ) => number[][] | Promise<number[][]>;
-
-type MatMulTimed = (
-  a: number[][],
-  b: number[][],
-) => Promise<{ m3: number[][]; durationGpu: number }>;
 
 type Stats = {
   mean: number;
@@ -60,20 +60,29 @@ const benchmark = async (
   return computeStats(samples);
 };
 
-const benchmarkTimed = async (
-  fn: MatMulTimed,
+const benchmarkGPU = async (
   a: number[][],
   b: number[][],
 ): Promise<{ stats: Stats; lastResult: number[][] }> => {
-  for (let i = 0; i < WARMUP_ITERS; i++) await fn(a, b);
+  const m1 = createMatrixBuffer(a);
+  const m2 = createMatrixBuffer(b);
+  const mOut = createMatrixBuffer(
+    createMatrix(a.length, b[0]!.length),
+  );
+
+  for (let i = 0; i < WARMUP_ITERS; i++) {
+    multiplyMatricesOnGPU(m1, m2, mOut);
+    await gpuContext.device.queue.onSubmittedWorkDone();
+  }
 
   const samples: number[] = [];
-  let lastResult: number[][] = [];
   for (let i = 0; i < MEASURE_ITERS; i++) {
-    const { m3, durationGpu } = await fn(a, b);
-    samples.push(durationGpu);
-    lastResult = m3;
+    const start = performance.now();
+    multiplyMatricesOnGPU(m1, m2, mOut);
+    await gpuContext.device.queue.onSubmittedWorkDone();
+    samples.push(performance.now() - start);
   }
+  const lastResult = await extractMatrixBuffer(mOut);
   return { stats: computeStats(samples), lastResult };
 };
 
@@ -163,7 +172,7 @@ const main = async () => {
     const b = createMatrix(k, n, rand);
 
     const r1 = await multiplyMatrices(a, b);
-    const { m3: r2 } = await multiplyMatricesOnGPU(a, b);
+    const { lastResult: r2 } = await benchmarkGPU(a, b);
     const match = matricesMatch(r1, r2);
     if (!match.ok) {
       anyMismatch = true;
@@ -172,11 +181,7 @@ const main = async () => {
     }
 
     const baseline = await benchmark(multiplyMatrices, a, b);
-    const { stats: candidate } = await benchmarkTimed(
-      multiplyMatricesOnGPU,
-      a,
-      b,
-    );
+    const { stats: candidate } = await benchmarkGPU(a, b);
     const speedup = baseline.median / candidate.median;
     printRow(label, baseline, candidate, speedup);
   }
@@ -192,11 +197,7 @@ const main = async () => {
     const a = createMatrix(n, n, rand);
     const b = createMatrix(n, n, rand);
     const baselineStats = await benchmark(multiplyMatrices, a, b);
-    const { stats: candidateStats } = await benchmarkTimed(
-      multiplyMatricesOnGPU,
-      a,
-      b,
-    );
+    const { stats: candidateStats } = await benchmarkGPU(a, b);
     console.log(
       `  probe n=${n} (params=${2 * n * n}): baseline=${fmtMs(baselineStats.median)} candidate=${fmtMs(candidateStats.median)}`,
     );
@@ -248,11 +249,7 @@ const main = async () => {
     const b = createMatrix(k, n, rand);
     try {
       const baselineStats = await benchmark(multiplyMatrices, a, b);
-      const { stats: candidateStats } = await benchmarkTimed(
-        multiplyMatricesOnGPU,
-        a,
-        b,
-      );
+      const { stats: candidateStats } = await benchmarkGPU(a, b);
       const speedup = baselineStats.median / candidateStats.median;
       const winner = speedup >= 1 ? "GPU" : "CPU";
       console.log(

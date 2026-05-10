@@ -34,56 +34,56 @@ matmul A/B benchmark
 
 
   tiny    64x64 * 64x64
-    baseline   mean=0.451ms median=0.383ms min=0.321ms stddev=0.264ms
-    candidate  mean=0.121ms median=0.119ms min=0.084ms stddev=0.027ms
-    -> candidate is 3.23x faster (median)
+    baseline   mean=0.319ms median=0.318ms min=0.315ms stddev=0.004ms
+    candidate  mean=0.425ms median=0.400ms min=0.363ms stddev=0.052ms
+    -> candidate is 1.26x slower (median)
 
   small  128x128 * 128x128
-    baseline   mean=2.783ms median=2.749ms min=2.729ms stddev=0.086ms
-    candidate  mean=0.139ms median=0.131ms min=0.079ms stddev=0.064ms
-    -> candidate is 20.98x faster (median)
+    baseline   mean=2.575ms median=2.528ms min=2.486ms stddev=0.100ms
+    candidate  mean=0.525ms median=0.525ms min=0.474ms stddev=0.031ms
+    -> candidate is 4.82x faster (median)
 
   med    256x256 * 256x256
-    baseline   mean=23.025ms median=23.290ms min=22.007ms stddev=0.611ms
-    candidate  mean=0.243ms median=0.252ms min=0.190ms stddev=0.036ms
-    -> candidate is 92.53x faster (median)
+    baseline   mean=21.185ms median=21.175ms min=20.000ms stddev=0.716ms
+    candidate  mean=1.821ms median=1.836ms min=1.509ms stddev=0.110ms
+    -> candidate is 11.53x faster (median)
 
   large  512x512 * 512x512
-    baseline   mean=182.793ms median=180.783ms min=173.721ms stddev=6.771ms
-    candidate  mean=0.294ms median=0.310ms min=0.228ms stddev=0.035ms
-    -> candidate is 582.31x faster (median)
+    baseline   mean=163.095ms median=163.228ms min=159.186ms stddev=3.843ms
+    candidate  mean=5.266ms median=5.133ms min=4.953ms stddev=0.284ms
+    -> candidate is 31.80x faster (median)
 
   tall   512x128 * 128x512
-    baseline   mean=46.210ms median=46.241ms min=43.653ms stddev=2.390ms
-    candidate  mean=0.232ms median=0.226ms min=0.183ms stddev=0.033ms
-    -> candidate is 204.83x faster (median)
+    baseline   mean=42.051ms median=41.994ms min=40.529ms stddev=0.905ms
+    candidate  mean=2.288ms median=2.458ms min=1.650ms stddev=0.476ms
+    -> candidate is 17.08x faster (median)
 
 
 --- crossover search (binary search on square dimension) ---
-  probe n=272 (params=147968): baseline=27.597ms candidate=0.243ms
-  probe n=152 (params=46208): baseline=4.887ms candidate=0.196ms
-  probe n=92 (params=16928): baseline=1.134ms candidate=0.100ms
-  probe n=62 (params=7688): baseline=0.341ms candidate=0.062ms
-  probe n=47 (params=4418): baseline=0.139ms candidate=0.172ms
-  probe n=55 (params=6050): baseline=0.244ms candidate=0.126ms
-  probe n=51 (params=5202): baseline=0.188ms candidate=0.079ms
-  probe n=49 (params=4802): baseline=0.178ms candidate=0.059ms
-  probe n=48 (params=4608): baseline=0.147ms candidate=0.052ms
+  probe n=272 (params=147968): baseline=24.932ms candidate=2.262ms
+  probe n=152 (params=46208): baseline=4.563ms candidate=0.659ms
+  probe n=92 (params=16928): baseline=1.161ms candidate=0.349ms
+  probe n=62 (params=7688): baseline=0.296ms candidate=0.348ms
+  probe n=77 (params=11858): baseline=0.629ms candidate=0.352ms
+  probe n=70 (params=9800): baseline=0.453ms candidate=0.297ms
+  probe n=66 (params=8712): baseline=0.345ms candidate=0.334ms
+  probe n=64 (params=8192): baseline=0.314ms candidate=0.306ms
+  probe n=63 (params=7938): baseline=0.312ms candidate=0.334ms
 
-  crossover at n=48 (square 48x48), parameter count=4608
+  crossover at n=64 (square 64x64), parameter count=8192
 
 --- shape comparison (same ~param count, different shapes) ---
-  target param count ≈ 4608
+  target param count ≈ 8192
 
-  1×P * P×1 (dot product)  (1×2304 * 2304×1, params=4608, output=1 cells)
-    SKIPPED — GPU error: 'output' is a resource required to populate bind group layout 'paramsLayout'.
-  4×K * K×4  (4×576 * 576×4, params=4608, output=16 cells)
-    baseline=0.017ms candidate=0.218ms → CPU wins (13.01x)
-  16×K * K×16  (16×144 * 144×16, params=4608, output=256 cells)
-    baseline=0.054ms candidate=0.057ms → CPU wins (1.05x)
-  64×K * K×64  (64×36 * 36×64, params=4608, output=4096 cells)
-    baseline=0.212ms candidate=0.047ms → GPU wins (4.48x)
-  48×48 (square)  (48×48 * 48×48, params=4608, output=2304 cells)
-    baseline=0.147ms candidate=0.046ms → GPU wins (3.19x)
-  wide 1×K * K×256  (1×18 * 18×256, params=4626, output=256 cells)
-    baseline=0.006ms candidate=0.055ms → CPU wins (8.51x)
+  1×P * P×1 (dot product)  (1×4096 * 4096×1, params=8192, output=1 cells)
+    baseline=0.017ms candidate=1.691ms → CPU wins (98.03x)
+  4×K * K×4  (4×1024 * 1024×4, params=8192, output=16 cells)
+    baseline=0.030ms candidate=0.797ms → CPU wins (26.21x)
+  16×K * K×16  (16×256 * 256×16, params=8192, output=256 cells)
+    baseline=0.086ms candidate=0.433ms → CPU wins (5.01x)
+  64×K * K×64  (64×64 * 64×64, params=8192, output=4096 cells)
+    baseline=0.351ms candidate=0.341ms → GPU wins (1.03x)
+  64×64 (square)  (64×64 * 64×64, params=8192, output=4096 cells)
+    baseline=0.354ms candidate=0.305ms → GPU wins (1.16x)
+  wide 1×K * K×256  (1×32 * 32×256, params=8224, output=256 cells)
+    baseline=0.010ms candidate=0.296ms → CPU wins (29.97x)
