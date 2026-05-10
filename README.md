@@ -21,6 +21,8 @@ I know JS is not optimal for heavy linear algebra and mathematics. But, I'm here
 
 ## Timmy - a 16k model
 
-I've written about the process of training the model here: [http://its.beer/thoughts/training-timmy](http://its.beer/thoughts/training-timmy).
+Guaranteed working version on tag `timmy` (`git checkout timmy`).
+
+I've written about the behavior and process of training the model here: [http://its.beer/thoughts/training-timmy](http://its.beer/thoughts/training-timmy).
 
 ![Training curve of Timmy](./model/timmy/checkpoint_000007_loss.png)
