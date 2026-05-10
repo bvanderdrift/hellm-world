@@ -1,4 +1,4 @@
-import { llmForwardPassByTokens } from "../running/llm.ts";
+import { llmForwardPassByTokensOnGPU } from "../running/llm.ts";
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { validateModel } from "../model/model-validation.ts";
 
@@ -11,13 +11,15 @@ validateModel(model);
 const inputTokens = model.vocabulary.slice(0, 5);
 
 console.log(`inference benchmark`);
-console.log(`  model=${MODEL_NAME}  tokens=[${inputTokens.join(", ")}]  iters=${ITERS}\n`);
+console.log(
+  `  model=${MODEL_NAME}  tokens=[${inputTokens.join(", ")}]  iters=${ITERS}\n`,
+);
 
 const samples: number[] = [];
 
 for (let i = 0; i < ITERS; i++) {
   const start = performance.now();
-  llmForwardPassByTokens(inputTokens, model, false);
+  llmForwardPassByTokensOnGPU(inputTokens, model, false);
   const elapsed = performance.now() - start;
   samples.push(elapsed);
   console.log(`  run ${i + 1}: ${elapsed.toFixed(3)}ms`);
@@ -29,4 +31,6 @@ const median = sorted[Math.floor(sorted.length / 2)]!;
 const min = sorted[0]!;
 const max = sorted[sorted.length - 1]!;
 
-console.log(`\n  mean=${mean.toFixed(3)}ms  median=${median.toFixed(3)}ms  min=${min.toFixed(3)}ms  max=${max.toFixed(3)}ms`);
+console.log(
+  `\n  mean=${mean.toFixed(3)}ms  median=${median.toFixed(3)}ms  min=${min.toFixed(3)}ms  max=${max.toFixed(3)}ms`,
+);
