@@ -69,11 +69,7 @@ export const multiplyMatricesOnGPU = (
   m1: MatrixBuffer,
   m2: MatrixBuffer,
   mOut: MatrixBuffer,
-): {
-  durationGpu: number;
-  m3: MatrixBuffer;
-} => {
-  const startGpu = performance.now();
+) => {
   const params = gpuContext.createBindGroup(multiplyMatrixParamsLayout, {
     m1: m1.buffer,
     m2: m2.buffer,
@@ -81,9 +77,6 @@ export const multiplyMatricesOnGPU = (
   });
 
   dotProductRunner.with(params).dispatchThreads(m1.vectors, m2.dimensions);
-  const durationGpu = performance.now() - startGpu;
-
-  return { m3: mOut, durationGpu };
 };
 
 export const createMatrixBuffer = (m: number[][]): MatrixBuffer => {
