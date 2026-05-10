@@ -19,7 +19,7 @@ export const getMultilayerPerceptronActivationsOnGPU = (
 
   multiplyMatricesOnGPU(encoding, perceptron.wUp.weightsMatrix, upped);
 
-  addVectorAcrossMatrixOnGPU(upped, perceptron.wDown.biasVector);
+  addVectorAcrossMatrixOnGPU(upped, perceptron.wUp.biasVector);
 
   // We activate neurons
   reluOnGpu(upped);

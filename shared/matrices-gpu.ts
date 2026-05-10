@@ -57,7 +57,7 @@ const dotProductOnGPU = (i: number, j: number) => {
   }
 
   mOut.vectors = m1.vectors;
-  mOut.dimensions = m2.vectors;
+  mOut.dimensions = m2.dimensions;
 
   mOut.values[getFlatIndex(i, j, mOut.dimensions)]! = summed;
 };
