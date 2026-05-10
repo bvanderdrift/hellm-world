@@ -1,0 +1,25 @@
+MLP CPU vs GPU benchmark
+  mlpMultiple=4
+  warmup=3, measure=10 iters
+
+
+  small  C=5  D=64
+    CPU   mean=0.539ms median=0.537ms min=0.521ms stddev=0.017ms
+    GPU   mean=3.435ms median=3.152ms min=2.275ms stddev=1.189ms
+    -> GPU is 5.87x slower (median)
+
+  med    C=5  D=128
+    CPU   mean=1.233ms median=1.199ms min=1.186ms stddev=0.057ms
+    GPU   mean=16.788ms median=15.991ms min=7.172ms stddev=8.415ms
+    -> GPU is 13.34x slower (median)
+
+  large  C=5  D=256
+    CPU   mean=4.938ms median=4.938ms min=4.634ms stddev=0.217ms
+    GPU   mean=2.830ms median=2.583ms min=2.227ms stddev=0.632ms
+    -> GPU is 1.91x faster (median)
+
+  large  C=10 D=256
+    CPU   mean=9.770ms median=9.870ms min=9.313ms stddev=0.377ms
+    GPU   mean=2.638ms median=2.428ms min=2.168ms stddev=0.486ms
+    -> GPU is 4.07x faster (median)
+
