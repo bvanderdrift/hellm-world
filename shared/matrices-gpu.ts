@@ -10,7 +10,7 @@ import { getMatrixSize } from "./matrices.ts";
 const SINGLE_DIMENSION_SIZE = 4_000;
 
 export const matrixBufferDefinition = d.struct({
-  values: d.arrayOf(d.f32, SINGLE_DIMENSION_SIZE),
+  values: d.arrayOf(d.f32, SINGLE_DIMENSION_SIZE ** 2),
   vectors: d.u32,
   dimensions: d.u32,
 });
