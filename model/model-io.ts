@@ -116,6 +116,8 @@ const writeCheckpoint = (
     join(modelFolderPath, newFileName),
     JSON.stringify(cleanPayload),
   );
+
+  console.log(`✅ Checkpoint written to ${newFileName}`);
 };
 
 export const writeNewModel = (modelName: string, model: Model) => {
