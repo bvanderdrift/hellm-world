@@ -13,7 +13,7 @@ import {
 import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
 
-const TRAINING_ALPHA = 0.03;
+const TRAINING_ALPHA = 0.01;
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
 export const doTrainingLoopAndStoreCheckpoint = async (
