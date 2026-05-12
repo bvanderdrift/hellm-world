@@ -4,8 +4,6 @@ export type AttentionHeadActivations = {
   inputQ: number[][];
   attentionRelevancyOutput: number[][];
   softmaxOutput: number[][];
-  /** An array of matrixes; one matrix for each embedding vector  */
-  lookbackUpdateVectors: number[][][];
   output: number[][];
 };
 
