@@ -1,13 +1,10 @@
 import { divideToWhole, softmax } from "../shared/math.ts";
 import {
-  addVectorsInMatrix,
-  applyScalarToVector,
-  transpose,
   multiplyMatrices,
-  multiplyMatrixWithVector,
   validateSize,
-  concatenateMatricesVertically,
   sliceRows,
+  createMatrix,
+  createVector,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type {
@@ -29,27 +26,16 @@ export const runSelfAttentionMechanism = (
 
   const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
-  const sliceForHead = (matrix: number[][], headIndex: number) =>
-    sliceRows(
-      matrix,
-      headIndex * headDimensionsCount,
-      (headIndex + 1) * headDimensionsCount,
-    );
-
-  const headActivations = new Array(headsCount).fill([]).map((_, headIndex) => {
-    return runSelfAttentionHead(
-      sliceForHead(inputQ, headIndex),
-      sliceForHead(inputK, headIndex),
-      sliceForHead(inputV, headIndex),
-    );
-  });
-
-  const headsConcatenated = concatenateMatricesVertically(
-    headActivations.map((h) => h.output),
+  const headActivations = runSelfAttentionHead(
+    inputQ,
+    inputK,
+    inputV,
+    headsCount,
+    headDimensionsCount,
   );
 
   const attentionUpdate = multiplyMatrices(
-    headsConcatenated,
+    headActivations.output,
     attentionWeights.out,
   );
 
@@ -57,75 +43,95 @@ export const runSelfAttentionMechanism = (
 
   return {
     normalizedInput: input,
-    heads: headActivations,
-    outMatrixInputActivations: headsConcatenated,
+    heads: new Array(headsCount)
+      .fill(0)
+      .map((_, h): AttentionHeadActivations => {
+        return {
+          attentionRelevancyOutput:
+            headActivations.attentionRelevancyOutput[h]!,
+          inputK: sliceRows(
+            headActivations.inputK,
+            h * headDimensionsCount,
+            (h + 1) * headDimensionsCount,
+          ),
+          inputQ: sliceRows(
+            headActivations.inputQ,
+            h * headDimensionsCount,
+            (h + 1) * headDimensionsCount,
+          ),
+          inputV: sliceRows(
+            headActivations.inputV,
+            h * headDimensionsCount,
+            (h + 1) * headDimensionsCount,
+          ),
+          output: sliceRows(
+            headActivations.output,
+            h * headDimensionsCount,
+            (h + 1) * headDimensionsCount,
+          ),
+          softmaxOutput: headActivations.softmaxOutput[h]!,
+        };
+      }),
+    outMatrixInputActivations: headActivations.output,
     output: attentionUpdate,
   };
 };
-
 export const runSelfAttentionHead = (
-  inputHeadQ: number[][],
-  inputHeadK: number[][],
-  inputHeadV: number[][],
-): AttentionHeadActivations => {
-  const contextLength = inputHeadQ.length;
-  const headDimensionCount = inputHeadQ[0]?.length ?? -1;
+  inputQ: number[][],
+  inputK: number[][],
+  inputV: number[][],
+  headCount: number,
+  headDimensionsCount: number,
+) => {
+  const attentionRelevancyOutput = new Array(headCount)
+    .fill(0)
+    .map((_) => createMatrix(inputQ.length, inputQ.length));
+  const matchingKeyProducts = new Array(headCount)
+    .fill(0)
+    .map((_) => createMatrix(inputQ.length, inputQ.length));
+  const output = createMatrix(inputQ.length, inputQ[0]!.length);
 
-  const headActivations = inputHeadQ.reduce<AttentionHeadActivations>(
-    (partialActivations, vectorQ, index): AttentionHeadActivations => {
-      const lookbackKeys = inputHeadK.slice(0, index + 1); // inclusive
-      const lookbackValues = inputHeadV.slice(0, index + 1); // inclusive
+  for (let h = 0; h < headCount; h++) {
+    const offset = h * headDimensionsCount;
 
-      const relevancyVector = multiplyMatrixWithVector(
-        vectorQ,
-        transpose(lookbackKeys),
-      );
+    for (let i = 0; i < inputQ.length; i++) {
+      const relevancyLogits = createVector(i + 1);
 
-      const matchingKeyProducts = relevancyVector.map(
-        (value) => value / Math.sqrt(headDimensionCount),
-      );
+      for (let l = 0; l < relevancyLogits.length; l++) {
+        let summed = 0;
 
-      const matchingKeyDistribution = softmax(matchingKeyProducts);
+        for (let k = 0; k < headDimensionsCount; k++) {
+          summed += inputQ[i]![k + offset]! * inputK[l]![k + offset]!;
+        }
 
-      const vectorUpdatePayload = matchingKeyDistribution.map(
-        (scalar, index) => {
-          const valueVector = lookbackValues[index]!;
+        relevancyLogits[l]! = summed / Math.sqrt(headDimensionsCount);
+      }
 
-          return applyScalarToVector(scalar, valueVector);
-        },
-      );
+      const relevancy = softmax(relevancyLogits);
 
-      const updateVector = addVectorsInMatrix(vectorUpdatePayload);
+      for (let l = 0; l < relevancy.length; l++) {
+        attentionRelevancyOutput[h]![i]! = relevancyLogits;
+        matchingKeyProducts[h]![i]! = relevancy;
+      }
+    }
+  }
 
-      return {
-        ...partialActivations,
-        attentionRelevancyOutput: [
-          ...partialActivations.attentionRelevancyOutput,
-          matchingKeyProducts,
-        ],
-        softmaxOutput: [
-          ...partialActivations.softmaxOutput,
-          matchingKeyDistribution,
-        ],
-        lookbackUpdateVectors: [
-          ...partialActivations.lookbackUpdateVectors,
-          vectorUpdatePayload,
-        ],
-        output: [...partialActivations.output, updateVector],
-      };
-    },
-    {
-      inputK: inputHeadK,
-      inputV: inputHeadV,
-      inputQ: inputHeadQ,
-      attentionRelevancyOutput: [],
-      softmaxOutput: [],
-      lookbackUpdateVectors: [],
-      output: [],
-    } satisfies AttentionHeadActivations,
-  );
+  for (let i = 0; i < output.length; i++) {
+    for (let j = 0; j < output[0]!.length; j++) {
+      const h = Math.floor(j / headDimensionsCount);
 
-  validateSize(headActivations.output, contextLength, headDimensionCount);
+      for (let l = 0; l < i + 1; l++) {
+        output[i]![j]! += matchingKeyProducts[h]![i]![l]! * inputV[l]![j]!;
+      }
+    }
+  }
 
-  return headActivations;
+  return {
+    inputK,
+    inputQ,
+    inputV,
+    attentionRelevancyOutput,
+    softmaxOutput: matchingKeyProducts,
+    output,
+  };
 };
