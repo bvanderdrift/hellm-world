@@ -2,8 +2,16 @@ import { calculateStandardDeviation, divideToWhole } from "./math.ts";
 
 export const createVector = (
   dimensionCount: number,
-  fillFunction: () => number = () => 0,
-) => new Array(dimensionCount).fill(0).map(fillFunction);
+  fillFunction?: () => number,
+) => {
+  const arr = new Array<number>(dimensionCount).fill(0);
+
+  if (!fillFunction) {
+    return arr;
+  }
+
+  return arr.map(fillFunction);
+};
 
 export const createMatrix = (
   vectorCount: number,
