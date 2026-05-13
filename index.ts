@@ -29,9 +29,19 @@ program
     "-s, --steps <steps>",
     "Amount of steps before storing another checkpoint",
   )
-  .action(async (modelName: string, opts: { steps: number }) => {
-    await doTrainingLoopAndStoreCheckpoint(modelName, opts.steps);
-  });
+  .option("-m, --multi-thread", "Whether to multithread")
+  .action(
+    async (
+      modelName: string,
+      opts: { steps: number; multiThread?: boolean },
+    ) => {
+      await doTrainingLoopAndStoreCheckpoint(
+        modelName,
+        opts.steps,
+        opts.multiThread ? "cpu-multi" : "cpu-single",
+      );
+    },
+  );
 
 program
   .name("init-model")

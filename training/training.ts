@@ -21,6 +21,7 @@ const MAX_TRAINING_DATA_PER_PASS = 100;
 export const doTrainingLoopAndStoreCheckpoint = async (
   modelName: string,
   steps: number,
+  parallelism: "cpu-single" | "cpu-multi",
 ) => {
   const { historyLosses, model: modelLoaded } =
     getLatestCheckpointModel(modelName);
@@ -48,6 +49,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     const { averageLoss, adjustedWeights } = await runTrainingPasses(
       model,
       trainingDataToWorkWith,
+      parallelism,
     );
 
     const indexPadded = (index + 1)
@@ -78,27 +80,42 @@ export const doTrainingLoopAndStoreCheckpoint = async (
 };
 
 const cpuCount = cpus().length;
-const MULTITHREAD_FLAG = false;
-const effectiveCpuCount = MULTITHREAD_FLAG ? 1 : cpuCount;
 
-const workers = new Array(effectiveCpuCount)
-  .fill(0)
-  .map(() => new Worker("./training/training-worker.ts"));
+let cachedWorkers: Worker[] | null = null;
 
 export const terminateWorkers = () => {
-  workers.forEach((worker) => worker.terminate());
+  cachedWorkers?.forEach((worker) => worker.terminate());
+};
+
+export const getWorkers = (count: number) => {
+  if (cachedWorkers && cachedWorkers.length !== count) {
+    console.log(`Workers were initialized at different size`);
+  }
+
+  cachedWorkers =
+    cachedWorkers ??
+    new Array(count)
+      .fill(0)
+      .map(() => new Worker("./training/training-worker.ts"));
+
+  return cachedWorkers;
 };
 
 const runTrainingPasses = async (
   model: Model,
   trainingData: string[][],
+  parallelism: "cpu-single" | "cpu-multi",
 ): Promise<{
   averageLoss: number;
   adjustedWeights: Weights;
 }> => {
+  const effectiveCpuCount = parallelism === "cpu-single" ? 1 : cpuCount;
+
   if (effectiveCpuCount === 1) {
     return doSingleTrainingPass(model, trainingData);
   }
+
+  const workers = getWorkers(effectiveCpuCount);
 
   const batchSize = Math.ceil(trainingData.length / workers.length);
 
