@@ -15,5 +15,6 @@
     "<EOS>"
   ],
   "headsCount": 8,
-  "mlpMultiple": 4
+  "mlpMultiple": 4,
+  "trainingMaskSeparator": "="
 }

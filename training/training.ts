@@ -14,7 +14,10 @@ import type {
   InputMessagePayload,
   OutputMessagePayload,
 } from "./training-worker.ts";
-import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
+import {
+  doSingleTrainingPass,
+  type TrainingExample,
+} from "./doSingleTrainingPass.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
@@ -33,7 +36,11 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   }
 
   const trainingData = shuffleArray(
-    prepareTrainingData(modelName, model.vocabulary),
+    prepareTrainingData(
+      modelName,
+      model.vocabulary,
+      model.trainingMaskSeparator ?? null,
+    ),
   );
 
   const startTime = Date.now();
@@ -103,7 +110,7 @@ export const getWorkers = (count: number) => {
 
 const runTrainingPasses = async (
   model: Model,
-  trainingData: string[][],
+  trainingData: TrainingExample[],
   parallelism: "cpu-single" | "cpu-multi",
 ): Promise<{
   averageLoss: number;
@@ -155,7 +162,7 @@ const runTrainingPasses = async (
 
 const runTrainingWorker = async (
   model: Model,
-  trainingData: string[][],
+  trainingData: TrainingExample[],
   trainingWorker: Worker,
 ): Promise<{
   averageLoss: number;

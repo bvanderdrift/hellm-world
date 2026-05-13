@@ -1,12 +1,15 @@
 import type { Model, Weights } from "../model/model-types.ts";
-import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
+import {
+  doSingleTrainingPass,
+  type TrainingExample,
+} from "./doSingleTrainingPass.ts";
 
 // prevents TS errors
 declare var self: Worker;
 
 export type InputMessagePayload = {
   model: Model;
-  trainingData: string[][];
+  trainingData: TrainingExample[];
 };
 
 export type OutputMessagePayload = {

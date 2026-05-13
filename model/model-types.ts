@@ -29,6 +29,7 @@ export type Weights = {
 
 export type ModelMetadata = {
   vocabulary: string[];
+  trainingMaskSeparator?: string;
   headsCount: number;
   mlpMultiple: number;
 };

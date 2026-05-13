@@ -9,15 +9,20 @@ import { backprop } from "./backprop/backprop.ts";
 
 const TRAINING_ALPHA = 0.01;
 
+export type TrainingExample = {
+  sequence: string[];
+  maskBeforeIndex: number | null;
+};
+
 export const doSingleTrainingPass = async (
   model: Model,
-  trainingData: string[][],
+  trainingData: TrainingExample[],
 ): Promise<{
   averageLoss: number;
   adjustedWeights: Weights;
 }> => {
   const summedLossWithGradients = await trainingData.reduce(
-    async (accP, sequence, index) => {
+    async (accP, { sequence, maskBeforeIndex }, index) => {
       const acc = await accP;
       const { activations } = llmForwardPassByTokens(sequence, model, true);
 
@@ -26,6 +31,10 @@ export const doSingleTrainingPass = async (
       }
 
       const correctTokenIndices = sequence.map((_, index) => {
+        if (maskBeforeIndex !== null && index < maskBeforeIndex) {
+          return -1; //Mask
+        }
+
         const correctToken = sequence[index + 1]!;
 
         return model.vocabulary.indexOf(correctToken);

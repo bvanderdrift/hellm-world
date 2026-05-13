@@ -20,6 +20,13 @@ export const backprop = (
     (outputLogits, contextIndex) => {
       const correctTokenIndex = correctTokenIndices[contextIndex]!;
 
+      if (correctTokenIndex === -1) {
+        return {
+          probability: outputLogits.map((_) => 0),
+          loss: 0,
+        };
+      }
+
       /**
        * This is essentially just a more elaborate softmax, so we can deal with problems around JS floating points when we get to really small numbers
        *

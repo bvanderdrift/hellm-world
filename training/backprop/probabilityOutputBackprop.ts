@@ -5,8 +5,14 @@ export const probabilityOutputBackprop = (
 ) =>
   unembeddingsOutputLogits.map((outputVector, inputTokenIndex) => {
     return outputVector.map((_, vocabIndex) => {
-      const isCorrectToken =
-        vocabIndex === correctTokenIndices[inputTokenIndex]!;
+      const correctTokenIndex = correctTokenIndices[inputTokenIndex]!;
+
+      if (correctTokenIndex === -1) {
+        // Masked
+        return 0;
+      }
+
+      const isCorrectToken = vocabIndex === correctTokenIndex;
 
       const actualProbability =
         outputProbabilities[inputTokenIndex]![vocabIndex]!;
