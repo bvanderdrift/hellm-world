@@ -19,9 +19,18 @@ The goal is to not use any AI-generated code or dependencies for the actual infe
 
 I know JS is not optimal for heavy linear algebra and mathematics. But, I'm here to learn at the highest speed possible; and am most comfortable in JS. Thus the choice to write in this.
 
-## Timmy - a 16k model
+## Timmy - a 6k model
 
 Guaranteed working version on tag `timmy` (`git checkout timmy`).
+
+```
+pnpm describe timmy
+
+Parameter count: 6.6K
+Transformer count: 2
+Attention head count: 2
+Hidden dimensions size: 16
+```
 
 I've written about the behavior and process of training the model here: [http://its.beer/thoughts/training-timmy](http://its.beer/thoughts/training-timmy).
 
