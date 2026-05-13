@@ -14,6 +14,7 @@ import type {
   InputMessagePayload,
   OutputMessagePayload,
 } from "./training-worker.ts";
+import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
@@ -44,7 +45,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       offset + MAX_TRAINING_DATA_PER_PASS,
     );
 
-    const { averageLoss, adjustedWeights } = await parralizePasses(
+    const { averageLoss, adjustedWeights } = await runTrainingPasses(
       model,
       trainingDataToWorkWith,
     );
@@ -77,8 +78,10 @@ export const doTrainingLoopAndStoreCheckpoint = async (
 };
 
 const cpuCount = cpus().length;
+const MULTITHREAD_FLAG = false;
+const effectiveCpuCount = MULTITHREAD_FLAG ? 1 : cpuCount;
 
-const workers = new Array(cpuCount)
+const workers = new Array(effectiveCpuCount)
   .fill(0)
   .map(() => new Worker("./training/training-worker.ts"));
 
@@ -86,13 +89,17 @@ export const terminateWorkers = () => {
   workers.forEach((worker) => worker.terminate());
 };
 
-const parralizePasses = async (
+const runTrainingPasses = async (
   model: Model,
   trainingData: string[][],
 ): Promise<{
   averageLoss: number;
   adjustedWeights: Weights;
 }> => {
+  if (effectiveCpuCount === 1) {
+    return doSingleTrainingPass(model, trainingData);
+  }
+
   const batchSize = Math.ceil(trainingData.length / workers.length);
 
   const splitData = workers.map((_, cpuIndex) => {
