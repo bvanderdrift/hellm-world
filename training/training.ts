@@ -1,5 +1,3 @@
-import { llmForwardPassByTokens } from "../running/llm.ts";
-import { sum } from "../shared/math.ts";
 import type { Model, Weights } from "../model/model-types.ts";
 import {
   makeZeroVersion,
@@ -10,10 +8,14 @@ import {
   getLatestCheckpointModel,
   writeNewCheckpoint,
 } from "../model/model-io.ts";
-import { backprop } from "./backprop/backprop.ts";
 import { prepareTrainingData } from "./prepareTrainingData.ts";
+import { cpus } from "os";
+import type {
+  InputMessagePayload,
+  OutputMessagePayload,
+} from "./training-worker.ts";
+import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 
-const TRAINING_ALPHA = 0.01;
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
 export const doTrainingLoopAndStoreCheckpoint = async (
@@ -43,7 +45,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       offset + MAX_TRAINING_DATA_PER_PASS,
     );
 
-    const { averageLoss, adjustedWeights } = await doSingleTrainingPass(
+    const { averageLoss, adjustedWeights } = await runTrainingPasses(
       model,
       trainingDataToWorkWith,
     );
@@ -65,6 +67,8 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     };
   }
 
+  terminateWorkers();
+
   writeNewCheckpoint(modelName, {
     historyLosses,
     weights: model,
@@ -73,64 +77,87 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
-export const doSingleTrainingPass = async (
+const cpuCount = cpus().length;
+const MULTITHREAD_FLAG = false;
+const effectiveCpuCount = MULTITHREAD_FLAG ? 1 : cpuCount;
+
+const workers = new Array(effectiveCpuCount)
+  .fill(0)
+  .map(() => new Worker("./training/training-worker.ts"));
+
+export const terminateWorkers = () => {
+  workers.forEach((worker) => worker.terminate());
+};
+
+const runTrainingPasses = async (
   model: Model,
   trainingData: string[][],
 ): Promise<{
   averageLoss: number;
   adjustedWeights: Weights;
 }> => {
-  const summedLossWithGradients = await trainingData.reduce(
-    async (accP, sequence) => {
-      const acc = await accP;
-      const { activations } = llmForwardPassByTokens(sequence, model, true);
+  if (effectiveCpuCount === 1) {
+    return doSingleTrainingPass(model, trainingData);
+  }
 
-      if (!activations) {
-        throw new Error(`No activations returned during LLM Forward pass`);
-      }
+  const batchSize = Math.ceil(trainingData.length / workers.length);
 
-      const correctTokenIndices = sequence.map((_, index) => {
-        const correctToken = sequence[index + 1]!;
+  const splitData = workers.map((_, cpuIndex) => {
+    return trainingData.slice(cpuIndex * batchSize, (cpuIndex + 1) * batchSize);
+  });
 
-        return model.vocabulary.indexOf(correctToken);
-      });
-
-      const backpropResults = backprop(model, activations, correctTokenIndices);
-
-      return {
-        loss: acc.loss + backpropResults.loss,
-        // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
-        flatTrainingSize: acc.flatTrainingSize + sequence.length - 1,
-        gradients: operateCombinedWeights(
-          acc.gradients,
-          backpropResults.gradients,
-          (v1, v2) => v1 + v2,
-        ),
-      };
-    },
-    Promise.resolve({
-      loss: 0,
-      flatTrainingSize: 0,
-      gradients: makeZeroVersion(model),
+  const results = await Promise.all(
+    splitData.map(async (singleBatch, workerIndex) => {
+      return runTrainingWorker(model, singleBatch, workers[workerIndex]!);
     }),
   );
 
-  const averageLoss =
-    summedLossWithGradients.loss / summedLossWithGradients.flatTrainingSize;
-  const averageGradient = operateSingleWeights(
-    summedLossWithGradients.gradients,
-    (v1) => v1 / summedLossWithGradients.flatTrainingSize,
-  );
+  let summedLoss = 0;
+  let summedWeightAdjustements: Weights = makeZeroVersion(model);
+
+  for (let index = 0; index < results.length; index++) {
+    const result = results[index]!;
+    const batchSize = splitData[index]!.length;
+
+    summedLoss += result.averageLoss * batchSize;
+    summedWeightAdjustements = operateCombinedWeights(
+      summedWeightAdjustements,
+      result.adjustedWeights,
+      (v1, v2) => v1 + v2 * batchSize,
+    );
+  }
 
   return {
-    averageLoss,
-    adjustedWeights: operateCombinedWeights(
-      model,
-      averageGradient,
-      // Subtraction since we need to go DOWNHILL
-      (v1, v2) => v1 - TRAINING_ALPHA * v2,
+    adjustedWeights: operateSingleWeights(
+      summedWeightAdjustements,
+      (v) => v / trainingData.length,
     ),
+    averageLoss: summedLoss / trainingData.length,
   };
+};
+
+const runTrainingWorker = async (
+  model: Model,
+  trainingData: string[][],
+  trainingWorker: Worker,
+): Promise<{
+  averageLoss: number;
+  adjustedWeights: Weights;
+}> => {
+  return new Promise((resolve, reject) => {
+    trainingWorker.onerror = (e) => reject(e);
+    trainingWorker.onmessageerror = (e) => reject(e);
+    trainingWorker.onmessage = (event: MessageEvent<OutputMessagePayload>) => {
+      resolve(event.data);
+    };
+
+    const input: InputMessagePayload = {
+      model,
+      trainingData,
+    };
+
+    trainingWorker.postMessage(input);
+  });
 };
 
 const shuffleArray = <T>(values: T[]): T[] =>
