@@ -1,7 +1,10 @@
 import { program } from "commander";
 import { input, number } from "@inquirer/prompts";
 import { runLlm } from "./running/llm.ts";
-import { doTrainingLoopAndStoreCheckpoint } from "./training/training.ts";
+import {
+  doTrainingLoopAndStoreCheckpoint,
+  type EndDefinition,
+} from "./training/training.ts";
 import { getLatestCheckpointModel, writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
@@ -29,15 +32,43 @@ program
     "-s, --steps <steps>",
     "Amount of steps before storing another checkpoint",
   )
+  .option(
+    "-t, --time <time>",
+    "Amount of minutes before storing another checkpoint",
+  )
   .option("-m, --multi-thread", "Whether to multithread")
   .action(
     async (
       modelName: string,
-      opts: { steps: number; multiThread?: boolean },
+      opts: { steps?: number; multiThread?: boolean; time?: number },
     ) => {
+      if (opts.steps && opts.time) {
+        throw new Error(
+          "Ambiguous end definition provided. Only one is allowed: -s or -t",
+        );
+      }
+
+      const endDefinition: EndDefinition | null = opts.steps
+        ? {
+            type: "steps",
+            count: opts.steps,
+          }
+        : opts.time
+          ? {
+              type: "minutes",
+              count: opts.time,
+            }
+          : null;
+
+      if (!endDefinition) {
+        throw new Error(
+          `No end definition provided. Either -s or -t is required`,
+        );
+      }
+
       await doTrainingLoopAndStoreCheckpoint(
         modelName,
-        opts.steps,
+        endDefinition,
         opts.multiThread ? "cpu-multi" : "cpu-single",
       );
     },

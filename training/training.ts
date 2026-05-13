@@ -21,9 +21,11 @@ import {
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
+export type EndDefinition = { type: "minutes" | "steps"; count: number };
+
 export const doTrainingLoopAndStoreCheckpoint = async (
   modelName: string,
-  steps: number,
+  endDefinition: EndDefinition,
   parallelism: "cpu-single" | "cpu-multi",
 ) => {
   const { historyLosses, model: modelLoaded } =
@@ -31,8 +33,18 @@ export const doTrainingLoopAndStoreCheckpoint = async (
 
   let model = modelLoaded;
 
-  if (steps <= 0) {
-    throw new Error(`steps has to be a positive integer, received: ${steps}`);
+  if (endDefinition.count <= 0) {
+    throw new Error(
+      `End count has to be a positive integer, received: ${endDefinition.count}`,
+    );
+  }
+
+  if (endDefinition.type === "steps") {
+    console.log(`Going to run training for ${endDefinition.count} steps`);
+  } else {
+    console.log(
+      `Going to run training for ${endDefinition.count} minutes (~${(endDefinition.count / 60).toFixed(1)} hours)`,
+    );
   }
 
   const trainingData = shuffleArray(
@@ -44,8 +56,23 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   );
 
   const startTime = Date.now();
+  let index = 0;
 
-  for (let index = 0; index < steps; index++) {
+  const getPercentComplete = () => {
+    if (endDefinition.type === "steps") {
+      return index / endDefinition.count;
+    }
+
+    const timeLapsed = Date.now() - startTime;
+
+    const minutesLapsed = timeLapsed / (1000 * 60);
+
+    return minutesLapsed / endDefinition.count;
+  };
+
+  let percentComplete = 0;
+
+  while ((percentComplete = getPercentComplete()) < 1) {
     const offset =
       Math.random() * (trainingData.length - MAX_TRAINING_DATA_PER_PASS);
     const trainingDataToWorkWith = trainingData.slice(
@@ -59,15 +86,15 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       parallelism,
     );
 
-    const indexPadded = (index + 1)
-      .toString()
-      .padStart(steps.toString().length, "0");
+    index++;
+
+    const indexPadded = index.toString().padStart(index.toString().length, "0");
 
     const totalDuration = Date.now() - startTime;
-    const avgDuration = totalDuration / (index + 1);
+    const avgDuration = totalDuration / index;
 
     console.log(
-      `(${indexPadded}/${steps}) Training pass done - average loss: ${averageLoss} - avg duration: ${Math.round(avgDuration)} ms`,
+      `(step ${indexPadded}) - (${(getPercentComplete() * 100).toFixed(2)}% complete) Training pass done - average loss: ${averageLoss} - avg duration: ${Math.round(avgDuration)} ms`,
     );
     historyLosses.push(averageLoss);
     model = {
