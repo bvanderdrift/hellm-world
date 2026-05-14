@@ -60,12 +60,6 @@ program
             }
           : null;
 
-      if (!endDefinition) {
-        throw new Error(
-          `No end definition provided. Either -s or -t is required`,
-        );
-      }
-
       await doTrainingLoopAndStoreCheckpoint(
         modelName,
         endDefinition,

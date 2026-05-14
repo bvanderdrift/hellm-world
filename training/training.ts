@@ -18,6 +18,8 @@ import {
   doSingleTrainingPass,
   type TrainingExample,
 } from "./doSingleTrainingPass.ts";
+import { createStateStore, type StateStore } from "./training-state.ts";
+import { startKeyboardListening } from "./keyboard-listener.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
@@ -25,21 +27,23 @@ export type EndDefinition = { type: "minutes" | "steps"; count: number };
 
 export const doTrainingLoopAndStoreCheckpoint = async (
   modelName: string,
-  endDefinition: EndDefinition,
+  endDefinition: EndDefinition | null,
   parallelism: "cpu-single" | "cpu-multi",
 ) => {
   const { historyLosses, model: modelLoaded } =
     getLatestCheckpointModel(modelName);
 
-  let model = modelLoaded;
-
-  if (endDefinition.count <= 0) {
+  if (endDefinition && endDefinition.count <= 0) {
     throw new Error(
       `End count has to be a positive integer, received: ${endDefinition.count}`,
     );
   }
 
-  if (endDefinition.type === "steps") {
+  if (!endDefinition) {
+    console.log(
+      "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
+    );
+  } else if (endDefinition.type === "steps") {
     console.log(`Going to run training for ${endDefinition.count} steps`);
   } else {
     console.log(
@@ -47,32 +51,26 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     );
   }
 
+  const stateStore = createStateStore(
+    endDefinition,
+    modelName,
+    modelLoaded,
+    historyLosses,
+  );
+
   const trainingData = shuffleArray(
     prepareTrainingData(
       modelName,
-      model.vocabulary,
-      model.trainingMaskSeparator ?? null,
+      modelLoaded.vocabulary,
+      modelLoaded.trainingMaskSeparator ?? null,
     ),
   );
 
-  const startTime = Date.now();
-  let index = 0;
+  let state = stateStore.getState();
 
-  const getPercentComplete = () => {
-    if (endDefinition.type === "steps") {
-      return index / endDefinition.count;
-    }
+  startKeyboardListening(stateStore);
 
-    const timeLapsed = Date.now() - startTime;
-
-    const minutesLapsed = timeLapsed / (1000 * 60);
-
-    return minutesLapsed / endDefinition.count;
-  };
-
-  let percentComplete = 0;
-
-  while ((percentComplete = getPercentComplete()) < 1) {
+  while (!(state = stateStore.getState()).isDone) {
     const offset =
       Math.random() * (trainingData.length - MAX_TRAINING_DATA_PER_PASS);
     const trainingDataToWorkWith = trainingData.slice(
@@ -81,36 +79,46 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     );
 
     const { averageLoss, adjustedWeights } = await runTrainingPasses(
-      model,
+      state.model,
       trainingDataToWorkWith,
       parallelism,
     );
 
-    index++;
+    stateStore.updateModelWithNewWeights(adjustedWeights, averageLoss);
 
-    const indexPadded = index.toString().padStart(index.toString().length, "0");
-
-    const totalDuration = Date.now() - startTime;
-    const avgDuration = totalDuration / index;
-
-    console.log(
-      `(step ${indexPadded}) - (${(getPercentComplete() * 100).toFixed(2)}% complete) Training pass done - average loss: ${averageLoss} - avg duration: ${Math.round(avgDuration)} ms`,
-    );
-    historyLosses.push(averageLoss);
-    model = {
-      ...model,
-      ...adjustedWeights,
-    };
+    logStateProgress(stateStore);
   }
+
+  stateStore.writeNewCheckpoint();
 
   terminateWorkers();
 
-  writeNewCheckpoint(modelName, {
-    historyLosses,
-    weights: model,
-  });
-
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
+};
+
+const logStateProgress = (store: StateStore) => {
+  const {
+    currentStepIndex: index,
+    percentDone: newPercentDone,
+    startTime,
+    lossHistory,
+  } = store.getState();
+
+  const lastLoss = lossHistory[lossHistory.length - 1]!;
+
+  const indexPadded = index.toString().padStart(index.toString().length, "0");
+
+  const totalDuration = Date.now() - startTime;
+  const avgDuration = totalDuration / index;
+
+  const percentFormatted =
+    newPercentDone === null
+      ? ""
+      : `(${(newPercentDone * 100).toFixed(2)}% complete) `;
+
+  console.log(
+    `(step ${indexPadded}) - ${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
+  );
 };
 
 const cpuCount = cpus().length;
