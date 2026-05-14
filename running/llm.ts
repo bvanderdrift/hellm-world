@@ -1,10 +1,11 @@
 import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
-  applyScalarToVector,
+  applyScalarToMatrix,
+  getRawVector,
   multiplyMatrices,
   normalize,
-  validateSize,
+  type Matrix,
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
@@ -60,7 +61,7 @@ const generateLogits = (input: string[], weights: Model) => {
   );
 
   // Last vector is probability logits
-  const logits = unembeddedState[unembeddedState.length - 1];
+  const logits = getRawVector(unembeddedState, unembeddedState.vectors - 1);
 
   if (!logits) {
     throw new Error(`Logits array is undefined`);
@@ -69,7 +70,7 @@ const generateLogits = (input: string[], weights: Model) => {
   return logits;
 };
 
-export const getHighestValueIndex = (values: number[]) => {
+export const getHighestValueIndex = (values: Float32Array) => {
   return values.reduce(
     (tracker, value, index) => {
       if (value > tracker.value) {
@@ -93,7 +94,7 @@ export const llmForwardPassByTokens = (
   model: Model,
   withActivations: boolean,
 ): {
-  embeddings: number[][];
+  embeddings: Matrix;
   activations: Activations | null;
 } => {
   const hiddenDimensionsSize = extractHiddenDimensionSize(model);
@@ -103,15 +104,12 @@ export const llmForwardPassByTokens = (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const startState = inputPositionToVocabPosition.map((vocabIndex) => {
-    const tokenEmbedding = model.embeddings[vocabIndex]!;
+  const startState = applyScalarToMatrix(
+    Math.sqrt(hiddenDimensionsSize),
+    model.embeddings,
+  );
 
-    return applyScalarToVector(Math.sqrt(hiddenDimensionsSize), tokenEmbedding);
-  });
-
-  const contextSize = startState.length;
-
-  validateSize(startState, contextSize, hiddenDimensionsSize);
+  const contextSize = startState.vectors;
 
   const positionalEncoding = getPositionEncoding(
     contextSize,
@@ -121,12 +119,6 @@ export const llmForwardPassByTokens = (
   const embeddingsPositionallyEncoded = addMatrices(
     startState,
     positionalEncoding,
-  );
-
-  validateSize(
-    embeddingsPositionallyEncoded,
-    contextSize,
-    hiddenDimensionsSize,
   );
 
   const transformerActivations: TransformerActivations[] = [];
@@ -155,7 +147,6 @@ export const llmForwardPassByTokens = (
         // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
         mlpInputEmbeddings,
         transformer.multilayerPerceptron,
-        model.mlpMultiple,
       );
 
       if (withActivations) {
@@ -183,8 +174,6 @@ export const llmForwardPassByTokens = (
     model.unembeddings,
   );
 
-  validateSize(unembeddedState, contextSize, model.vocabulary.length);
-
   const missingTransformerActivationsCount =
     model.transformers.length - transformerActivations.length;
 
@@ -211,7 +200,10 @@ export const llmForwardPassByTokens = (
   };
 };
 
-export const pickToken = (probabilities: number[], vocabulary: string[]) => {
+export const pickToken = (
+  probabilities: Float32Array,
+  vocabulary: string[],
+) => {
   const nextTokenIndex = getHighestValueIndex(probabilities);
 
   const nextToken = vocabulary[nextTokenIndex];

@@ -1,10 +1,10 @@
 import { divideToWhole, softmax } from "../shared/math.ts";
 import {
   multiplyMatrices,
-  validateSize,
   sliceRows,
   createMatrix,
-  createVector,
+  type Matrix,
+  getFlatIndex,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type {
@@ -13,12 +13,11 @@ import type {
 } from "../model/activations-types.ts";
 
 export const runSelfAttentionMechanism = (
-  input: number[][],
+  input: Matrix,
   headsCount: number,
   attentionWeights: AttentionWeights,
 ): AttentionActivations => {
-  const contextLength = input.length;
-  const hiddenDimensionsCount = input[0]?.length ?? -1;
+  const hiddenDimensionsCount = input.dimensions;
 
   const inputQ = multiplyMatrices(input, attentionWeights.Q);
   const inputK = multiplyMatrices(input, attentionWeights.K);
@@ -38,8 +37,6 @@ export const runSelfAttentionMechanism = (
     headActivations.output,
     attentionWeights.out,
   );
-
-  validateSize(attentionUpdate, contextLength, hiddenDimensionsCount);
 
   return {
     normalizedInput: input,
@@ -77,31 +74,33 @@ export const runSelfAttentionMechanism = (
   };
 };
 export const runSelfAttentionHead = (
-  inputQ: number[][],
-  inputK: number[][],
-  inputV: number[][],
+  inputQ: Matrix,
+  inputK: Matrix,
+  inputV: Matrix,
   headCount: number,
   headDimensionsCount: number,
 ) => {
   const attentionRelevancyOutput = new Array(headCount)
     .fill(0)
-    .map((_) => createMatrix(inputQ.length, inputQ.length));
+    .map((_) => createMatrix(inputQ.vectors, inputQ.vectors));
   const matchingKeyProducts = new Array(headCount)
     .fill(0)
-    .map((_) => createMatrix(inputQ.length, inputQ.length));
-  const output = createMatrix(inputQ.length, inputQ[0]!.length);
+    .map((_) => createMatrix(inputQ.vectors, inputQ.vectors));
+  const output = createMatrix(inputQ.vectors, inputQ.dimensions);
 
   for (let h = 0; h < headCount; h++) {
     const offset = h * headDimensionsCount;
 
-    for (let i = 0; i < inputQ.length; i++) {
-      const relevancyLogits = createVector(i + 1);
+    for (let i = 0; i < inputQ.vectors; i++) {
+      const relevancyLogits = new Float32Array(i + 1).fill(0);
 
       for (let l = 0; l < relevancyLogits.length; l++) {
         let summed = 0;
 
         for (let k = 0; k < headDimensionsCount; k++) {
-          summed += inputQ[i]![k + offset]! * inputK[l]![k + offset]!;
+          summed +=
+            inputQ.values[getFlatIndex(i, k + offset, headDimensionsCount)]! *
+            inputK.values[getFlatIndex(l, k + offset, headDimensionsCount)]!;
         }
 
         relevancyLogits[l]! = summed / Math.sqrt(headDimensionsCount);
@@ -109,19 +108,21 @@ export const runSelfAttentionHead = (
 
       const relevancy = softmax(relevancyLogits);
 
-      for (let l = 0; l < relevancy.length; l++) {
-        attentionRelevancyOutput[h]![i]! = relevancyLogits;
-        matchingKeyProducts[h]![i]! = relevancy;
-      }
+      const startIndexToSet = getFlatIndex(i, 0, inputQ.vectors);
+      attentionRelevancyOutput[h]!.values.set(relevancyLogits, startIndexToSet);
+      matchingKeyProducts[h]!.values.set(relevancy, startIndexToSet);
     }
   }
 
-  for (let i = 0; i < output.length; i++) {
-    for (let j = 0; j < output[0]!.length; j++) {
+  for (let i = 0; i < output.vectors; i++) {
+    for (let j = 0; j < output.dimensions; j++) {
       const h = Math.floor(j / headDimensionsCount);
+      const outputIndex = getFlatIndex(i, j, output.dimensions);
 
       for (let l = 0; l < i + 1; l++) {
-        output[i]![j]! += matchingKeyProducts[h]![i]![l]! * inputV[l]![j]!;
+        output.values[outputIndex]! +=
+          matchingKeyProducts[h]!.values[getFlatIndex(i, l, output.vectors)]! *
+          inputV.values[getFlatIndex(l, j, inputV.dimensions)]!;
       }
     }
   }

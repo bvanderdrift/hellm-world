@@ -1,20 +1,26 @@
+import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices.ts";
+
 export const getPositionEncoding = (
   tokenCount: number,
   dimensions: number,
-): number[][] => {
-  return new Array(tokenCount).fill(0).map((_, position) =>
-    new Array(dimensions).fill(0).map((_, featureIndex) => {
-      const pairIndex = featureIndex - (featureIndex % 2);
-      const divider = Math.pow(10_000, pairIndex / dimensions);
-      const angle = position / divider;
+): Matrix => {
+  const output = createMatrix(tokenCount, dimensions);
 
-      if (featureIndex % 2 === 0) {
+  for (let i = 0; i < tokenCount; i++) {
+    for (let j = 0; j < dimensions; j++) {
+      const pairIndex = j - (j % 2);
+      const divider = Math.pow(10_000, pairIndex / dimensions);
+      const angle = i / divider;
+
+      if (j % 2 === 0) {
         // even
-        return Math.sin(angle);
+        output.values[getFlatIndex(i, j, dimensions)] = Math.sin(angle);
       } else {
         // odd
-        return Math.cos(angle);
+        output.values[getFlatIndex(i, j, dimensions)] = Math.cos(angle);
       }
-    }),
-  );
+    }
+  }
+
+  return output;
 };

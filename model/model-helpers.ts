@@ -1,17 +1,12 @@
 import {
   getMatrixParameterCount,
-  getMatrixSize,
   operateOnMatrices,
-  operateOnVectors,
 } from "../shared/matrices.ts";
-import {
-  validateSameModelShape,
-  validateSameWeightsShape,
-} from "./model-validation.ts";
+import { validateSameWeightsShape } from "./model-validation.ts";
 import type { TransformerWeights, Model, Weights } from "./model-types.ts";
 
 export const extractHiddenDimensionSize = (model: Model) => {
-  return getMatrixSize(model.embeddings).dimensionsCount;
+  return model.embeddings.dimensions;
 };
 
 export const findTokenIndex = (vocabulary: string[], token: string) => {
@@ -85,7 +80,7 @@ export const operateCombinedWeights = (
                 transformerWeights2.multilayerPerceptron.wDown.weightsMatrix,
                 operation,
               ),
-              biasVector: operateOnVectors(
+              biasVector: operateOnMatrices(
                 transformerWeights1.multilayerPerceptron.wDown.biasVector,
                 transformerWeights2.multilayerPerceptron.wDown.biasVector,
                 operation,
@@ -97,7 +92,7 @@ export const operateCombinedWeights = (
                 transformerWeights2.multilayerPerceptron.wUp.weightsMatrix,
                 operation,
               ),
-              biasVector: operateOnVectors(
+              biasVector: operateOnMatrices(
                 transformerWeights1.multilayerPerceptron.wUp.biasVector,
                 transformerWeights2.multilayerPerceptron.wUp.biasVector,
                 operation,
@@ -125,16 +120,16 @@ export const getModelParameterCount = (model: Model) => {
       const mlpUpSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wUp.weightsMatrix,
       );
-      const mlpUpBiasSize = getMatrixParameterCount([
+      const mlpUpBiasSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wUp.biasVector,
-      ]);
+      );
 
       const mlpDownSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wDown.weightsMatrix,
       );
-      const mlpDownBiasSize = getMatrixParameterCount([
+      const mlpDownBiasSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wDown.biasVector,
-      ]);
+      );
 
       const transformerParamterType =
         kSize +

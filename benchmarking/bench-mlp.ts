@@ -1,4 +1,4 @@
-import { createMatrix, createVector } from "../shared/matrices.ts";
+import { createMatrix } from "../shared/matrices.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
@@ -37,11 +37,11 @@ const createTestWeights = (
 ): MultilayerPerceptronWeights => ({
   wUp: {
     weightsMatrix: createMatrix(dimensions, dimensions * MLP_MULTIPLE, rand),
-    biasVector: createVector(dimensions * MLP_MULTIPLE, rand),
+    biasVector: createMatrix(1, dimensions * MLP_MULTIPLE, rand),
   },
   wDown: {
     weightsMatrix: createMatrix(dimensions * MLP_MULTIPLE, dimensions, rand),
-    biasVector: createVector(dimensions, rand),
+    biasVector: createMatrix(1, dimensions, rand),
   },
 });
 
@@ -50,11 +50,11 @@ const weightsToGPU = (
 ): MultilayerPerceptronGPUBuffers => ({
   wUp: {
     weightsMatrix: createMatrixBuffer(weights.wUp.weightsMatrix),
-    biasVector: createMatrixBuffer([weights.wUp.biasVector]),
+    biasVector: createMatrixBuffer(weights.wUp.biasVector),
   },
   wDown: {
     weightsMatrix: createMatrixBuffer(weights.wDown.weightsMatrix),
-    biasVector: createMatrixBuffer([weights.wDown.biasVector]),
+    biasVector: createMatrixBuffer(weights.wDown.biasVector),
   },
 });
 
@@ -82,7 +82,6 @@ const main = async () => {
     const cpuResult = getMultilayerPerceptronActivations(
       encoding,
       weights,
-      MLP_MULTIPLE,
     );
     getMultilayerPerceptronActivationsOnGPU(
       encodingBuf,
@@ -108,7 +107,7 @@ const main = async () => {
     );
 
     const cpuStats = await benchmark(() => {
-      getMultilayerPerceptronActivations(encoding, weights, MLP_MULTIPLE);
+      getMultilayerPerceptronActivations(encoding, weights);
     });
     const gpuStats = await benchmark(async () => {
       getMultilayerPerceptronActivationsOnGPU(

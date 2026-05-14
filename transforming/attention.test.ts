@@ -4,41 +4,55 @@ import {
   runSelfAttentionMechanism,
 } from "./attention.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
+import { createMatrix, type Matrix, getFlatIndex } from "../shared/matrices.ts";
 
-const expectMatrixCloseTo = (actual: number[][], expected: number[][]) => {
-  expect(actual).toHaveLength(expected.length);
+const matrixFrom = (rows: number[][]): Matrix => {
+  const vectors = rows.length;
+  const dimensions = rows[0]!.length;
+  const m = createMatrix(vectors, dimensions);
+  for (let i = 0; i < vectors; i++) {
+    for (let j = 0; j < dimensions; j++) {
+      m.values[getFlatIndex(i, j, dimensions)] = rows[i]![j]!;
+    }
+  }
+  return m;
+};
 
-  for (const [rowIndex, expectedRow] of expected.entries()) {
-    const actualRow = actual[rowIndex];
+const expectMatrixCloseTo = (actual: Matrix, expected: number[][]) => {
+  const exp = matrixFrom(expected);
+  expect(actual.vectors).toBe(exp.vectors);
+  expect(actual.dimensions).toBe(exp.dimensions);
 
-    expect(actualRow).toHaveLength(expectedRow.length);
-
-    for (const [columnIndex, expectedValue] of expectedRow.entries()) {
-      expect(actualRow?.[columnIndex]).toBeCloseTo(expectedValue, 10);
+  for (let i = 0; i < exp.vectors; i++) {
+    for (let j = 0; j < exp.dimensions; j++) {
+      const idx = getFlatIndex(i, j, exp.dimensions);
+      expect(actual.values[idx]).toBeCloseTo(exp.values[idx]!, 10);
     }
   }
 };
 
-const input = [
+const input = matrixFrom([
   [1, 0, 0, 0],
   [0, 1, 0, 0],
-];
+]);
 
 describe("runSelfAttentionHead", () => {
   it("uses the value matrix as the payload that gets mixed across positions", () => {
     const output = runSelfAttentionHead(
-      [
+      matrixFrom([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-      ],
-      [
+      ]),
+      matrixFrom([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-      ],
-      [
+      ]),
+      matrixFrom([
         [1, 10, 100, 1000],
         [2, 20, 200, 2000],
-      ],
+      ]),
+      1,
+      4,
     );
 
     expectMatrixCloseTo(output.output, [
@@ -49,16 +63,24 @@ describe("runSelfAttentionHead", () => {
 
   it("uses query-key similarity to weight the visible values", () => {
     const output = runSelfAttentionHead(
-      [[0], [Math.log(2)]],
-      [[1], [0]],
-      [[1], [2]],
+      matrixFrom([[0], [Math.log(2)]]),
+      matrixFrom([[1], [0]]),
+      matrixFrom([[1], [2]]),
+      1,
+      1,
     );
 
     expectMatrixCloseTo(output.output, [[1], [4 / 3]]);
   });
 
   it("does not attend to future keys and values", () => {
-    const output = runSelfAttentionHead([[1], [0]], [[0], [10]], [[1], [5]]);
+    const output = runSelfAttentionHead(
+      matrixFrom([[1], [0]]),
+      matrixFrom([[0], [10]]),
+      matrixFrom([[1], [5]]),
+      1,
+      1,
+    );
 
     expectMatrixCloseTo(output.output, [[1], [3]]);
   });
@@ -67,30 +89,30 @@ describe("runSelfAttentionHead", () => {
 describe("runSelfAttentionMechanism", () => {
   it("projects Q/K/V once, splits heads by feature columns, then applies one shared output projection", () => {
     const twoHeadAttention: AttentionWeights = {
-      Q: [
+      Q: matrixFrom([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-      ],
-      K: [
+      ]),
+      K: matrixFrom([
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-      ],
-      V: [
+      ]),
+      V: matrixFrom([
         [1, 0, 10, 0],
         [3, 0, 30, 0],
         [0, 0, 0, 0],
         [0, 0, 0, 0],
-      ],
-      out: [
+      ]),
+      out: matrixFrom([
         [1, 0, 0, 0],
         [0, 0, 0, 0],
         [0, 1, 0, 0],
         [0, 0, 0, 0],
-      ],
+      ]),
     };
 
     const output = runSelfAttentionMechanism(input, 2, twoHeadAttention);

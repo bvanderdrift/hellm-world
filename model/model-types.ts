@@ -1,18 +1,20 @@
+import type { Matrix } from "../shared/matrices.ts";
+
 export interface AttentionWeights {
-  Q: number[][];
-  K: number[][];
-  V: number[][];
-  out: number[][];
+  Q: Matrix;
+  K: Matrix;
+  V: Matrix;
+  out: Matrix;
 }
 
 export interface MultilayerPerceptronWeights {
   wUp: {
-    weightsMatrix: number[][];
-    biasVector: number[];
+    weightsMatrix: Matrix;
+    biasVector: Matrix;
   };
   wDown: {
-    weightsMatrix: number[][];
-    biasVector: number[];
+    weightsMatrix: Matrix;
+    biasVector: Matrix;
   };
 }
 
@@ -22,8 +24,8 @@ export interface TransformerWeights {
 }
 
 export type Weights = {
-  embeddings: number[][]; // T x D
-  unembeddings: number[][]; // D x T
+  embeddings: Matrix; // T x D
+  unembeddings: Matrix; // D x T
   transformers: TransformerWeights[];
 };
 

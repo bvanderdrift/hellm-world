@@ -1,9 +1,13 @@
-import { transpose, multiplyMatrices } from "../../shared/matrices.ts";
+import {
+  transpose,
+  multiplyMatrices,
+  type Matrix,
+} from "../../shared/matrices.ts";
 
 export const matrixBackprop = (
-  weights: number[][],
-  inputActivations: number[][],
-  outputGradients: number[][],
+  weights: Matrix,
+  inputActivations: Matrix,
+  outputGradients: Matrix,
 ) => {
   const inputsByDimension = transpose(inputActivations);
 

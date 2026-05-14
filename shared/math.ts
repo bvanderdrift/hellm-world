@@ -1,22 +1,28 @@
-import { operateOnMatrices } from "./matrices.ts";
+import { operateOnMatrices, operateOnMatrix, type Matrix } from "./matrices.ts";
 
-export const sum = (values: number[]) => {
-  return values.reduce((partialSum, e) => e + partialSum, 0);
+export const sum = (values: Float32Array) => {
+  let output = 0;
+
+  for (let index = 0; index < values.length; index++) {
+    output += values[index]!;
+  }
+
+  return output;
 };
 
-export const dotProduct = (v1: number[], v2: number[]) => {
+export const dotProduct = (v1: Float32Array, v2: Float32Array) => {
   if (v1.length !== v2.length) {
     throw new Error(
       `v1 lenght ${v1.length} and v2 length ${v2.length} not overlapping`,
     );
   }
 
-  const multiples = v1.map((e, i) => e * (v2[i] as number));
+  const multiples = v1.map((e, i) => e * v2[i]!);
 
   return sum(multiples);
 };
 
-export const safeSumExponatedLogits = (logits: number[]) => {
+export const safeSumExponatedLogits = (logits: Float32Array) => {
   const biggestLogit = Math.max(...logits);
   // To prevent overflows. Logits are still related the same since they all subtract the same value
   const safeLogits = logits.map((logit) => logit - biggestLogit);
@@ -33,21 +39,21 @@ export const safeSumExponatedLogits = (logits: number[]) => {
 /**
  * s_i = e^l_i / sum(e^l_j)
  */
-export const softmax = (logits: number[]) => {
+export const softmax = (logits: Float32Array) => {
   const { safeLogits, summed } = safeSumExponatedLogits(logits);
 
   return safeLogits.map((logit) => Math.exp(logit) / summed);
 };
 
 /** Rectified Linear Unit */
-export const relu = (matrix: number[][]) =>
-  operateOnMatrices(matrix, matrix, (value) => Math.max(value, 0));
+export const relu = (matrix: Matrix) =>
+  operateOnMatrix(matrix, (value) => Math.max(value, 0));
 
-export const mean = (values: number[]) => {
+export const mean = (values: Float32Array) => {
   return sum(values) / values.length;
 };
 
-export const calculateStandardDeviation = (values: number[]) => {
+export const calculateStandardDeviation = (values: Float32Array) => {
   const average = mean(values);
 
   const squareDeltas = values.map((value) => Math.pow(value - average, 2));
