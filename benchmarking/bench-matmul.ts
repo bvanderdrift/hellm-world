@@ -3,7 +3,11 @@ import {
   extractMatrixBuffer,
   multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
-import { createMatrix, multiplyMatrices } from "../shared/matrices.ts";
+import {
+  createMatrix,
+  multiplyMatrices,
+  type Matrix,
+} from "../shared/matrices.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   type Stats,
@@ -26,12 +30,12 @@ const SIZES: Array<{ label: string; m: number; k: number; n: number }> = [
 const rand = () => Math.random() * 2 - 1;
 
 const benchmarkGPU = async (
-  a: number[][],
-  b: number[][],
-): Promise<{ stats: Stats; lastResult: number[][] }> => {
+  a: Matrix,
+  b: Matrix,
+): Promise<{ stats: Stats; lastResult: Matrix }> => {
   const m1 = createMatrixBuffer(a);
   const m2 = createMatrixBuffer(b);
-  const mOut = createMatrixBuffer(createMatrix(a.length, b[0]!.length));
+  const mOut = createMatrixBuffer(createMatrix(a.vectors, b.dimensions));
 
   const stats = await benchmark(async () => {
     multiplyMatricesOnGPU(m1, m2, mOut);
@@ -64,7 +68,7 @@ export const findCrossover = async (
 };
 
 const main = async () => {
-  console.log("matmul A/B benchmark");
+  console.log("matmul CPU vs GPU benchmark");
   console.log(
     `  baseline = multiplyMatrices, candidate = multiplyMatricesOnGPU`,
   );
@@ -76,21 +80,21 @@ const main = async () => {
     const a = createMatrix(m, k, rand);
     const b = createMatrix(k, n, rand);
 
-    const r1 = await multiplyMatrices(a, b);
+    const r1 = multiplyMatrices(a, b);
     const { lastResult: r2 } = await benchmarkGPU(a, b);
-    const match = matricesMatch(r1, r2, 1e-4);
-    if (!match.ok) {
+    const matchGPU = matricesMatch(r1, r2, 1e-4);
+    if (!matchGPU.ok) {
       anyMismatch = true;
-      console.log(`  [${label}] MISMATCH: ${match.reason}`);
+      console.log(`  [${label}] MISMATCH (GPU): ${matchGPU.reason}`);
       continue;
     }
 
     const baseline = await benchmark(() => {
       multiplyMatrices(a, b);
     });
-    const { stats: candidate } = await benchmarkGPU(a, b);
-    const speedup = baseline.median / candidate.median;
-    printRow(label, "baseline", baseline, "candidate", candidate, speedup);
+    const { stats: candidateGPU } = await benchmarkGPU(a, b);
+    const speedupGPU = baseline.median / candidateGPU.median;
+    printRow(label, "CPU", baseline, "GPU", candidateGPU, speedupGPU);
   }
 
   console.log("");
@@ -158,14 +162,13 @@ const main = async () => {
       const baselineStats = await benchmark(() => {
         multiplyMatrices(a, b);
       });
-      const { stats: candidateStats } = await benchmarkGPU(a, b);
-      const speedup = baselineStats.median / candidateStats.median;
-      const winner = speedup >= 1 ? "GPU" : "CPU";
+      const { stats: gpuStats } = await benchmarkGPU(a, b);
+      const speedupGPU = baselineStats.median / gpuStats.median;
       console.log(
         `  ${label}  (${m}×${k} * ${k}×${n}, params=${actualParams}, output=${outputCells} cells)`,
       );
       console.log(
-        `    baseline=${fmtMs(baselineStats.median)} candidate=${fmtMs(candidateStats.median)} → ${winner} wins (${speedup >= 1 ? speedup.toFixed(2) : (1 / speedup).toFixed(2)}x)`,
+        `    baseline=${fmtMs(baselineStats.median)} GPU=${fmtMs(gpuStats.median)} (${speedupGPU >= 1 ? speedupGPU.toFixed(2) : (1 / speedupGPU).toFixed(2)}x)`,
       );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

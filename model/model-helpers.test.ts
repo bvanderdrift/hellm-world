@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
+import { createMatrix, type Matrix } from "../shared/matrices.ts";
 import {
   extractHiddenDimensionSize,
   findTokenIndex,
@@ -7,10 +8,8 @@ import {
 } from "./model-helpers.ts";
 import type { Model } from "./model-types.ts";
 
-const vector = (length: number, value = 1) => new Array(length).fill(value);
-
-const matrix = (rows: number, columns: number, value = 1) =>
-  new Array(rows).fill(null).map(() => vector(columns, value));
+const m = (rows: number, columns: number, value = 1): Matrix =>
+  createMatrix(rows, columns, () => value);
 
 const HIDDEN_DIMENSION_SIZE = 4;
 const DEFAULT_MLP_MULTIPLE = 4;
@@ -19,69 +18,64 @@ const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
   mlpMultiple: DEFAULT_MLP_MULTIPLE,
-  embeddings: matrix(4, HIDDEN_DIMENSION_SIZE),
-  unembeddings: matrix(HIDDEN_DIMENSION_SIZE, 4),
+  embeddings: m(4, HIDDEN_DIMENSION_SIZE),
+  unembeddings: m(HIDDEN_DIMENSION_SIZE, 4),
   transformers: [
     {
       attention: {
-        Q: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
-        K: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
-        V: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
-        out: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        Q: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        K: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        V: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
+        out: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
       },
       multilayerPerceptron: {
         wUp: {
-          weightsMatrix: matrix(
+          weightsMatrix: m(
             HIDDEN_DIMENSION_SIZE,
             DEFAULT_MLP_DIMENSION_SIZE,
           ),
-          biasVector: vector(DEFAULT_MLP_DIMENSION_SIZE),
+          biasVector: m(1, DEFAULT_MLP_DIMENSION_SIZE),
         },
         wDown: {
-          weightsMatrix: matrix(
+          weightsMatrix: m(
             DEFAULT_MLP_DIMENSION_SIZE,
             HIDDEN_DIMENSION_SIZE,
           ),
-          biasVector: vector(HIDDEN_DIMENSION_SIZE),
+          biasVector: m(1, HIDDEN_DIMENSION_SIZE),
         },
       },
     },
   ],
 };
 
-const createModel = (overrides: Partial<Model> = {}): Model => ({
-  ...structuredClone(validModel),
-  ...overrides,
-});
-
 const createModelWithValue = (value: number): Model => ({
   ...validModel,
-  embeddings: matrix(4, HIDDEN_DIMENSION_SIZE, value),
-  unembeddings: matrix(HIDDEN_DIMENSION_SIZE, 4, value),
+  embeddings: m(4, HIDDEN_DIMENSION_SIZE, value),
+  unembeddings: m(HIDDEN_DIMENSION_SIZE, 4, value),
   transformers: [
     {
       attention: {
-        Q: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
-        K: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
-        V: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
-        out: matrix(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        Q: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        K: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        V: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
+        out: m(HIDDEN_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE, value),
       },
       multilayerPerceptron: {
         wUp: {
-          weightsMatrix: matrix(
+          weightsMatrix: m(
             HIDDEN_DIMENSION_SIZE,
             DEFAULT_MLP_DIMENSION_SIZE,
             value,
           ),
-          biasVector: vector(DEFAULT_MLP_DIMENSION_SIZE, value),
+          biasVector: m(1, DEFAULT_MLP_DIMENSION_SIZE, value),
         },
         wDown: {
-          weightsMatrix: matrix(
+          weightsMatrix: m(
             DEFAULT_MLP_DIMENSION_SIZE,
             HIDDEN_DIMENSION_SIZE,
             value,
           ),
-          biasVector: vector(HIDDEN_DIMENSION_SIZE, value),
+          biasVector: m(1, HIDDEN_DIMENSION_SIZE, value),
         },
       },
     },

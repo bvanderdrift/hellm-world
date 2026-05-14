@@ -1,6 +1,12 @@
+import {
+  createMatrix,
+  getFlatIndex,
+  type Matrix,
+} from "../../shared/matrices.ts";
+
 export const embeddingsBackprop = (
-  embeddingWeights: number[][],
-  outputGradients: number[][],
+  embeddingWeights: Matrix,
+  outputGradients: Matrix,
   inputPositionToVocabPosition: number[],
 ) => {
   /**
@@ -8,8 +14,9 @@ export const embeddingsBackprop = (
    * Only thing to take into account is the fact that one token might be fetched multiple times from the embeddings lookup table
    * So we need to sum the gradients if it's multiple ones
    */
-  const embeddingWeightsGradients = embeddingWeights.map((tokenEmbedding) =>
-    new Array(tokenEmbedding.length).fill(0),
+  const embeddingWeightsGradients = createMatrix(
+    embeddingWeights.vectors,
+    embeddingWeights.dimensions,
   );
 
   /**
@@ -24,22 +31,37 @@ export const embeddingsBackprop = (
    *
    * We don't care about dL/dp_i (which is also dL/dz_i) since p_i a non-trainable algorithmic output
    */
-  outputGradients.forEach((inputGradientsVector, inputTokenIndex) => {
+  for (
+    let inputTokenIndex = 0;
+    inputTokenIndex < outputGradients.vectors;
+    inputTokenIndex++
+  ) {
     const vocabIndex = inputPositionToVocabPosition[inputTokenIndex]!;
 
-    const currentInputGradients = embeddingWeightsGradients[vocabIndex]!;
+    for (
+      let dimensionIndex = 0;
+      dimensionIndex < outputGradients.dimensions;
+      dimensionIndex++
+    ) {
+      const flatEmbeddingIndex = getFlatIndex(
+        vocabIndex,
+        dimensionIndex,
+        embeddingWeightsGradients.dimensions,
+      );
 
-    const newInputGradients = currentInputGradients.map(
-      (partialInputGradient, dimensionIndex) => {
-        const z_i = inputGradientsVector[dimensionIndex]!;
-        return (
-          partialInputGradient + z_i * Math.sqrt(inputGradientsVector.length)
-        );
-      },
-    );
+      const z_i =
+        outputGradients.values[
+          getFlatIndex(
+            inputTokenIndex,
+            dimensionIndex,
+            outputGradients.dimensions,
+          )
+        ]!;
 
-    embeddingWeightsGradients[vocabIndex] = newInputGradients;
-  });
+      embeddingWeightsGradients.values[flatEmbeddingIndex]! +=
+        z_i * Math.sqrt(outputGradients.dimensions);
+    }
+  }
 
   return embeddingWeightsGradients;
 };

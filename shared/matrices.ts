@@ -1,90 +1,45 @@
 import { calculateStandardDeviation, divideToWhole } from "./math.ts";
 
-export const createVector = (
-  dimensionCount: number,
-  fillFunction?: () => number,
-) => {
-  const arr = new Array<number>(dimensionCount).fill(0);
-
-  if (!fillFunction) {
-    return arr;
-  }
-
-  return arr.map(fillFunction);
-};
-
 export const createMatrix = (
   vectorCount: number,
   dimensionCount: number,
   fillFunction?: () => number,
-) => {
-  return new Array(vectorCount)
-    .fill(0)
-    .map((_) => createVector(dimensionCount, fillFunction));
+): Matrix => {
+  let values = new Float32Array(vectorCount * dimensionCount).fill(0);
+
+  if (fillFunction) {
+    values = values.map(fillFunction);
+  }
+
+  return {
+    values,
+    vectors: vectorCount,
+    dimensions: dimensionCount,
+  };
 };
 
-export const validateSize = (
-  matrix: number[][],
-  expectedVectorCount: number,
-  expectedDepth?: number,
-) => {
-  if (matrix.length !== expectedVectorCount) {
-    throw new Error(
-      `matrix vector count (${matrix.length}) doesn't match expected vector count ${expectedVectorCount}`,
-    );
-  }
-
-  const firstVector = matrix[0];
-
-  if (!firstVector) {
-    throw new Error(`matrix has no vectors`);
-  }
-
-  if (expectedDepth !== undefined && firstVector.length !== expectedDepth) {
-    throw new Error(
-      `m has unexpected vector depth ${firstVector.length}, expected ${expectedDepth}`,
-    );
-  }
-
-  validateConsistentNestedArrayLength(matrix);
+export type Matrix = {
+  vectors: number;
+  dimensions: number;
+  values: Float32Array;
 };
 
-export const validateConsistentNestedArrayLength = (matrix: number[][]) => {
-  const firstVector = matrix[0];
+export const getFlatIndex = (i: number, j: number, dimensionality: number) =>
+  i * dimensionality + j;
 
-  if (!firstVector) {
-    // empty, is valid
-    return;
-  }
+export const multiplyMatrices = (m1: Matrix, m2: Matrix): Matrix => {
+  const m3: Matrix = {
+    values: new Float32Array(m1.vectors * m2.dimensions).fill(0),
+    vectors: m1.vectors,
+    dimensions: m2.dimensions,
+  };
 
-  const vectorDepth = firstVector.length;
-
-  for (const [index, vector] of Object.entries(matrix)) {
-    if (vector.length !== vectorDepth) {
-      throw new Error(
-        `Vector at index ${index} has unexpected depth ${vector.length} (expected ${vectorDepth})`,
-      );
-    }
-  }
-};
-
-export const multiplyMatrices = (
-  m1: number[][],
-  m2: number[][],
-): number[][] => {
-  const m3 = new Array(m1.length)
-    .fill(0)
-    .map(() => new Array(m2[0]!.length).fill(0));
-
-  for (let i = 0; i < m1.length; i++) {
-    const m1Vector = m1[i]!;
-    const m3Vector = m3[i]!;
-    for (let k = 0; k < m1Vector.length; k++) {
-      const scalar = m1Vector[k]!;
-      const m2Vector = m2[k]!;
-
-      for (let j = 0; j < m2Vector.length; j++) {
-        m3Vector[j] += scalar * m2Vector[j]!;
+  for (let i = 0; i < m1.vectors; i++) {
+    for (let k = 0; k < m1.dimensions; k++) {
+      const m1Index = getFlatIndex(i, k, m1.dimensions);
+      for (let j = 0; j < m2.dimensions; j++) {
+        m3.values[getFlatIndex(i, j, m2.dimensions)]! +=
+          m1.values[m1Index]! * m2.values[getFlatIndex(k, j, m2.dimensions)]!;
       }
     }
   }
@@ -92,131 +47,159 @@ export const multiplyMatrices = (
   return m3;
 };
 
-export const multiplyMatrixWithVector = (
-  vector: number[],
-  matrix: number[][],
-): number[] => {
-  const multipliedMatrix = multiplyMatrices([vector], matrix);
+export const addVectorAcrossMatrix = (v: Matrix, m: Matrix): Matrix => {
+  const output = createMatrix(m.vectors, m.dimensions);
 
-  return multipliedMatrix[0]!;
-};
+  for (let i = 0; i < m.vectors; i++) {
+    for (let j = 0; j < m.dimensions; j++) {
+      const matrixIndexFlat = getFlatIndex(i, j, output.dimensions);
+      output.values[matrixIndexFlat]! =
+        m.values[matrixIndexFlat]! + v.values[j]!;
+    }
+  }
 
-export const operateOnVectors = (
-  vector1: number[],
-  vector2: number[],
-  operation: (v1: number, v2: number) => number,
-): number[] => {
-  validateSize([vector1], 1, vector2.length);
-
-  return vector1.map((value1, dimensionIndex) =>
-    operation(value1, vector2[dimensionIndex]!),
-  );
+  return output;
 };
 
 export const operateOnMatrices = (
-  m1: number[][],
-  m2: number[][],
+  m1: Matrix,
+  m2: Matrix,
   operation: (v1: number, v2: number) => number,
-): number[][] => {
-  validateSize(m1, m2.length, m2[0]!.length);
-
-  return m1.map((vector1, vectorIndex) =>
-    operateOnVectors(vector1, m2[vectorIndex]!, operation),
-  );
-};
-
-export const operateOnMatrix = (
-  m1: number[][],
-  operation: (v: number) => number,
-): number[][] => {
-  return m1.map((vector1) => vector1.map(operation));
-};
-
-export const applyScalarToVector = (scalar: number, vector: number[]) =>
-  vector.map((value) => value * scalar);
-
-export const applyScalarToMatrix = (scalar: number, matrix: number[][]) =>
-  matrix.map((vector) => applyScalarToVector(scalar, vector));
-
-export const addVectors = (vector1: number[], vector2: number[]) =>
-  operateOnVectors(vector1, vector2, (value1, value2) => value1 + value2);
-
-export const addVectorsInMatrix = (matrix: number[][]) => {
-  const vectorDimensions = matrix[0]?.length ?? 0;
-  validateSize(matrix, matrix.length, vectorDimensions);
-
-  return matrix.reduce(
-    (sumVector, nextVector) => addVectors(sumVector, nextVector),
-    new Array<number>(vectorDimensions).fill(0),
-  );
-};
-
-export const addMatrices = (matrix1: number[][], matrix2: number[][]) =>
-  operateOnMatrices(matrix1, matrix2, (value1, value2) => value1 + value2);
-
-export const transpose = (matrix: number[][]): number[][] => {
-  const vectors = matrix.length;
-  const depth = matrix[0]!.length;
-
-  return new Array(depth).fill(0).map((_, newVectorIndex) => {
-    return new Array(vectors).fill(0).map((_, newDepthIndex) => {
-      return matrix[newDepthIndex]![newVectorIndex]!;
-    });
-  });
-};
-
-export const normalize = (matrix: number[][]): number[][] => {
-  return matrix.map((vector) => {
-    const { average, standardDeviation } = calculateStandardDeviation(vector);
-
-    return vector.map(
-      (scalar) =>
-        (scalar - average) /
-        (standardDeviation +
-          // to prevent 0-divisions
-          Number.EPSILON),
-    );
-  });
-};
-
-export const getMatrixSize = (matrix: number[][]) => {
-  const vectors = Object.values(matrix);
-
-  const firstVector = vectors[0];
-
+): Matrix => {
   return {
-    vectorCount: vectors.length,
-    dimensionsCount: firstVector ? firstVector.length : 0,
+    ...m1,
+    values: m1.values.map((value1, valueIndex) =>
+      operation(value1, m2.values[valueIndex]!),
+    ),
   };
 };
 
-export const getMatrixParameterCount = (matrix: number[][]) => {
-  const size = getMatrixSize(matrix);
-
-  return size.vectorCount * size.dimensionsCount;
+export const operateOnMatrix = (
+  m1: Matrix,
+  operation: (v: number) => number,
+): Matrix => {
+  return {
+    ...m1,
+    values: m1.values.map(operation),
+  };
 };
 
-export const concatenateMatricesVertically = (matrices: number[][][]) => {
-  const vectors = matrices[0]!.length;
+export const applyScalarToMatrix = (scalar: number, matrix: Matrix) =>
+  operateOnMatrix(matrix, (v) => v * scalar);
 
-  return matrices.reduce(
-    (partial, matrix) =>
-      partial.map((vector, vectorIndex) => [
-        ...vector,
-        ...matrix[vectorIndex]!,
-      ]),
-    new Array<number[]>(vectors).fill([]),
+export const addVectorsInMatrix = (matrix: Matrix) => {
+  const outputVector = createMatrix(1, matrix.dimensions);
+
+  for (let i = 0; i < matrix.vectors; i++) {
+    for (let j = 0; j < matrix.dimensions; j++) {
+      outputVector.values[j]! +=
+        matrix.values[getFlatIndex(i, j, matrix.dimensions)]!;
+    }
+  }
+
+  return outputVector;
+};
+
+export const addMatrices = (matrix1: Matrix, matrix2: Matrix) =>
+  operateOnMatrices(matrix1, matrix2, (value1, value2) => value1 + value2);
+
+export const transpose = (matrix: Matrix): Matrix => {
+  const output = createMatrix(matrix.dimensions, matrix.vectors);
+
+  for (let i = 0; i < matrix.vectors; i++) {
+    for (let j = 0; j < matrix.dimensions; j++) {
+      output.values[getFlatIndex(j, i, output.dimensions)]! =
+        matrix.values[getFlatIndex(i, j, matrix.dimensions)]!;
+    }
+  }
+
+  return output;
+};
+
+export const getRawVector = (matrix: Matrix, vectorIndex: number) =>
+  matrix.values.slice(
+    vectorIndex * matrix.dimensions,
+    (vectorIndex + 1) * matrix.dimensions,
   );
+
+export const normalize = (matrix: Matrix): Matrix => {
+  const output = createMatrix(matrix.vectors, matrix.dimensions);
+
+  for (let i = 0; i < matrix.vectors; i++) {
+    const { average, standardDeviation } = calculateStandardDeviation(
+      matrix.values.slice(i * matrix.dimensions, (i + 1) * matrix.dimensions),
+    );
+
+    for (let j = 0; j < matrix.dimensions; j++) {
+      const valueIndex = getFlatIndex(i, j, output.dimensions);
+      output.values[valueIndex] =
+        (matrix.values[valueIndex]! - average) /
+        (standardDeviation +
+          // to prevent 0-divisions
+          Number.EPSILON);
+    }
+  }
+
+  return output;
 };
 
-export const sliceRows = (matrix: number[][], start: number, end: number) => {
-  return matrix.map((vector) => vector.slice(start, end));
+export const getMatrixParameterCount = (matrix: Matrix) => {
+  return matrix.vectors * matrix.dimensions;
 };
 
-export const sliceToEqualSizes = (matrix: number[][], sectionCount: number) => {
-  const matrixDimensionality = matrix[0]!.length;
+export const concatenateMatricesVertically = (matrices: Matrix[]) => {
+  const baseVectors = matrices[0]!.vectors;
+  const baseDimensions = matrices[0]!.dimensions;
+
+  const output = createMatrix(baseVectors, baseDimensions * matrices.length);
+
+  for (let m = 0; m < matrices.length; m++) {
+    const matrix = matrices[m]!;
+
+    if (matrix.vectors !== baseVectors) {
+      throw new Error(
+        `Mismatching vector count ${matrix.vectors} - ${baseVectors}`,
+      );
+    }
+    if (matrix.dimensions !== baseDimensions) {
+      throw new Error(
+        `Mismatching dimension count ${matrix.dimensions} - ${baseDimensions}`,
+      );
+    }
+
+    for (let i = 0; i < matrix.vectors; i++) {
+      for (let j = 0; j < matrix.dimensions; j++) {
+        const outputIndex = getFlatIndex(
+          i,
+          m * matrix.dimensions + j,
+          output.dimensions,
+        );
+
+        output.values[outputIndex] =
+          matrix.values[getFlatIndex(i, j, matrix.dimensions)]!;
+      }
+    }
+  }
+
+  return output;
+};
+
+export const sliceRows = (matrix: Matrix, start: number, end: number) => {
+  const output = createMatrix(matrix.vectors, end - start);
+
+  for (let i = 0; i < matrix.vectors; i++) {
+    for (let j = start; j < end; j++) {
+      output.values[getFlatIndex(i, j - start, output.dimensions)]! =
+        matrix.values[getFlatIndex(i, j, matrix.dimensions)]!;
+    }
+  }
+
+  return output;
+};
+
+export const sliceToEqualSizes = (matrix: Matrix, sectionCount: number) => {
   const singleSectionDimensionality = divideToWhole(
-    matrixDimensionality,
+    matrix.dimensions,
     sectionCount,
   );
 

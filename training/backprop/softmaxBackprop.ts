@@ -21,8 +21,8 @@ import { safeSumExponatedLogits, sum } from "../../shared/math.ts";
  *   = -sum(e^x_j)^-2 * e^x_i
  */
 export const softmaxBackprop = (
-  inputs: number[],
-  outputGradients: number[],
+  inputs: Float32Array,
+  outputGradients: Float32Array,
 ) => {
   const { summed, exponatedLogits } = safeSumExponatedLogits(inputs);
 

@@ -1,6 +1,6 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
-import { validateSize } from "../shared/matrices.ts";
+import { type Matrix } from "../shared/matrices.ts";
 import { extractHiddenDimensionSize } from "./model-helpers.ts";
 import type { Model, Weights } from "./model-types.ts";
 
@@ -31,58 +31,22 @@ export const validateModel = (model: Model) => {
     );
   }
 
-  validateSize(model.embeddings, model.vocabulary.length, hiddenDimensionsSize);
-  validateSize(
-    model.unembeddings,
-    hiddenDimensionsSize,
-    model.vocabulary.length,
-  );
+  validateSize(model.embeddings);
+  validateSize(model.unembeddings);
 
   for (const transformer of model.transformers) {
-    validateSize(
-      transformer.attention.Q,
-      hiddenDimensionsSize,
-      hiddenDimensionsSize,
-    );
-    validateSize(
-      transformer.attention.K,
-      hiddenDimensionsSize,
-      hiddenDimensionsSize,
-    );
-    validateSize(
-      transformer.attention.V,
-      hiddenDimensionsSize,
-      hiddenDimensionsSize,
-    );
+    validateSize(transformer.attention.Q);
+    validateSize(transformer.attention.K);
+    validateSize(transformer.attention.V);
 
-    validateSize(
-      transformer.attention.out,
-      hiddenDimensionsSize,
-      hiddenDimensionsSize,
-    );
+    validateSize(transformer.attention.out);
 
     // MLP validation
-    validateSize(
-      transformer.multilayerPerceptron.wUp.weightsMatrix,
-      hiddenDimensionsSize,
-      hiddenDimensionsSize * model.mlpMultiple,
-    );
-    validateSize(
-      [transformer.multilayerPerceptron.wUp.biasVector],
-      1,
-      hiddenDimensionsSize * model.mlpMultiple,
-    );
+    validateSize(transformer.multilayerPerceptron.wUp.weightsMatrix);
+    validateSize(transformer.multilayerPerceptron.wUp.biasVector);
 
-    validateSize(
-      transformer.multilayerPerceptron.wDown.weightsMatrix,
-      hiddenDimensionsSize * model.mlpMultiple,
-      hiddenDimensionsSize,
-    );
-    validateSize(
-      [transformer.multilayerPerceptron.wDown.biasVector],
-      1,
-      hiddenDimensionsSize,
-    );
+    validateSize(transformer.multilayerPerceptron.wDown.weightsMatrix);
+    validateSize(transformer.multilayerPerceptron.wDown.biasVector);
   }
 };
 
@@ -108,15 +72,21 @@ export const validateSameWeightsShape = (
   weights1: Weights,
   weights2: Weights,
 ) => {
-  validateSize(
-    weights1.embeddings,
-    weights2.embeddings.length,
-    weights2.embeddings[0]!.length,
-  );
+  validateSize(weights1.embeddings);
 
   if (weights1.transformers.length !== weights2.transformers.length) {
     throw new Error(
       `Weights1 has different transformers count ${weights1.transformers.length} than Weights2 (${weights2.transformers.length})`,
+    );
+  }
+};
+
+const validateSize = (matrix: Matrix) => {
+  const expectedSize = matrix.vectors * matrix.dimensions;
+
+  if (expectedSize !== matrix.values.length) {
+    throw new Error(
+      `m has unexpected parameter count ${matrix.values.length}, expected ${expectedSize}`,
     );
   }
 };

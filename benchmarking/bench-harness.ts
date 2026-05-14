@@ -59,29 +59,32 @@ export const printRow = (
   console.log(`    -> ${candidateLabel} is ${speedupStr} (median)`);
 };
 
+import type { Matrix } from "../shared/matrices.ts";
+
 export const matricesMatch = (
-  m1: number[][],
-  m2: number[][],
+  m1: Matrix,
+  m2: Matrix,
   tolerance: number,
 ): { ok: true } | { ok: false; reason: string } => {
-  if (m1.length !== m2.length)
-    return { ok: false, reason: `row count: ${m1.length} vs ${m2.length}` };
-  for (let i = 0; i < m1.length; i++) {
-    const r1 = m1[i]!;
-    const r2 = m2[i]!;
-    if (r1.length !== r2.length)
+  if (m1.vectors !== m2.vectors)
+    return {
+      ok: false,
+      reason: `vector count: ${m1.vectors} vs ${m2.vectors}`,
+    };
+  if (m1.dimensions !== m2.dimensions)
+    return {
+      ok: false,
+      reason: `dimension count: ${m1.dimensions} vs ${m2.dimensions}`,
+    };
+  for (let i = 0; i < m1.values.length; i++) {
+    const diff = Math.abs(m1.values[i]! - m2.values[i]!);
+    if (diff > tolerance) {
+      const row = Math.floor(i / m1.dimensions);
+      const col = i % m1.dimensions;
       return {
         ok: false,
-        reason: `row ${i} length: ${r1.length} vs ${r2.length}`,
+        reason: `cell [${row},${col}]: ${m1.values[i]} vs ${m2.values[i]} (diff ${diff})`,
       };
-    for (let j = 0; j < r1.length; j++) {
-      const diff = Math.abs(r1[j]! - r2[j]!);
-      if (diff > tolerance) {
-        return {
-          ok: false,
-          reason: `cell [${i},${j}]: ${r1[j]} vs ${r2[j]} (diff ${diff})`,
-        };
-      }
     }
   }
   return { ok: true };

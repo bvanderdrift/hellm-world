@@ -1,21 +1,49 @@
+import {
+  createMatrix,
+  getFlatIndex,
+  type Matrix,
+} from "../../shared/matrices.ts";
+
 export const probabilityOutputBackprop = (
-  unembeddingsOutputLogits: number[][],
-  outputProbabilities: number[][],
+  unembeddingsOutputLogits: Matrix,
+  outputProbabilities: Matrix,
   correctTokenIndices: number[],
-) =>
-  unembeddingsOutputLogits.map((outputVector, inputTokenIndex) => {
-    return outputVector.map((_, vocabIndex) => {
-      const correctTokenIndex = correctTokenIndices[inputTokenIndex]!;
+) => {
+  const output = createMatrix(
+    unembeddingsOutputLogits.vectors,
+    unembeddingsOutputLogits.dimensions,
+  );
+
+  for (
+    let inputTokenIndex = 0;
+    inputTokenIndex < output.vectors;
+    inputTokenIndex++
+  ) {
+    const correctTokenIndex = correctTokenIndices[inputTokenIndex]!;
+
+    for (let vocabIndex = 0; vocabIndex < output.dimensions; vocabIndex++) {
+      const flatIndex = getFlatIndex(
+        inputTokenIndex,
+        vocabIndex,
+        output.dimensions,
+      );
 
       if (correctTokenIndex === -1) {
         // Masked
-        return 0;
+        output.values[flatIndex] = 0;
+        continue;
       }
 
       const isCorrectToken = vocabIndex === correctTokenIndex;
 
       const actualProbability =
-        outputProbabilities[inputTokenIndex]![vocabIndex]!;
+        outputProbabilities.values[
+          getFlatIndex(
+            inputTokenIndex,
+            vocabIndex,
+            outputProbabilities.dimensions,
+          )
+        ]!;
       const wantedProbability = isCorrectToken ? 1 : 0;
 
       /**
@@ -30,6 +58,8 @@ export const probabilityOutputBackprop = (
        * So d(-z_i)/dz_i = -1 and d(log(n))/dn = 1 / n and d(log(sum_j exp(z_j)))/dz_i = (1 / (sum_j exp(z_j)) * exp(z_i) = exp(z_i) / (sum_j exp(z_j) = p_i
        * Wowow; so dL/dz_i = d(-z_i)/dz_i + that sum part = -1 + p_i = p_i - 1 for i = k and 0 + p_j for non-i values (since d(z_j)/dz_i = 0)
        */
-      return actualProbability - wantedProbability;
-    });
-  });
+      output.values[flatIndex] = actualProbability - wantedProbability;
+    }
+  }
+  return output;
+};
