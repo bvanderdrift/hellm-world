@@ -7,7 +7,7 @@ import type { Model, Weights } from "../model/model-types.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { backprop } from "./backprop/backprop.ts";
 
-const TRAINING_ALPHA = 0.01;
+const TRAINING_ALPHA = 0.003;
 
 export type TrainingExample = {
   sequence: string[];
