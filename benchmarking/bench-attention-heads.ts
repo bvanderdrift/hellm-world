@@ -1,7 +1,5 @@
 import {
   createMatrix,
-  sliceRows,
-  concatenateMatricesVertically,
   multiplyMatrices,
 } from "../shared/matrices.ts";
 import { divideToWhole } from "../shared/math.ts";
@@ -54,14 +52,8 @@ const main = async () => {
     const inputK = multiplyMatrices(input, weights.K);
     const inputV = multiplyMatrices(input, weights.V);
 
-    const cpuHeadOutputs = new Array(headsCount).fill(null).map((_, headIndex) => {
-      const headQ = sliceRows(inputQ, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-      const headK = sliceRows(inputK, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-      const headV = sliceRows(inputV, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-      return runSelfAttentionHead(headQ, headK, headV).output;
-    });
-    const cpuHeadsConcatenated = concatenateMatricesVertically(cpuHeadOutputs);
-    const cpuOutput = multiplyMatrices(cpuHeadsConcatenated, weights.out);
+    const cpuHeadResult = runSelfAttentionHead(inputQ, inputK, inputV, headsCount, headDimensionsCount);
+    const cpuOutput = multiplyMatrices(cpuHeadResult.output, weights.out);
 
     const gpuResult = runSelfAttentionMechanismOnGPU(input, headsCount, weights);
 
@@ -77,14 +69,8 @@ const main = async () => {
       const kProj = multiplyMatrices(input, weights.K);
       const vProj = multiplyMatrices(input, weights.V);
 
-      const headOutputs = new Array(headsCount).fill(null).map((_, headIndex) => {
-        const headQ = sliceRows(qProj, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-        const headK = sliceRows(kProj, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-        const headV = sliceRows(vProj, headIndex * headDimensionsCount, (headIndex + 1) * headDimensionsCount);
-        return runSelfAttentionHead(headQ, headK, headV).output;
-      });
-      const concatenated = concatenateMatricesVertically(headOutputs);
-      multiplyMatrices(concatenated, weights.out);
+      const headResult = runSelfAttentionHead(qProj, kProj, vProj, headsCount, headDimensionsCount);
+      multiplyMatrices(headResult.output, weights.out);
     });
 
     // Benchmark GPU: single call for full mechanism

@@ -62,7 +62,10 @@ export const createStateStore = (
     },
     writeNewCheckpoint: () => {
       writeNewCheckpoint(modelName, {
-        historyLosses: lossHistory,
+        history: {
+          validationLosses: [],
+          trainingLosses: lossHistory,
+        },
         weights: modelUnderTraining,
       });
     },

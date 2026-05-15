@@ -13,13 +13,13 @@ const TRAINING_DATA_FILE_NAME = "_training_data.txt";
 
 export const getLatestCheckpointModel = (
   model: string,
-): { historyLosses: number[]; model: Model } => {
+): Omit<ModelCheckpoint, "weights"> & { model: Model } => {
   const modelFolderPath = join(import.meta.dirname, model);
   const latestCheckpointFile = getLatestCheckpointFile(modelFolderPath);
   const checkpoint = getCheckpoint(join(modelFolderPath, latestCheckpointFile));
 
   return {
-    historyLosses: checkpoint.historyLosses,
+    ...checkpoint,
     model: {
       ...getMetadata(join(modelFolderPath, METADATA_FILE_NAME)),
       ...checkpoint.weights,
@@ -104,7 +104,7 @@ const writeCheckpoint = (
 
   // layman's pick operation
   const cleanPayload: ModelCheckpoint = {
-    historyLosses: checkpoint.historyLosses,
+    history: checkpoint.history,
     weights: {
       embeddings: checkpoint.weights.embeddings,
       transformers: checkpoint.weights.transformers,
@@ -147,7 +147,10 @@ export const writeNewModel = (modelName: string, model: Model) => {
 
   // First checkpoint file
   writeCheckpoint(modelFolderPath, 0, {
-    historyLosses: [],
+    history: {
+      trainingLosses: [],
+      validationLosses: [],
+    },
     weights: model,
   });
 };

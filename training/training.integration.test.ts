@@ -9,7 +9,7 @@ import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmax } from "../shared/math.ts";
 import { backprop } from "./backprop/backprop.ts";
-import { doSingleTrainingPass } from "./training.ts";
+import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 
 const zeroTransformer: TransformerWeights = {
   attention: {
@@ -144,7 +144,7 @@ describe("training/backprop integration readiness", () => {
 
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
     const { averageLoss, adjustedWeights } = await doSingleTrainingPass(model, [
-      trainingSequence,
+      { sequence: trainingSequence, maskBeforeIndex: null },
     ]);
     const trainedModel: Model = { ...model, ...adjustedWeights };
     const afterTargetLoss = lossForNextToken(

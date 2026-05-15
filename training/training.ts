@@ -30,8 +30,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   endDefinition: EndDefinition | null,
   parallelism: "cpu-single" | "cpu-multi",
 ) => {
-  const { historyLosses, model: modelLoaded } =
-    getLatestCheckpointModel(modelName);
+  const { history, model: modelLoaded } = getLatestCheckpointModel(modelName);
 
   if (endDefinition && endDefinition.count <= 0) {
     throw new Error(
@@ -55,7 +54,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     endDefinition,
     modelName,
     modelLoaded,
-    historyLosses,
+    history.trainingLosses,
   );
 
   const trainingData = shuffleArray(

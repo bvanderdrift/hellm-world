@@ -38,6 +38,9 @@ export type Model = ModelMetadata & Weights;
 
 export type ModelCheckpoint = {
   // Average loss of every training step, so length is amount of steps taken
-  historyLosses: number[];
+  history: {
+    validationLosses: { stepIndex: number; loss: number }[];
+    trainingLosses: number[];
+  };
   weights: Weights;
 };
