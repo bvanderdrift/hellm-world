@@ -24,6 +24,10 @@ export const doSingleTrainingPass = async (
   const summedLossWithGradients = await trainingData.reduce(
     async (accP, { sequence, maskBeforeIndex }, index) => {
       const acc = await accP;
+
+      // This is needed to give the node 'macrotask' queue to resolve. If we just run synchronous awaits here it will never get around to running that.
+      await new Promise(resolve => setTimeout(resolve, 0));
+
       const { activations } = llmForwardPassByTokens(sequence, model, true);
 
       if (!activations) {
