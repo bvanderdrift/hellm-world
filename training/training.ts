@@ -81,8 +81,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     );
 
     const shouldRunValidation =
-      state.currentStepIndex !== 0 &&
-      state.currentStepIndex % VALIDATION_INTERVAL === 0;
+      state.history.trainingLosses.length % VALIDATION_INTERVAL === 0;
 
     let averageValidationLoss: number | null = null;
 
