@@ -10,6 +10,7 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmax } from "../shared/math.ts";
 import { backprop } from "./backprop/backprop.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
+import { getSequenceLoss } from "./getSequenceLoss.ts";
 
 const zeroTransformer: TransformerWeights = {
   attention: {
@@ -122,21 +123,25 @@ describe("training/backprop integration readiness", () => {
   it("keeps gradients and adjusted weights finite, then nudges the trained next-token objective downhill", async () => {
     const prompt = "prompt";
     const target = "answer";
-    const targetIndex = findTokenIndex(model.vocabulary, target);
     const promptOnlyInput = [prompt];
     const trainingSequence = [prompt, target];
 
-    const { activations } = llmForwardPassByTokens(
-      promptOnlyInput,
+    const {
+      activations,
+      correctTokenIndices,
+      outputProbabilities,
+    } = getSequenceLoss(
+      { sequence: trainingSequence, maskBeforeIndex: null },
       model,
-      true,
     );
 
-    if (!activations) {
-      throw new Error("Expected activations for backprop integration check");
-    }
-
-    const { loss, gradients } = backprop(model, activations, [targetIndex]);
+    const loss = outputProbabilities.reduce((sum, o) => sum + o.loss, 0);
+    const gradients = backprop(
+      model,
+      activations,
+      correctTokenIndices,
+      outputProbabilities,
+    );
 
     expect(Number.isFinite(loss)).toBe(true);
     expectWeightsToBeFinite(gradients);
