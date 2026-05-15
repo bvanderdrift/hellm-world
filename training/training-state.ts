@@ -1,12 +1,16 @@
 import { writeNewCheckpoint } from "../model/model-io.ts";
-import type { Model, Weights } from "../model/model-types.ts";
+import type {
+  Model,
+  ModelTrainingHistory,
+  Weights,
+} from "../model/model-types.ts";
 import type { EndDefinition } from "./training.ts";
 
 export const createStateStore = (
   endDefinition: EndDefinition | null,
   modelName: string,
   incomingModel: Model,
-  lossHistory: number[],
+  history: ModelTrainingHistory,
 ) => {
   const startTime = Date.now();
   let index = 0;
@@ -30,7 +34,7 @@ export const createStateStore = (
     if (!endDefinition) {
       return {
         model: modelUnderTraining,
-        lossHistory,
+        history,
         currentStepIndex,
         startTime,
         isDone: false,
@@ -42,7 +46,7 @@ export const createStateStore = (
 
     return {
       model: modelUnderTraining,
-      lossHistory,
+      history,
       currentStepIndex,
       startTime,
       isDone: percentDone >= 1,
@@ -52,8 +56,20 @@ export const createStateStore = (
 
   return {
     getState,
-    updateModelWithNewWeights: (weights: Weights, latestLoss: number) => {
-      lossHistory.push(latestLoss);
+    updateModelWithNewWeights: (
+      weights: Weights,
+      latestLoss: number,
+      averageValidationLoss: number | null,
+    ) => {
+      history.trainingLosses.push(latestLoss);
+
+      if (averageValidationLoss !== null) {
+        history.validationLosses.push({
+          loss: averageValidationLoss,
+          stepIndex: history.trainingLosses.length,
+        });
+      }
+
       index++;
       modelUnderTraining = {
         ...modelUnderTraining,
@@ -62,10 +78,7 @@ export const createStateStore = (
     },
     writeNewCheckpoint: () => {
       writeNewCheckpoint(modelName, {
-        history: {
-          validationLosses: [],
-          trainingLosses: lossHistory,
-        },
+        history,
         weights: modelUnderTraining,
       });
     },

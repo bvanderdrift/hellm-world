@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
 import type { Model } from "../../model/model-types.ts";
-import { softmax, sum } from "../../shared/math.ts";
+import { safeSumExponatedLogits, softmax, sum } from "../../shared/math.ts";
 import { backprop } from "./backprop.ts";
 
 const expectMatrixToBeCloseTo = (actual: number[][], expected: number[][]) => {
@@ -61,15 +61,26 @@ describe("backprop", () => {
     };
     const correctTokenIndices = [1, 3];
 
-    const { loss, gradients } = backprop(
+    const outputProbabilities = activations.unembeddingsOutputLogits.map(
+      (outputLogits, tokenIndex) => {
+        const probabilities = softmax(outputLogits);
+        const loss = -Math.log(
+          probabilities[correctTokenIndices[tokenIndex]!]!,
+        );
+        return { probabilities, loss };
+      },
+    );
+
+    const gradients = backprop(
       model,
       activations,
       correctTokenIndices,
+      outputProbabilities,
     );
 
-    const outputGradients = activations.unembeddingsOutputLogits.map(
-      (outputLogits, tokenIndex) =>
-        softmax(outputLogits).map(
+    const outputGradients = outputProbabilities.map(
+      ({ probabilities }, tokenIndex) =>
+        probabilities.map(
           (probability, vocabIndex) =>
             probability -
             (vocabIndex === correctTokenIndices[tokenIndex] ? 1 : 0),
@@ -88,13 +99,9 @@ describe("backprop", () => {
         ),
     );
 
-    const expectedLoss = sum(
-      activations.unembeddingsOutputLogits.map(
-        (outputLogits, tokenIndex) =>
-          -Math.log(softmax(outputLogits)[correctTokenIndices[tokenIndex]!]!),
-      ),
-    );
-    expect(loss).toBeCloseTo(expectedLoss, 10);
+    const expectedLoss = sum(outputProbabilities.map((o) => o.loss));
+    const actualLoss = sum(outputProbabilities.map((o) => o.loss));
+    expect(actualLoss).toBeCloseTo(expectedLoss, 10);
     expectMatrixToBeCloseTo(
       gradients.unembeddings,
       expectedUnembeddingGradients,
@@ -141,7 +148,25 @@ describe("backprop", () => {
       unembeddingsOutputLogits: [[0, -1000]],
     };
 
-    const { loss } = backprop(model, activations, [1]);
+    const correctTokenIndices = [1];
+    const outputProbabilities = activations.unembeddingsOutputLogits.map(
+      (outputLogits, tokenIndex) => {
+        const correctTokenIndex = correctTokenIndices[tokenIndex]!;
+        const { summed, safeLogits, biggestLogit } =
+          safeSumExponatedLogits(outputLogits);
+        const probabilities = safeLogits.map(
+          (logit) => Math.exp(logit) / summed,
+        );
+        const correctTokenLogitAdjusted =
+          outputLogits[correctTokenIndex]! - biggestLogit;
+        const loss = Math.log(summed) - correctTokenLogitAdjusted;
+        return { probabilities, loss };
+      },
+    );
+
+    const loss = sum(outputProbabilities.map((o) => o.loss));
+
+    backprop(model, activations, correctTokenIndices, outputProbabilities);
 
     expect(Number.isFinite(loss)).toBe(true);
     expect(loss).toBeCloseTo(1000, 0);

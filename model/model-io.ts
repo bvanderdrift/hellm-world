@@ -10,6 +10,7 @@ import type { ModelMetadata, Model, ModelCheckpoint } from "./model-types.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";
+const VALIDATION_DATA_FILE_NAME = "_validation_data.txt";
 
 export const getLatestCheckpointModel = (
   model: string,
@@ -78,6 +79,16 @@ export const readRawTrainingData = (modelName: string) => {
   );
 
   return readFileSync(modelTrainingDataFile).toString();
+};
+
+export const readRawValidationData = (modelName: string) => {
+  const modelValidationDataFile = join(
+    import.meta.dirname,
+    modelName,
+    VALIDATION_DATA_FILE_NAME,
+  );
+
+  return readFileSync(modelValidationDataFile).toString();
 };
 
 export const writeNewCheckpoint = (

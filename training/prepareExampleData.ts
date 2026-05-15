@@ -3,14 +3,12 @@ import { tokenize } from "../shared/tokenizer.ts";
 import { readRawTrainingData } from "../model/model-io.ts";
 import type { TrainingExample } from "./doSingleTrainingPass.ts";
 
-export const prepareTrainingData = (
-  modelName: string,
+export const prepareExampleData = (
+  exampleDataContent: string,
   vocabulary: string[],
   maskSeparator: string | null,
 ): TrainingExample[] => {
-  const modelTrainingDataContent = readRawTrainingData(modelName);
-
-  const sequences = parseTrainingData(modelTrainingDataContent, vocabulary);
+  const sequences = parseExampleData(exampleDataContent, vocabulary);
 
   return sequences.map(
     (sequence): TrainingExample => ({
@@ -21,7 +19,7 @@ export const prepareTrainingData = (
   );
 };
 
-export const parseTrainingData = (
+export const parseExampleData = (
   fileContent: string,
   vocabulary: string[],
 ): string[][] => {

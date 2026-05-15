@@ -6,9 +6,9 @@ import {
 } from "../model/model-helpers.ts";
 import {
   getLatestCheckpointModel,
-  writeNewCheckpoint,
+  readRawTrainingData,
 } from "../model/model-io.ts";
-import { prepareTrainingData } from "./prepareTrainingData.ts";
+import { prepareExampleData } from "./prepareExampleData.ts";
 import { cpus } from "os";
 import type {
   InputMessagePayload,
@@ -20,8 +20,11 @@ import {
 } from "./doSingleTrainingPass.ts";
 import { createStateStore, type StateStore } from "./training-state.ts";
 import { startKeyboardListening } from "./keyboard-listener.ts";
+import { runValidationCheck } from "./validation.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
+
+const VALIDATION_INTERVAL = 20;
 
 export type EndDefinition = { type: "minutes" | "steps"; count: number };
 
@@ -54,12 +57,12 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     endDefinition,
     modelName,
     modelLoaded,
-    history.trainingLosses,
+    history,
   );
 
   const trainingData = shuffleArray(
-    prepareTrainingData(
-      modelName,
+    prepareExampleData(
+      readRawTrainingData(modelName),
       modelLoaded.vocabulary,
       modelLoaded.trainingMaskSeparator ?? null,
     ),
@@ -77,15 +80,30 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       offset + MAX_TRAINING_DATA_PER_PASS,
     );
 
+    const shouldRunValidation =
+      state.currentStepIndex !== 0 &&
+      state.currentStepIndex % VALIDATION_INTERVAL === 0;
+
+    let averageValidationLoss: number | null = null;
+
+    if (shouldRunValidation) {
+      console.log(`Starting validation test`);
+      averageValidationLoss = await runValidationCheck(modelName, state.model);
+    }
+
     const { averageLoss, adjustedWeights } = await runTrainingPasses(
       state.model,
       trainingDataToWorkWith,
       parallelism,
     );
 
-    stateStore.updateModelWithNewWeights(adjustedWeights, averageLoss);
+    stateStore.updateModelWithNewWeights(
+      adjustedWeights,
+      averageLoss,
+      averageValidationLoss,
+    );
 
-    logStateProgress(stateStore);
+    logStateProgress(stateStore, averageValidationLoss);
   }
 
   stateStore.writeNewCheckpoint();
@@ -95,15 +113,18 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
-const logStateProgress = (store: StateStore) => {
+const logStateProgress = (
+  store: StateStore,
+  newValidationLossAverage: number | null,
+) => {
   const {
     currentStepIndex: index,
     percentDone: newPercentDone,
     startTime,
-    lossHistory,
+    history,
   } = store.getState();
 
-  const lastLoss = lossHistory[lossHistory.length - 1]!;
+  const lastLoss = history.trainingLosses[history.trainingLosses.length - 1]!;
 
   const indexPadded = index.toString().padStart(index.toString().length, "0");
 
@@ -115,9 +136,14 @@ const logStateProgress = (store: StateStore) => {
       ? ""
       : `(${(newPercentDone * 100).toFixed(2)}% complete) `;
 
+  const stepFormatted = `(step ${indexPadded}) - `;
+
   console.log(
-    `(step ${indexPadded}) - ${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
+    `${stepFormatted}${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
   );
+  if (newValidationLossAverage !== null) {
+    console.log(`${stepFormatted}validation loss: ${newValidationLossAverage}`);
+  }
 };
 
 const cpuCount = cpus().length;
