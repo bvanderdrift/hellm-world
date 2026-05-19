@@ -53,6 +53,7 @@ export const getSequenceLoss = (
         contextIndex * dim,
       );
       outputLosses[contextIndex] = 0;
+      continue;
     }
 
     /**
