@@ -11,40 +11,42 @@ import { softmax } from "../shared/math.ts";
 import { backprop } from "./backprop/backprop.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
+import { matrixFrom } from "../testing/testing-utils.ts";
+import { getRawVector } from "../shared/matrices.ts";
 
 const zeroTransformer: TransformerWeights = {
   attention: {
-    Q: [
+    Q: matrixFrom([
       [0, 0],
       [0, 0],
-    ],
-    K: [
+    ]),
+    K: matrixFrom([
       [0, 0],
       [0, 0],
-    ],
-    V: [
+    ]),
+    V: matrixFrom([
       [0, 0],
       [0, 0],
-    ],
-    out: [
+    ]),
+    out: matrixFrom([
       [0, 0],
       [0, 0],
-    ],
+    ]),
   },
   multilayerPerceptron: {
     wUp: {
-      weightsMatrix: [
+      weightsMatrix: matrixFrom([
         [0, 0],
         [0, 0],
-      ],
-      biasVector: [0, 0],
+      ]),
+      biasVector: matrixFrom([[0, 0]]),
     },
     wDown: {
-      weightsMatrix: [
+      weightsMatrix: matrixFrom([
         [0, 0],
         [0, 0],
-      ],
-      biasVector: [0, 0],
+      ]),
+      biasVector: matrixFrom([[0, 0]]),
     },
   },
 };
@@ -53,30 +55,30 @@ const model: Model = {
   vocabulary: ["prompt", "answer", END_OF_SEQUENCE_TOKEN],
   headsCount: 2,
   mlpMultiple: 1,
-  embeddings: [
+  embeddings: matrixFrom([
     [0.25, -0.75],
     [0.5, -0.5],
     [0.75, 0.25],
-  ],
-  unembeddings: [
+  ]),
+  unembeddings: matrixFrom([
     [0, 0, 0],
     [0, 0, 0],
-  ],
+  ]),
   transformers: [zeroTransformer],
 };
 
 const flattenWeights = (weights: Weights): number[] => [
-  ...weights.embeddings.flat(),
-  ...weights.unembeddings.flat(),
+  ...weights.embeddings.values,
+  ...weights.unembeddings.values,
   ...weights.transformers.flatMap((transformer) => [
-    ...transformer.attention.Q.flat(),
-    ...transformer.attention.K.flat(),
-    ...transformer.attention.V.flat(),
-    ...transformer.attention.out.flat(),
-    ...transformer.multilayerPerceptron.wUp.weightsMatrix.flat(),
-    ...transformer.multilayerPerceptron.wUp.biasVector,
-    ...transformer.multilayerPerceptron.wDown.weightsMatrix.flat(),
-    ...transformer.multilayerPerceptron.wDown.biasVector,
+    ...transformer.attention.Q.values,
+    ...transformer.attention.K.values,
+    ...transformer.attention.V.values,
+    ...transformer.attention.out.values,
+    ...transformer.multilayerPerceptron.wUp.weightsMatrix.values,
+    ...transformer.multilayerPerceptron.wUp.biasVector.values,
+    ...transformer.multilayerPerceptron.wDown.weightsMatrix.values,
+    ...transformer.multilayerPerceptron.wDown.biasVector.values,
   ]),
 ];
 
@@ -106,16 +108,17 @@ const lossForNextToken = (
     currentModel,
     false,
   );
-  const finalLogits = logitsByPosition[logitsByPosition.length - 1];
+  const finalLogits = getRawVector(
+    logitsByPosition,
+    logitsByPosition.vectors - 1,
+  );
 
   if (!finalLogits) {
     throw new Error("Expected the forward pass to return final logits");
   }
 
   return -Math.log(
-    softmax(finalLogits)[
-      findTokenIndex(currentModel.vocabulary, targetToken)
-    ]!,
+    softmax(finalLogits)[findTokenIndex(currentModel.vocabulary, targetToken)]!,
   );
 };
 
@@ -130,12 +133,13 @@ describe("training/backprop integration readiness", () => {
       activations,
       correctTokenIndices,
       outputProbabilities,
+      outputLosses,
     } = getSequenceLoss(
       { sequence: trainingSequence, maskBeforeIndex: null },
       model,
     );
 
-    const loss = outputProbabilities.reduce((sum, o) => sum + o.loss, 0);
+    const loss = outputLosses.reduce((sum, loss) => sum + loss, 0);
     const gradients = backprop(
       model,
       activations,

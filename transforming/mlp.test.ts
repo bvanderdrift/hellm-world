@@ -1,34 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
-import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices.ts";
-
-const matrixFrom = (rows: number[][]): Matrix => {
-  const vectors = rows.length;
-  const dimensions = rows[0]!.length;
-  const m = createMatrix(vectors, dimensions);
-  for (let i = 0; i < vectors; i++) {
-    for (let j = 0; j < dimensions; j++) {
-      m.values[getFlatIndex(i, j, dimensions)] = rows[i]![j]!;
-    }
-  }
-  return m;
-};
+import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
+import type { Matrix } from "../shared/matrices.ts";
 
 const vectorFrom = (values: number[]): Matrix => matrixFrom([values]);
-
-const expectMatrixCloseTo = (actual: Matrix, expected: number[][]) => {
-  const exp = matrixFrom(expected);
-  expect(actual.vectors).toBe(exp.vectors);
-  expect(actual.dimensions).toBe(exp.dimensions);
-
-  for (let i = 0; i < exp.vectors; i++) {
-    for (let j = 0; j < exp.dimensions; j++) {
-      const idx = getFlatIndex(i, j, exp.dimensions);
-      expect(actual.values[idx]).toBeCloseTo(exp.values[idx]!, 10);
-    }
-  }
-};
 
 const twoDimPerceptron: MultilayerPerceptronWeights = {
   wUp: {
@@ -88,7 +64,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
         matrixFrom([[2, -1]]),
         twoDimPerceptron,
       ).downingOutput,
-      [[0.5, 3.5]],
+      matrixFrom([[0.5, 3.5]]),
     );
   });
 
@@ -98,7 +74,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
         matrixFrom([[1, 2, -1]]),
         threeDimPerceptron,
       ).downingOutput,
-      [[3, -1, -4]],
+      matrixFrom([[3, -1, -4]]),
     );
   });
 
@@ -112,7 +88,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
 
     const notExpected = matrixFrom([[4.5, 1.5]]);
     const matches = result.values.every(
-      (v, i) => Math.abs(v - notExpected.values[i]!) < 1e-10,
+      (v: number, i: number) => Math.abs(v - notExpected.values[i]!) < 1e-10,
     );
     expect(matches).toBe(false);
   });
@@ -127,11 +103,11 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
         ]),
         twoDimPerceptron,
       ).downingOutput,
-      [
+      matrixFrom([
         [0.5, 3.5],
         [38.5, 22.5],
         [1.5, -1.5],
-      ],
+      ]),
     );
   });
 
@@ -151,7 +127,7 @@ describe("getMultilayerPerceptronUpdateMatrix", () => {
       [1.5, -1.5],
     ]);
     const matches = result.values.every(
-      (v, i) => Math.abs(v - notExpected.values[i]!) < 1e-10,
+      (v: number, i: number) => Math.abs(v - notExpected.values[i]!) < 1e-10,
     );
     expect(matches).toBe(false);
   });

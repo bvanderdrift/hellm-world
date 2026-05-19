@@ -1,23 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   normalize,
-  createMatrix,
   getFlatIndex,
   type Matrix,
 } from "../../shared/matrices.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
-
-const matrixFrom = (rows: number[][]): Matrix => {
-  const vectors = rows.length;
-  const dimensions = rows[0]!.length;
-  const m = createMatrix(vectors, dimensions);
-  for (let i = 0; i < vectors; i++) {
-    for (let j = 0; j < dimensions; j++) {
-      m.values[getFlatIndex(i, j, dimensions)] = rows[i]![j]!;
-    }
-  }
-  return m;
-};
+import { matrixFrom } from "../../testing/testing-utils.ts";
+import { FINITE_DIFFERENCE_EPSILON, FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
 
 describe("backpropNormalize", () => {
   const normalizeObjective = (
@@ -39,7 +28,6 @@ describe("backpropNormalize", () => {
   it("matches finite differences for one normalized vector", () => {
     const inputActivations = matrixFrom([[1, 2, 4]]);
     const outputGradients = matrixFrom([[0.3, -0.7, 1.2]]);
-    const epsilon = 0.000001;
 
     const gradients = backpropNormalize(outputGradients, inputActivations);
 
@@ -47,17 +35,17 @@ describe("backpropNormalize", () => {
       const increased = matrixFrom([[1, 2, 4]]);
       const decreased = matrixFrom([[1, 2, 4]]);
 
-      increased.values[valueIndex]! += epsilon;
-      decreased.values[valueIndex]! -= epsilon;
+      increased.values[valueIndex]! += FINITE_DIFFERENCE_EPSILON;
+      decreased.values[valueIndex]! -= FINITE_DIFFERENCE_EPSILON;
 
       const numericalGradient =
         (normalizeObjective(increased, outputGradients) -
           normalizeObjective(decreased, outputGradients)) /
-        (2 * epsilon);
+        (2 * FINITE_DIFFERENCE_EPSILON);
 
       expect(
         gradients.values[getFlatIndex(0, valueIndex, gradients.dimensions)],
-      ).toBeCloseTo(numericalGradient, 2);
+      ).toBeCloseTo(numericalGradient, FINITE_DIFFERENCE_PRECISION);
     }
   });
 
@@ -70,8 +58,6 @@ describe("backpropNormalize", () => {
       [0.3, -0.7, 1.2],
       [-0.5, 0.8, 0.1],
     ]);
-    const epsilon = 0.000001;
-
     const gradients = backpropNormalize(outputGradients, inputActivations);
 
     for (let vectorIndex = 0; vectorIndex < inputActivations.vectors; vectorIndex++) {
@@ -86,17 +72,17 @@ describe("backpropNormalize", () => {
         ]);
 
         const idx = getFlatIndex(vectorIndex, valueIndex, inputActivations.dimensions);
-        increased.values[idx]! += epsilon;
-        decreased.values[idx]! -= epsilon;
+        increased.values[idx]! += FINITE_DIFFERENCE_EPSILON;
+        decreased.values[idx]! -= FINITE_DIFFERENCE_EPSILON;
 
         const numericalGradient =
           (normalizeObjective(increased, outputGradients) -
             normalizeObjective(decreased, outputGradients)) /
-          (2 * epsilon);
+          (2 * FINITE_DIFFERENCE_EPSILON);
 
         expect(
           gradients.values[getFlatIndex(vectorIndex, valueIndex, gradients.dimensions)],
-        ).toBeCloseTo(numericalGradient, 2);
+        ).toBeCloseTo(numericalGradient, FINITE_DIFFERENCE_PRECISION);
       }
     }
   });

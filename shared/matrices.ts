@@ -116,11 +116,23 @@ export const transpose = (matrix: Matrix): Matrix => {
   return output;
 };
 
+const getRawVectors = (matrix: Matrix, start: number, end: number) =>
+  matrix.values.slice(start * matrix.dimensions, end * matrix.dimensions);
+
 export const getRawVector = (matrix: Matrix, vectorIndex: number) =>
-  matrix.values.slice(
-    vectorIndex * matrix.dimensions,
-    (vectorIndex + 1) * matrix.dimensions,
-  );
+  getRawVectors(matrix, vectorIndex, vectorIndex + 1);
+
+export const sliceVectorsFromMatrix = (
+  matrix: Matrix,
+  start: number,
+  end: number,
+) => {
+  const output = createMatrix(end - start, matrix.dimensions);
+
+  output.values = getRawVectors(matrix, start, end);
+
+  return output;
+};
 
 export const normalize = (matrix: Matrix): Matrix => {
   const output = createMatrix(matrix.vectors, matrix.dimensions);

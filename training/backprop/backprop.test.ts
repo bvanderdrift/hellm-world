@@ -2,28 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
 import type { Model } from "../../model/model-types.ts";
 import { safeSumExponatedLogits, softmax, sum } from "../../shared/math.ts";
+import type { Matrix } from "../../shared/matrices.ts";
 import {
   createMatrix,
   getFlatIndex,
   getRawVector,
-  type Matrix,
 } from "../../shared/matrices.ts";
+import {
+  expectMatrixCloseTo,
+  matrixFrom,
+} from "../../testing/testing-utils.ts";
 import { backprop } from "./backprop.ts";
-
-const m = (data: number[][]): Matrix => {
-  const mat = createMatrix(data.length, data[0]!.length);
-  mat.values.set(data.flat());
-  return mat;
-};
-
-const expectMatrixToBeCloseTo = (actual: Matrix, expected: Matrix) => {
-  expect(actual.vectors).toBe(expected.vectors);
-  expect(actual.dimensions).toBe(expected.dimensions);
-
-  for (let i = 0; i < expected.values.length; i++) {
-    expect(actual.values[i]).toBeCloseTo(expected.values[i]!, 5);
-  }
-};
 
 describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {
@@ -31,13 +20,13 @@ describe("backprop", () => {
       vocabulary: ["alpha", "beta", "gamma", "delta"],
       headsCount: 1,
       mlpMultiple: 1,
-      embeddings: m([
+      embeddings: matrixFrom([
         [0.5, -0.25, 0.75],
         [0.1, 0.2, -0.3],
         [0.4, 0.5, 0.6],
         [-0.7, 0.8, -0.9],
       ]),
-      unembeddings: m([
+      unembeddings: matrixFrom([
         [0.2, -0.4, 0.6, -0.8],
         [1, -1.2, 1.4, -1.6],
         [-0.3, 0.5, -0.7, 0.9],
@@ -46,24 +35,24 @@ describe("backprop", () => {
     };
     const activations: Activations = {
       inputPositionToVocabPosition: [0, 1],
-      tokensToPosition: m([
+      tokensToPosition: matrixFrom([
         [0, 0, 0],
         [0, 0, 0],
       ]),
-      positionToTransformers: m([
+      positionToTransformers: matrixFrom([
         [0, 0, 0],
         [0, 0, 0],
       ]),
       transformerActivations: [],
-      transformersToNormalizer: m([
+      transformersToNormalizer: matrixFrom([
         [100, -100, 50],
         [2, -1, 4],
       ]),
-      normalizerToUnembeddings: m([
+      normalizerToUnembeddings: matrixFrom([
         [99, 88, 77],
         [0.25, -0.5, 1.25],
       ]),
-      unembeddingsOutputLogits: m([
+      unembeddingsOutputLogits: matrixFrom([
         [8, -4, 3, 7],
         [0.7, -1.1, 2.2, -0.4],
       ]),
@@ -71,13 +60,14 @@ describe("backprop", () => {
     const correctTokenIndices = [1, 3];
 
     const tokenCount = activations.unembeddingsOutputLogits.vectors;
-    const outputProbabilities: { probabilities: number[]; loss: number }[] = [];
+    const vocabSize = activations.unembeddingsOutputLogits.dimensions;
+    const outputProbabilities: Matrix = createMatrix(tokenCount, vocabSize);
+    const outputLosses: number[] = [];
     for (let t = 0; t < tokenCount; t++) {
       const logits = getRawVector(activations.unembeddingsOutputLogits, t);
       const probs = softmax(logits);
-      const probabilities = Array.from(probs);
-      const loss = -Math.log(probs[correctTokenIndices[t]!]!);
-      outputProbabilities.push({ probabilities, loss });
+      outputProbabilities.values.set(probs, t * vocabSize);
+      outputLosses.push(-Math.log(probs[correctTokenIndices[t]!]!));
     }
 
     const gradients = backprop(
@@ -122,9 +112,9 @@ describe("backprop", () => {
     }
     const expectedLoss = sum(losses);
 
-    const actualLoss = sum(new Float32Array(outputProbabilities.map((o) => o.loss)));
+    const actualLoss = sum(new Float32Array(outputLosses));
     expect(actualLoss).toBeCloseTo(expectedLoss, 5);
-    expectMatrixToBeCloseTo(
+    expectMatrixCloseTo(
       gradients.unembeddings,
       expectedUnembeddingGradients,
     );
@@ -149,11 +139,11 @@ describe("backprop", () => {
       vocabulary: ["dominant", "tiny"],
       headsCount: 1,
       mlpMultiple: 1,
-      embeddings: m([
+      embeddings: matrixFrom([
         [1, 0],
         [0, 1],
       ]),
-      unembeddings: m([
+      unembeddings: matrixFrom([
         [1, 0],
         [0, 1],
       ]),
@@ -161,17 +151,19 @@ describe("backprop", () => {
     };
     const activations: Activations = {
       inputPositionToVocabPosition: [0],
-      tokensToPosition: m([[1, 0]]),
-      positionToTransformers: m([[1, 0]]),
+      tokensToPosition: matrixFrom([[1, 0]]),
+      positionToTransformers: matrixFrom([[1, 0]]),
       transformerActivations: [],
-      transformersToNormalizer: m([[1, 0]]),
-      normalizerToUnembeddings: m([[1, 0]]),
-      unembeddingsOutputLogits: m([[0, -1000]]),
+      transformersToNormalizer: matrixFrom([[1, 0]]),
+      normalizerToUnembeddings: matrixFrom([[1, 0]]),
+      unembeddingsOutputLogits: matrixFrom([[0, -1000]]),
     };
 
     const correctTokenIndices = [1];
     const tokenCount = activations.unembeddingsOutputLogits.vectors;
-    const outputProbabilities: { probabilities: number[]; loss: number }[] = [];
+    const vocabSize = activations.unembeddingsOutputLogits.dimensions;
+    const outputProbabilities: Matrix = createMatrix(tokenCount, vocabSize);
+    const outputLosses: number[] = [];
     for (let t = 0; t < tokenCount; t++) {
       const logits = getRawVector(activations.unembeddingsOutputLogits, t);
       const correctTokenIndex = correctTokenIndices[t]!;
@@ -180,13 +172,13 @@ describe("backprop", () => {
       const probabilities = Array.from(safeLogits).map(
         (logit) => Math.exp(logit) / summed,
       );
+      outputProbabilities.values.set(probabilities, t * vocabSize);
       const correctTokenLogitAdjusted =
         logits[correctTokenIndex]! - biggestLogit;
-      const loss = Math.log(summed) - correctTokenLogitAdjusted;
-      outputProbabilities.push({ probabilities, loss });
+      outputLosses.push(Math.log(summed) - correctTokenLogitAdjusted);
     }
 
-    const loss = sum(new Float32Array(outputProbabilities.map((o) => o.loss)));
+    const loss = sum(new Float32Array(outputLosses));
 
     backprop(model, activations, correctTokenIndices, outputProbabilities);
 

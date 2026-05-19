@@ -50,17 +50,17 @@ export const loadWeightsIntoGpu = (weight: Weights): WeightGPUBuffers => {
             weightsMatrix: createMatrixBuffer(
               t.multilayerPerceptron.wDown.weightsMatrix,
             ),
-            biasVector: createMatrixBuffer([
+            biasVector: createMatrixBuffer(
               t.multilayerPerceptron.wDown.biasVector,
-            ]),
+            ),
           },
           wUp: {
             weightsMatrix: createMatrixBuffer(
               t.multilayerPerceptron.wUp.weightsMatrix,
             ),
-            biasVector: createMatrixBuffer([
+            biasVector: createMatrixBuffer(
               t.multilayerPerceptron.wUp.biasVector,
-            ]),
+            ),
           },
         },
       }),

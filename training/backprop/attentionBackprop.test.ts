@@ -1,97 +1,94 @@
-import { describe, expect, it } from "vitest";
+import { describe, it } from "vitest";
 import type { AttentionWeights } from "../../model/model-types.ts";
 import type { AttentionHeadActivations } from "../../model/activations-types.ts";
 import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
 } from "../../transforming/attention.ts";
-import { attentionBackprop, attentionHeadBackprop } from "./attentionBackprop.ts";
-
-const epsilon = 0.000001;
-
-const expectMatrixCloseTo = (
-  actual: number[][],
-  expected: number[][],
-  precision = 5,
-) => {
-  expect(actual).toHaveLength(expected.length);
-
-  for (const [rowIndex, expectedRow] of expected.entries()) {
-    const actualRow = actual[rowIndex];
-
-    expect(actualRow).toHaveLength(expectedRow.length);
-
-    for (const [columnIndex, expectedValue] of expectedRow.entries()) {
-      expect(actualRow?.[columnIndex]).toBeCloseTo(expectedValue, precision);
-    }
-  }
-};
+import {
+  attentionBackprop,
+  attentionHeadBackprop,
+} from "./attentionBackprop.ts";
+import {
+  createMatrix,
+  getFlatIndex,
+  type Matrix,
+} from "../../shared/matrices.ts";
+import {
+  FINITE_DIFFERENCE_EPSILON,
+  FINITE_DIFFERENCE_PRECISION,
+} from "../../testing/constants.ts";
+import {
+  matrixFrom,
+  expectMatrixCloseTo,
+} from "../../testing/testing-utils.ts";
 
 const perturbMatrix = (
-  matrix: number[][],
+  matrix: Matrix,
   perturbRow: number,
   perturbColumn: number,
   delta: number,
-) =>
-  matrix.map((row, rowIndex) =>
-    row.map((value, columnIndex) =>
-      rowIndex === perturbRow && columnIndex === perturbColumn
-        ? value + delta
-        : value,
-    ),
-  );
+): Matrix => {
+  const clone = createMatrix(matrix.vectors, matrix.dimensions);
+  clone.values.set(matrix.values);
+  clone.values[getFlatIndex(perturbRow, perturbColumn, matrix.dimensions)]! +=
+    delta;
+  return clone;
+};
 
 const finiteDifferenceMatrixEntry = (
-  matrix: number[][],
+  matrix: Matrix,
   rowIndex: number,
   columnIndex: number,
-  objective: (perturbedMatrix: number[][]) => number,
+  objective: (perturbedMatrix: Matrix) => number,
 ) => {
-  const increased = perturbMatrix(matrix, rowIndex, columnIndex, epsilon);
-  const decreased = perturbMatrix(matrix, rowIndex, columnIndex, -epsilon);
+  const increased = perturbMatrix(matrix, rowIndex, columnIndex, FINITE_DIFFERENCE_EPSILON);
+  const decreased = perturbMatrix(matrix, rowIndex, columnIndex, -FINITE_DIFFERENCE_EPSILON);
 
-  return (objective(increased) - objective(decreased)) / (2 * epsilon);
+  return (objective(increased) - objective(decreased)) / (2 * FINITE_DIFFERENCE_EPSILON);
 };
 
 const finiteDifferenceMatrix = (
-  matrix: number[][],
-  objective: (perturbedMatrix: number[][]) => number,
-) =>
-  matrix.map((row, rowIndex) =>
-    row.map((_, columnIndex) =>
-      finiteDifferenceMatrixEntry(matrix, rowIndex, columnIndex, objective),
-    ),
-  );
+  matrix: Matrix,
+  objective: (perturbedMatrix: Matrix) => number,
+): Matrix => {
+  const result = createMatrix(matrix.vectors, matrix.dimensions);
+  for (let i = 0; i < matrix.vectors; i++) {
+    for (let j = 0; j < matrix.dimensions; j++) {
+      result.values[getFlatIndex(i, j, matrix.dimensions)] =
+        finiteDifferenceMatrixEntry(matrix, i, j, objective);
+    }
+  }
+  return result;
+};
 
-const matrixObjective = (output: number[][], outputGradients: number[][]) =>
-  output.reduce(
-    (matrixSum, outputVector, vectorIndex) =>
-      matrixSum +
-      outputVector.reduce(
-        (vectorSum, outputValue, dimensionIndex) =>
-          vectorSum +
-          outputValue * outputGradients[vectorIndex]![dimensionIndex]!,
-        0,
-      ),
-    0,
-  );
+const matrixObjective = (output: Matrix, outputGradients: Matrix) => {
+  let total = 0;
+  for (let i = 0; i < output.vectors; i++) {
+    for (let j = 0; j < output.dimensions; j++) {
+      const idx = getFlatIndex(i, j, output.dimensions);
+      total += output.values[idx]! * outputGradients.values[idx]!;
+    }
+  }
+  return total;
+};
 
 const attentionHeadObjective = (
-  inputQ: number[][],
-  inputK: number[][],
-  inputV: number[][],
-  outputGradients: number[][],
+  inputQ: Matrix,
+  inputK: Matrix,
+  inputV: Matrix,
+  outputGradients: Matrix,
 ) =>
   matrixObjective(
-    runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length).output,
+    runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ.dimensions).output,
     outputGradients,
   );
 
 const attentionObjective = (
-  input: number[][],
+  input: Matrix,
   headsCount: number,
   weights: AttentionWeights,
-  outputGradients: number[][],
+  outputGradients: Matrix,
 ) =>
   matrixObjective(
     runSelfAttentionMechanism(input, headsCount, weights).output,
@@ -100,31 +97,31 @@ const attentionObjective = (
 
 describe("attentionHeadBackprop", () => {
   it("matches finite differences for value gradients through the causal lookback window", () => {
-    const inputQ = [
+    const inputQ = matrixFrom([
       [0.2, -0.5],
       [1.1, 0.3],
       [-0.7, 0.8],
-    ];
-    const inputK = [
+    ]);
+    const inputK = matrixFrom([
       [0.4, 0.1],
       [-0.3, 0.9],
       [0.2, -0.6],
-    ];
-    const inputV = [
+    ]);
+    const inputV = matrixFrom([
       [0.5, -0.2],
       [1.3, 0.7],
       [-0.4, 0.9],
-    ];
-    const outputGradients = [
+    ]);
+    const outputGradients = matrixFrom([
       [0.6, -0.1],
       [-0.2, 0.8],
       [1.1, -0.5],
-    ];
+    ]);
 
-    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length);
+    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 2);
     const activations: AttentionHeadActivations = {
-      inputQ: rawActivations.inputQ,
       inputK: rawActivations.inputK,
+      inputQ: rawActivations.inputQ,
       inputV: rawActivations.inputV,
       attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
       softmaxOutput: rawActivations.softmaxOutput[0]!,
@@ -139,19 +136,19 @@ describe("attentionHeadBackprop", () => {
       attentionHeadObjective(inputQ, inputK, perturbedV, outputGradients),
     );
 
-    expectMatrixCloseTo(inputVGradients, numericalVGradients);
+    expectMatrixCloseTo(inputVGradients, numericalVGradients, FINITE_DIFFERENCE_PRECISION);
   });
 
   it("matches finite differences for query and key gradients after value mixing", () => {
-    const inputQ = [[0.4], [0.7]];
-    const inputK = [[-0.2], [0.9]];
-    const inputV = [[1.5], [-0.4]];
-    const outputGradients = [[0.3], [1.2]];
+    const inputQ = matrixFrom([[0.4], [0.7]]);
+    const inputK = matrixFrom([[-0.2], [0.9]]);
+    const inputV = matrixFrom([[1.5], [-0.4]]);
+    const outputGradients = matrixFrom([[0.3], [1.2]]);
 
-    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length);
+    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 1);
     const activations: AttentionHeadActivations = {
-      inputQ: rawActivations.inputQ,
       inputK: rawActivations.inputK,
+      inputQ: rawActivations.inputQ,
       inputV: rawActivations.inputV,
       attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
       softmaxOutput: rawActivations.softmaxOutput[0]!,
@@ -169,49 +166,49 @@ describe("attentionHeadBackprop", () => {
       attentionHeadObjective(inputQ, perturbedK, inputV, outputGradients),
     );
 
-    expectMatrixCloseTo(inputQGradients, numericalQGradients);
-    expectMatrixCloseTo(inputKGradients, numericalKGradients);
+    expectMatrixCloseTo(inputQGradients, numericalQGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(inputKGradients, numericalKGradients, FINITE_DIFFERENCE_PRECISION);
   });
 });
 
 describe("attentionBackprop", () => {
   it("matches finite differences for weights and inputs across split heads", () => {
-    const input = [
+    const input = matrixFrom([
       [0.2, -0.4, 0.6, 1.1],
       [-0.3, 0.8, -0.5, 0.7],
       [1.0, -0.2, 0.3, -0.9],
-    ];
+    ]);
     const weights: AttentionWeights = {
-      Q: [
+      Q: matrixFrom([
         [0.1, -0.2, 0.3, 0.4],
         [-0.5, 0.2, 0.1, -0.3],
         [0.4, 0.7, -0.6, 0.2],
         [0.3, -0.1, 0.5, -0.4],
-      ],
-      K: [
+      ]),
+      K: matrixFrom([
         [-0.2, 0.5, 0.4, -0.1],
         [0.6, -0.3, 0.2, 0.1],
         [0.1, 0.4, -0.5, 0.7],
         [-0.4, 0.3, 0.6, -0.2],
-      ],
-      V: [
+      ]),
+      V: matrixFrom([
         [0.7, -0.1, 0.2, -0.6],
         [-0.3, 0.8, -0.4, 0.5],
         [0.2, 0.6, 0.1, -0.7],
         [-0.5, 0.4, 0.9, 0.3],
-      ],
-      out: [
+      ]),
+      out: matrixFrom([
         [0.3, -0.6, 0.2, 0.1],
         [-0.4, 0.7, -0.5, 0.2],
         [0.6, 0.1, -0.3, 0.8],
         [0.2, -0.5, 0.4, -0.1],
-      ],
+      ]),
     };
-    const outputGradients = [
+    const outputGradients = matrixFrom([
       [0.5, -0.7, 0.2, 0.9],
       [-0.4, 0.3, 0.8, -0.6],
       [0.1, 0.6, -0.2, 0.4],
-    ];
+    ]);
 
     const activations = runSelfAttentionMechanism(input, 2, weights);
     const { inputGradients, weightGradients } = attentionBackprop(
@@ -266,10 +263,10 @@ describe("attentionBackprop", () => {
         attentionObjective(perturbedInput, 2, weights, outputGradients),
     );
 
-    expectMatrixCloseTo(inputGradients, numericalInputGradients);
-    expectMatrixCloseTo(weightGradients.out, numericalOutGradients);
-    expectMatrixCloseTo(weightGradients.V, numericalVGradients);
-    expectMatrixCloseTo(weightGradients.Q, numericalQGradients);
-    expectMatrixCloseTo(weightGradients.K, numericalKGradients);
+    expectMatrixCloseTo(inputGradients, numericalInputGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(weightGradients.out, numericalOutGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(weightGradients.V, numericalVGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(weightGradients.Q, numericalQGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(weightGradients.K, numericalKGradients, FINITE_DIFFERENCE_PRECISION);
   });
 });

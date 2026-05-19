@@ -19,9 +19,10 @@ import {
 } from "../shared/matrices-gpu.ts";
 import {
   createMatrix,
+  getFlatIndex,
   multiplyMatrices,
   normalize,
-  validateSize,
+  type Matrix,
 } from "../shared/matrices.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
@@ -32,7 +33,7 @@ export const llmForwardPassByTokensOnGPU = async (
   model: Model,
   withActivations: boolean,
 ): Promise<{
-  embeddings: number[][];
+  embeddings: Matrix;
   activations: Activations | null;
 }> => {
   const hiddenDimensionsSize = extractHiddenDimensionSize(model);
@@ -45,9 +46,21 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const startStateInCPU = inputPositionToVocabPosition.map(
-    (vocabIndex) => model.embeddings[vocabIndex]!,
-  );
+  const startStateInCPU = createMatrix(input.length, hiddenDimensionsSize);
+
+  for (let inputIndex = 0; inputIndex < input.length; inputIndex++) {
+    const token = input[inputIndex]!;
+    const vocabIndex = findTokenIndex(model.vocabulary, token);
+
+    for (let j = 0; j < hiddenDimensionsSize; j++) {
+      startStateInCPU.values[
+        getFlatIndex(inputIndex, j, hiddenDimensionsSize)
+      ] =
+        model.embeddings.values[
+          getFlatIndex(vocabIndex, j, hiddenDimensionsSize)
+        ]!;
+    }
+  }
 
   const intermediateState: MatrixBuffer = createMatrixBuffer(startStateInCPU);
 
@@ -100,7 +113,7 @@ export const llmForwardPassByTokensOnGPU = async (
     const mlpInputEmbeddings = normalize(embeddingsWithAttentionUpdates);
 
     intermediateState.buffer.patch({
-      values: mlpInputEmbeddings.flat(),
+      values: mlpInputEmbeddings.values,
     });
 
     getMultilayerPerceptronActivationsOnGPU(
@@ -130,8 +143,6 @@ export const llmForwardPassByTokensOnGPU = async (
     normalizedTransformersOutput,
     model.unembeddings,
   );
-
-  validateSize(unembeddedState, contextSize, model.vocabulary.length);
 
   const missingTransformerActivationsCount =
     model.transformers.length - transformerActivations.length;

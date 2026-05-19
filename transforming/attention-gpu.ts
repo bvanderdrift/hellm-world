@@ -5,6 +5,7 @@ import {
   sliceRows,
   createMatrix,
   createVector,
+  type Matrix,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type {
@@ -21,12 +22,12 @@ import tgpu, { d } from "typegpu";
 import { softmaxOnGpu } from "../shared/math-gpu.ts";
 
 export const runSelfAttentionMechanismOnGPU = (
-  input: number[][],
+  input: Matrix,
   headsCount: number,
   attentionWeights: AttentionWeights,
 ): AttentionActivations => {
-  const contextLength = input.length;
-  const hiddenDimensionsCount = input[0]?.length ?? -1;
+  const contextLength = input.values;
+  const hiddenDimensionsCount = input.dimensions;
 
   const inputQ = multiplyMatrices(input, attentionWeights.Q);
   const inputK = multiplyMatrices(input, attentionWeights.K);
@@ -134,9 +135,9 @@ const paramsLayout = tgpu.bindGroupLayout({
 });
 
 export const runSelfAttentionHeadOnGPU = (
-  inputQ: number[][],
-  inputK: number[][],
-  inputV: number[][],
+  inputQ: Matrix,
+  inputK: Matrix,
+  inputV: Matrix,
   headCount: number,
   headDimensionsCount: number,
 ) => {

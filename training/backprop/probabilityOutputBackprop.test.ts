@@ -1,22 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { softmax } from "../../shared/math.ts";
+import { getFlatIndex, getRawVector } from "../../shared/matrices.ts";
 import {
-  createMatrix,
-  getFlatIndex,
-  getRawVector,
-  type Matrix,
-} from "../../shared/matrices.ts";
+  FINITE_DIFFERENCE_EPSILON,
+  FINITE_DIFFERENCE_PRECISION,
+} from "../../testing/constants.ts";
+import { matrixFrom } from "../../testing/testing-utils.ts";
 import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 
-const m = (data: number[][]): Matrix => {
-  const mat = createMatrix(data.length, data[0]!.length);
-  mat.values.set(data.flat());
-  return mat;
-};
-
-const buildProbabilities = (logitsData: number[][]): Matrix => {
+const buildProbabilities = (logitsData: number[][]) => {
   const rows = logitsData.map((row) => Array.from(softmax(new Float32Array(row))));
-  return m(rows);
+  return matrixFrom(rows);
 };
 
 describe("probabilityOutputBackprop", () => {
@@ -26,7 +20,7 @@ describe("probabilityOutputBackprop", () => {
       [3, 2, 1, 0],
       [0.7, -1.1, 2.2, -0.4],
     ];
-    const logits = m(logitsData);
+    const logits = matrixFrom(logitsData);
     const outputProbabilities = buildProbabilities(logitsData);
     const correctTokenIndices = [1, 2, 3];
 
@@ -53,7 +47,7 @@ describe("probabilityOutputBackprop", () => {
       [0, 0, 0, 0],
       [0.7, -1.1, 2.2, -0.4],
     ];
-    const logits = m(logitsData);
+    const logits = matrixFrom(logitsData);
     const outputProbabilities = buildProbabilities(logitsData);
     const correctTokenIndex = 3;
 
@@ -74,11 +68,9 @@ describe("probabilityOutputBackprop", () => {
       [10, -10, 5],
       [1.2, -0.7, 0.3],
     ];
-    const logits = m(logitsData);
+    const logits = matrixFrom(logitsData);
     const outputProbabilities = buildProbabilities(logitsData);
     const correctTokenIndex = 2;
-    const epsilon = 0.000001;
-
     const loss = (l: Float32Array) =>
       -Math.log(softmax(l)[correctTokenIndex]!);
 
@@ -93,15 +85,15 @@ describe("probabilityOutputBackprop", () => {
       const increasedLogits = new Float32Array(row1);
       const decreasedLogits = new Float32Array(row1);
 
-      increasedLogits[vocabIndex]! += epsilon;
-      decreasedLogits[vocabIndex]! -= epsilon;
+      increasedLogits[vocabIndex]! += FINITE_DIFFERENCE_EPSILON;
+      decreasedLogits[vocabIndex]! -= FINITE_DIFFERENCE_EPSILON;
 
       const numericalGradient =
-        (loss(increasedLogits) - loss(decreasedLogits)) / (2 * epsilon);
+        (loss(increasedLogits) - loss(decreasedLogits)) / (2 * FINITE_DIFFERENCE_EPSILON);
 
       expect(
         gradients.values[getFlatIndex(1, vocabIndex, gradients.dimensions)],
-      ).toBeCloseTo(numericalGradient, 1);
+      ).toBeCloseTo(numericalGradient, FINITE_DIFFERENCE_PRECISION);
     }
   });
 });

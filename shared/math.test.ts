@@ -7,38 +7,14 @@ import {
   softmax,
   sum,
 } from "./math.ts";
-import { createMatrix, getFlatIndex, type Matrix } from "./matrices.ts";
-
-const matrixFrom = (rows: number[][]): Matrix => {
-  const vectors = rows.length;
-  const dimensions = rows[0]!.length;
-  const m = createMatrix(vectors, dimensions);
-  for (let i = 0; i < vectors; i++) {
-    for (let j = 0; j < dimensions; j++) {
-      m.values[getFlatIndex(i, j, dimensions)] = rows[i]![j]!;
-    }
-  }
-  return m;
-};
-
-const expectMatrixCloseTo = (actual: Matrix, expected: number[][]) => {
-  const exp = matrixFrom(expected);
-  expect(actual.vectors).toBe(exp.vectors);
-  expect(actual.dimensions).toBe(exp.dimensions);
-
-  for (let i = 0; i < exp.vectors; i++) {
-    for (let j = 0; j < exp.dimensions; j++) {
-      const idx = getFlatIndex(i, j, exp.dimensions);
-      expect(actual.values[idx]).toBeCloseTo(exp.values[idx]!, 10);
-    }
-  }
-};
+import { TESTING_PRECISION } from "../testing/constants.ts";
+import { expectMatrixCloseTo, matrixFrom } from "../testing/testing-utils.ts";
 
 describe("sum", () => {
   it("adds numbers together", () => {
     const values = new Float32Array([1, 6, -3, 0, 2.5, -3.7]);
 
-    expect(sum(values)).toBeCloseTo(2.8, 5);
+    expect(sum(values)).toBeCloseTo(2.8, TESTING_PRECISION);
   });
 });
 
@@ -64,7 +40,7 @@ describe("softmax", () => {
       total += probabilities[i]!;
     }
 
-    expect(total).toBeCloseTo(1, 5);
+    expect(total).toBeCloseTo(1, TESTING_PRECISION);
   });
 
   it("keeps the biggest logit as the biggest probability for large numbers", () => {
@@ -84,10 +60,10 @@ describe("relu", () => {
       ]),
     );
 
-    expectMatrixCloseTo(output, [
+    expectMatrixCloseTo(output, matrixFrom([
       [0, 5, 0],
       [0, 12, 0],
-    ]);
+    ]));
   });
 });
 

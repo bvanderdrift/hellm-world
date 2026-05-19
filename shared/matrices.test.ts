@@ -9,37 +9,15 @@ import {
   getFlatIndex,
   getMatrixParameterCount,
   transpose,
-  type Matrix,
   multiplyMatrices,
   normalize,
   sliceRows,
   sliceToEqualSizes,
 } from "./matrices.ts";
-
-const matrixFrom = (rows: number[][]): Matrix => {
-  const vectors = rows.length;
-  const dimensions = rows[0]!.length;
-  const m = createMatrix(vectors, dimensions);
-  for (let i = 0; i < vectors; i++) {
-    for (let j = 0; j < dimensions; j++) {
-      m.values[getFlatIndex(i, j, dimensions)] = rows[i]![j]!;
-    }
-  }
-  return m;
-};
-
-const expectMatrixCloseTo = (actual: Matrix, expected: number[][]) => {
-  const exp = matrixFrom(expected);
-  expect(actual.vectors).toBe(exp.vectors);
-  expect(actual.dimensions).toBe(exp.dimensions);
-
-  for (let i = 0; i < exp.vectors; i++) {
-    for (let j = 0; j < exp.dimensions; j++) {
-      const idx = getFlatIndex(i, j, exp.dimensions);
-      expect(actual.values[idx]).toBeCloseTo(exp.values[idx]!, 10);
-    }
-  }
-};
+import {
+  expectMatrixCloseTo,
+  matrixFrom,
+} from "../testing/testing-utils.ts";
 
 describe("createMatrix", () => {
   it("creates a matrix with the requested vector and dimension counts", () => {
@@ -96,7 +74,7 @@ describe("multiplyMatrices", () => {
   it("multiplies two 1x1 matrices", () => {
     expectMatrixCloseTo(
       multiplyMatrices(matrixFrom([[3]]), matrixFrom([[4]])),
-      [[12]],
+      matrixFrom([[12]]),
     );
   });
 
@@ -112,10 +90,10 @@ describe("multiplyMatrices", () => {
           [7, 8],
         ]),
       ),
-      [
+      matrixFrom([
         [19, 22],
         [43, 50],
-      ],
+      ]),
     );
   });
 
@@ -132,10 +110,10 @@ describe("multiplyMatrices", () => {
           [11, 12],
         ]),
       ),
-      [
+      matrixFrom([
         [58, 64],
         [139, 154],
-      ],
+      ]),
     );
   });
 
@@ -151,17 +129,17 @@ describe("multiplyMatrices", () => {
           [0, 1],
         ]),
       ),
-      [
+      matrixFrom([
         [2, -1],
         [0, 3],
-      ],
+      ]),
     );
   });
 
   it("handles 1x1 with 1x2 matrix", () => {
     expectMatrixCloseTo(
       multiplyMatrices(matrixFrom([[2]]), matrixFrom([[1, 1]])),
-      [[2, 2]],
+      matrixFrom([[2, 2]]),
     );
   });
 });
@@ -175,10 +153,10 @@ describe("transpose", () => {
           [3, 4],
         ]),
       ),
-      [
+      matrixFrom([
         [1, 3],
         [2, 4],
-      ],
+      ]),
     );
   });
 
@@ -190,11 +168,11 @@ describe("transpose", () => {
           [4, 5, 6],
         ]),
       ),
-      [
+      matrixFrom([
         [1, 4],
         [2, 5],
         [3, 6],
-      ],
+      ]),
     );
   });
 });
@@ -209,10 +187,10 @@ describe("applyScalarToMatrix", () => {
           [-6, 8],
         ]),
       ),
-      [
+      matrixFrom([
         [1, 2],
         [-3, 4],
-      ],
+      ]),
     );
   });
 
@@ -225,10 +203,10 @@ describe("applyScalarToMatrix", () => {
 
     const scaled = applyScalarToMatrix(-1, matrix);
 
-    expectMatrixCloseTo(scaled, [
+    expectMatrixCloseTo(scaled, matrixFrom([
       [-1, -2],
       [-3, -4],
-    ]);
+    ]));
     expect(matrix.values).toEqual(originalValues);
     expect(scaled.values).not.toBe(matrix.values);
   });
@@ -309,10 +287,10 @@ describe("addMatrices", () => {
           [30, 40],
         ]),
       ),
-      [
+      matrixFrom([
         [11, 22],
         [33, 44],
-      ],
+      ]),
     );
   });
 
@@ -328,10 +306,10 @@ describe("addMatrices", () => {
           [-2.25, 1.5],
         ]),
       ),
-      [
+      matrixFrom([
         [-1, 4],
         [0, -1.5],
-      ],
+      ]),
     );
   });
 });
@@ -371,10 +349,10 @@ describe("concatenateMatricesVertically", () => {
           [300, 400],
         ]),
       ]),
-      [
+      matrixFrom([
         [1, 2, 10, 20, 100, 200],
         [3, 4, 30, 40, 300, 400],
-      ],
+      ]),
     );
   });
 
@@ -392,10 +370,10 @@ describe("concatenateMatricesVertically", () => {
 
     const concatenated = concatenateMatricesVertically([left, right]);
 
-    expectMatrixCloseTo(concatenated, [
+    expectMatrixCloseTo(concatenated, matrixFrom([
       [1, 3],
       [2, 4],
-    ]);
+    ]));
     expect(left.values).toEqual(leftOriginal);
     expect(right.values).toEqual(rightOriginal);
   });
@@ -412,10 +390,10 @@ describe("sliceRows", () => {
         1,
         3,
       ),
-      [
+      matrixFrom([
         [2, 3],
         [20, 30],
-      ],
+      ]),
     );
   });
 
@@ -428,10 +406,10 @@ describe("sliceRows", () => {
 
     const sliced = sliceRows(matrix, 0, 2);
 
-    expectMatrixCloseTo(sliced, [
+    expectMatrixCloseTo(sliced, matrixFrom([
       [1, 2],
       [4, 5],
-    ]);
+    ]));
     expect(matrix.values).toEqual(originalValues);
   });
 });
@@ -447,18 +425,18 @@ describe("sliceToEqualSizes", () => {
     );
 
     expect(sections).toHaveLength(3);
-    expectMatrixCloseTo(sections[0]!, [
+    expectMatrixCloseTo(sections[0]!, matrixFrom([
       [1, 2],
       [10, 20],
-    ]);
-    expectMatrixCloseTo(sections[1]!, [
+    ]));
+    expectMatrixCloseTo(sections[1]!, matrixFrom([
       [3, 4],
       [30, 40],
-    ]);
-    expectMatrixCloseTo(sections[2]!, [
+    ]));
+    expectMatrixCloseTo(sections[2]!, matrixFrom([
       [5, 6],
       [50, 60],
-    ]);
+    ]));
   });
 
   it("handles a single section by returning one full-width matrix", () => {
@@ -471,10 +449,10 @@ describe("sliceToEqualSizes", () => {
     );
 
     expect(sections).toHaveLength(1);
-    expectMatrixCloseTo(sections[0]!, [
+    expectMatrixCloseTo(sections[0]!, matrixFrom([
       [1, 2, 3],
       [4, 5, 6],
-    ]);
+    ]));
   });
 
   it("throws when the row width cannot be split evenly", () => {
