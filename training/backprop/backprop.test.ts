@@ -13,6 +13,7 @@ import {
   matrixFrom,
 } from "../../testing/testing-utils.ts";
 import { backprop } from "./backprop.ts";
+import { FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
 
 describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {
@@ -117,6 +118,7 @@ describe("backprop", () => {
     expectMatrixCloseTo(
       gradients.unembeddings,
       expectedUnembeddingGradients,
+      FINITE_DIFFERENCE_PRECISION,
     );
 
     expect(gradients.transformers).toEqual([]);

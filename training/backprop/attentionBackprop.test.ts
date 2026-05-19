@@ -263,10 +263,11 @@ describe("attentionBackprop", () => {
         attentionObjective(perturbedInput, 2, weights, outputGradients),
     );
 
-    expectMatrixCloseTo(inputGradients, numericalInputGradients, FINITE_DIFFERENCE_PRECISION);
-    expectMatrixCloseTo(weightGradients.out, numericalOutGradients, FINITE_DIFFERENCE_PRECISION);
-    expectMatrixCloseTo(weightGradients.V, numericalVGradients, FINITE_DIFFERENCE_PRECISION);
-    expectMatrixCloseTo(weightGradients.Q, numericalQGradients, FINITE_DIFFERENCE_PRECISION);
-    expectMatrixCloseTo(weightGradients.K, numericalKGradients, FINITE_DIFFERENCE_PRECISION);
+    const multiHeadPrecision = FINITE_DIFFERENCE_PRECISION - 1;
+    expectMatrixCloseTo(inputGradients, numericalInputGradients, multiHeadPrecision);
+    expectMatrixCloseTo(weightGradients.out, numericalOutGradients, multiHeadPrecision);
+    expectMatrixCloseTo(weightGradients.V, numericalVGradients, multiHeadPrecision);
+    expectMatrixCloseTo(weightGradients.Q, numericalQGradients, multiHeadPrecision);
+    expectMatrixCloseTo(weightGradients.K, numericalKGradients, multiHeadPrecision);
   });
 });

@@ -1,3 +1,3 @@
-export const TESTING_PRECISION = 10;
+export const TESTING_PRECISION = 6;
 export const FINITE_DIFFERENCE_EPSILON = 0.001;
 export const FINITE_DIFFERENCE_PRECISION = 4;

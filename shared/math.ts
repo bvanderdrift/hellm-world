@@ -1,4 +1,4 @@
-import { operateOnMatrices, operateOnMatrix, type Matrix } from "./matrices.ts";
+import { operateOnMatrix, type Matrix } from "./matrices.ts";
 
 export const sum = (values: Float32Array) => {
   let output = 0;

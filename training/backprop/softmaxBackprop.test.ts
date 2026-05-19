@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { softmax } from "../../shared/math.ts";
 import { softmaxBackprop } from "./softmaxBackprop.ts";
 import {
+  FINITE_DIFFERENCE_EPSILON,
   FINITE_DIFFERENCE_PRECISION,
   TESTING_PRECISION,
 } from "../../testing/constants.ts";
@@ -33,7 +34,6 @@ describe("softmaxBackprop", () => {
   it("matches finite differences for plain softmax backprop", () => {
     const inputs = new Float32Array([1.2, -0.4, 0.7]);
     const outputGradients = new Float32Array([0.5, -1.3, 2.1]);
-    const epsilon = 0.000001;
 
     const gradients = softmaxBackprop(inputs, outputGradients);
 
@@ -41,13 +41,13 @@ describe("softmaxBackprop", () => {
       const increasedInputs = new Float32Array([...inputs]);
       const decreasedInputs = new Float32Array([...inputs]);
 
-      increasedInputs[inputIndex]! += epsilon;
-      decreasedInputs[inputIndex]! -= epsilon;
+      increasedInputs[inputIndex]! += FINITE_DIFFERENCE_EPSILON;
+      decreasedInputs[inputIndex]! -= FINITE_DIFFERENCE_EPSILON;
 
       const numericalGradient =
         (softmaxObjective(increasedInputs, outputGradients) -
           softmaxObjective(decreasedInputs, outputGradients)) /
-        (2 * epsilon);
+        (2 * FINITE_DIFFERENCE_EPSILON);
 
       expect(gradients[inputIndex]).toBeCloseTo(
         numericalGradient,
