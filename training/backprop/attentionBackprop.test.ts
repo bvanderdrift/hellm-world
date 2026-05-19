@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AttentionWeights } from "../../model/model-types.ts";
+import type { AttentionHeadActivations } from "../../model/activations-types.ts";
 import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
@@ -82,7 +83,7 @@ const attentionHeadObjective = (
   outputGradients: number[][],
 ) =>
   matrixObjective(
-    runSelfAttentionHead(inputQ, inputK, inputV).output,
+    runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length).output,
     outputGradients,
   );
 
@@ -120,7 +121,15 @@ describe("attentionHeadBackprop", () => {
       [1.1, -0.5],
     ];
 
-    const activations = runSelfAttentionHead(inputQ, inputK, inputV);
+    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length);
+    const activations: AttentionHeadActivations = {
+      inputQ: rawActivations.inputQ,
+      inputK: rawActivations.inputK,
+      inputV: rawActivations.inputV,
+      attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
+      softmaxOutput: rawActivations.softmaxOutput[0]!,
+      output: rawActivations.output,
+    };
     const { inputVGradients } = attentionHeadBackprop(
       activations,
       outputGradients,
@@ -139,7 +148,15 @@ describe("attentionHeadBackprop", () => {
     const inputV = [[1.5], [-0.4]];
     const outputGradients = [[0.3], [1.2]];
 
-    const activations = runSelfAttentionHead(inputQ, inputK, inputV);
+    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, inputQ[0]!.length);
+    const activations: AttentionHeadActivations = {
+      inputQ: rawActivations.inputQ,
+      inputK: rawActivations.inputK,
+      inputV: rawActivations.inputV,
+      attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
+      softmaxOutput: rawActivations.softmaxOutput[0]!,
+      output: rawActivations.output,
+    };
     const { inputQGradients, inputKGradients } = attentionHeadBackprop(
       activations,
       outputGradients,

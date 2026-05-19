@@ -5,10 +5,7 @@
 import { mkdir, readFile } from "fs/promises";
 import { dirname, join } from "path";
 import sharp from "sharp";
-
-type Checkpoint = {
-  historyLosses: number[];
-};
+import type { ModelCheckpoint } from "../model/model-types.ts";
 
 const escapeXml = (value: string) =>
   value
@@ -29,8 +26,9 @@ export const writeLossChart = async (
   );
   const checkpoint = JSON.parse(
     await readFile(checkpointPath, "utf8"),
-  ) as Checkpoint;
-  const losses = checkpoint.historyLosses;
+  ) as ModelCheckpoint;
+  const losses = checkpoint.history.trainingLosses;
+  const validationLosses = checkpoint.history.validationLosses;
 
   if (!Array.isArray(losses) || losses.length === 0) {
     throw new Error(`Checkpoint ${checkpointPath} has no loss history`);
@@ -46,8 +44,12 @@ export const writeLossChart = async (
   };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
-  const maxLoss = Math.max(...losses);
-  const minLoss = Math.min(...losses);
+  const allLossValues = [
+    ...losses,
+    ...validationLosses.map((v) => v.loss),
+  ];
+  const maxLoss = Math.max(...allLossValues);
+  const minLoss = Math.min(...allLossValues);
   const yMin = 0;
   const yMax = Math.ceil(maxLoss * 10) / 10;
   const xFor = (index: number) =>
@@ -91,7 +93,13 @@ export const writeLossChart = async (
   <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="#111827" stroke-width="2" />
   <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="#111827" stroke-width="2" />
   <polyline points="${points}" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
-  <circle cx="${xFor(losses.length - 1)}" cy="${yFor(losses[losses.length - 1]!)}" r="5" fill="#dc2626" />
+  <circle cx="${xFor(losses.length - 1)}" cy="${yFor(losses[losses.length - 1]!)}" r="5" fill="#2563eb" />
+  ${validationLosses.length > 1 ? `<polyline points="${validationLosses.map((v) => `${xFor(v.stepIndex).toFixed(2)},${yFor(v.loss).toFixed(2)}`).join(" ")}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />` : ""}
+  ${validationLosses.map((v) => `<circle cx="${xFor(v.stepIndex).toFixed(2)}" cy="${yFor(v.loss).toFixed(2)}" r="4.5" fill="#f97316" />`).join("\n  ")}
+  <line x1="${width - margin.right - 180}" y1="34" x2="${width - margin.right - 150}" y2="34" stroke="#2563eb" stroke-width="3" />
+  <text x="${width - margin.right - 144}" y="39" class="axis-text">training</text>
+  <line x1="${width - margin.right - 180}" y1="56" x2="${width - margin.right - 150}" y2="56" stroke="#f97316" stroke-width="2.5" stroke-dasharray="8 4" />
+  <text x="${width - margin.right - 144}" y="61" class="axis-text">validation</text>
   <text x="${width / 2}" y="${height - 24}" text-anchor="middle" class="axis-label">training step</text>
   <text transform="translate(26 ${height / 2}) rotate(-90)" text-anchor="middle" class="axis-label">average loss</text>
 </svg>`;

@@ -18,7 +18,7 @@ import {
   findTokenIndex,
 } from "../model/model-helpers.ts";
 import * as weightReading from "../model/model-io.ts";
-import type { Model } from "../model/model-types.ts";
+import type { Model, ModelCheckpoint } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 
 const MODEL_NAME = "timmy";
@@ -211,9 +211,6 @@ describe("llmForwardPassByTokens", () => {
     expect(headActivations.softmaxOutput[0]).toHaveLength(1);
     expect(headActivations.softmaxOutput[1]).toHaveLength(2);
     validateSize(headActivations.output, 2, 3);
-    expect(headActivations.lookbackUpdateVectors).toHaveLength(2);
-    validateSize(headActivations.lookbackUpdateVectors[0]!, 1, 3);
-    validateSize(headActivations.lookbackUpdateVectors[1]!, 2, 3);
 
     validateSize(transformerActivations.mlp.normalizedInputToUpping, 2, 3);
     validateSize(transformerActivations.mlp.uppingToNonLinear, 2, 3);
@@ -250,8 +247,8 @@ describe("llmForwardPassByTokens", () => {
 
 describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
-    const eosStoppingWeights: { historyLosses: number[]; model: Model } = {
-      historyLosses: [3],
+    const eosStoppingWeights: Omit<ModelCheckpoint, "weights"> & { model: Model } = {
+      history: { trainingLosses: [3], validationLosses: [] },
       model: {
         vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
         headsCount: 1,
@@ -315,8 +312,8 @@ describe("llm pipeline contracts", () => {
 
 describe("weights validation contract", () => {
   it("fails fast when loaded weights contain an invalid embedding row, even if that token is unused", () => {
-    const malformedWeights: { historyLosses: number[]; model: Model } = {
-      historyLosses: [3],
+    const malformedWeights: Omit<ModelCheckpoint, "weights"> & { model: Model } = {
+      history: { trainingLosses: [3], validationLosses: [] },
       model: {
         vocabulary: [...testModel.vocabulary],
         headsCount: testModel.headsCount,

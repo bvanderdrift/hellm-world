@@ -10,16 +10,17 @@ import type { ModelMetadata, Model, ModelCheckpoint } from "./model-types.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";
+const VALIDATION_DATA_FILE_NAME = "_validation_data.txt";
 
 export const getLatestCheckpointModel = (
   model: string,
-): { historyLosses: number[]; model: Model } => {
+): Omit<ModelCheckpoint, "weights"> & { model: Model } => {
   const modelFolderPath = join(import.meta.dirname, model);
   const latestCheckpointFile = getLatestCheckpointFile(modelFolderPath);
   const checkpoint = getCheckpoint(join(modelFolderPath, latestCheckpointFile));
 
   return {
-    historyLosses: checkpoint.historyLosses,
+    ...checkpoint,
     model: {
       ...getMetadata(join(modelFolderPath, METADATA_FILE_NAME)),
       ...checkpoint.weights,
@@ -80,6 +81,16 @@ export const readRawTrainingData = (modelName: string) => {
   return readFileSync(modelTrainingDataFile).toString();
 };
 
+export const readRawValidationData = (modelName: string) => {
+  const modelValidationDataFile = join(
+    import.meta.dirname,
+    modelName,
+    VALIDATION_DATA_FILE_NAME,
+  );
+
+  return readFileSync(modelValidationDataFile).toString();
+};
+
 export const writeNewCheckpoint = (
   modelName: string,
   checkpoint: ModelCheckpoint,
@@ -104,7 +115,7 @@ const writeCheckpoint = (
 
   // layman's pick operation
   const cleanPayload: ModelCheckpoint = {
-    historyLosses: checkpoint.historyLosses,
+    history: checkpoint.history,
     weights: {
       embeddings: checkpoint.weights.embeddings,
       transformers: checkpoint.weights.transformers,
@@ -147,7 +158,10 @@ export const writeNewModel = (modelName: string, model: Model) => {
 
   // First checkpoint file
   writeCheckpoint(modelFolderPath, 0, {
-    historyLosses: [],
+    history: {
+      trainingLosses: [],
+      validationLosses: [],
+    },
     weights: model,
   });
 };

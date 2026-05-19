@@ -38,8 +38,13 @@ export type ModelMetadata = {
 
 export type Model = ModelMetadata & Weights;
 
+export type ModelTrainingHistory = {
+  validationLosses: { stepIndex: number; loss: number }[];
+  trainingLosses: number[];
+};
+
 export type ModelCheckpoint = {
   // Average loss of every training step, so length is amount of steps taken
-  historyLosses: number[];
+  history: ModelTrainingHistory;
   weights: Weights;
 };

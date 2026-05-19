@@ -1,0 +1,380 @@
+[
+  {
+    "label": "1-digit (0-9)",
+    "maxDigit": 10,
+    "results": [
+      {
+        "input": "6+6=",
+        "expected": 12,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "9+1=",
+        "expected": 10,
+        "output": "203",
+        "correct": false
+      },
+      {
+        "input": "5+8=",
+        "expected": 13,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "9+1=",
+        "expected": 10,
+        "output": "203",
+        "correct": false
+      },
+      {
+        "input": "0+2=",
+        "expected": 2,
+        "output": "20",
+        "correct": false
+      },
+      {
+        "input": "2+0=",
+        "expected": 2,
+        "output": "20",
+        "correct": false
+      },
+      {
+        "input": "3+1=",
+        "expected": 4,
+        "output": "38",
+        "correct": false
+      },
+      {
+        "input": "7+3=",
+        "expected": 10,
+        "output": "+70",
+        "correct": false
+      },
+      {
+        "input": "9+1=",
+        "expected": 10,
+        "output": "203",
+        "correct": false
+      },
+      {
+        "input": "9+9=",
+        "expected": 18,
+        "output": "29",
+        "correct": false
+      },
+      {
+        "input": "0+3=",
+        "expected": 3,
+        "output": "",
+        "correct": false
+      },
+      {
+        "input": "3+2=",
+        "expected": 5,
+        "output": "38",
+        "correct": false
+      },
+      {
+        "input": "8+8=",
+        "expected": 16,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "7+5=",
+        "expected": 12,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "8+9=",
+        "expected": 17,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "9+6=",
+        "expected": 15,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "7+6=",
+        "expected": 13,
+        "output": "+78",
+        "correct": false
+      },
+      {
+        "input": "7+0=",
+        "expected": 7,
+        "output": "70",
+        "correct": false
+      },
+      {
+        "input": "7+1=",
+        "expected": 8,
+        "output": "70",
+        "correct": false
+      },
+      {
+        "input": "1+7=",
+        "expected": 8,
+        "output": "",
+        "correct": false
+      }
+    ]
+  },
+  {
+    "label": "2-digit (0-99)",
+    "maxDigit": 100,
+    "results": [
+      {
+        "input": "56+18=",
+        "expected": 74,
+        "output": "81",
+        "correct": false
+      },
+      {
+        "input": "44+16=",
+        "expected": 60,
+        "output": "61",
+        "correct": false
+      },
+      {
+        "input": "90+53=",
+        "expected": 143,
+        "output": "131",
+        "correct": false
+      },
+      {
+        "input": "59+29=",
+        "expected": 88,
+        "output": "92",
+        "correct": false
+      },
+      {
+        "input": "98+65=",
+        "expected": 163,
+        "output": "153",
+        "correct": false
+      },
+      {
+        "input": "67+18=",
+        "expected": 85,
+        "output": "81",
+        "correct": false
+      },
+      {
+        "input": "12+65=",
+        "expected": 77,
+        "output": "76",
+        "correct": false
+      },
+      {
+        "input": "40+11=",
+        "expected": 51,
+        "output": "51",
+        "correct": true
+      },
+      {
+        "input": "77+69=",
+        "expected": 146,
+        "output": "155",
+        "correct": false
+      },
+      {
+        "input": "86+22=",
+        "expected": 108,
+        "output": "119",
+        "correct": false
+      },
+      {
+        "input": "33+14=",
+        "expected": 47,
+        "output": "51",
+        "correct": false
+      },
+      {
+        "input": "62+21=",
+        "expected": 83,
+        "output": "82",
+        "correct": false
+      },
+      {
+        "input": "50+58=",
+        "expected": 108,
+        "output": "127",
+        "correct": false
+      },
+      {
+        "input": "15+42=",
+        "expected": 57,
+        "output": "69",
+        "correct": false
+      },
+      {
+        "input": "58+90=",
+        "expected": 148,
+        "output": "148",
+        "correct": true
+      },
+      {
+        "input": "57+60=",
+        "expected": 117,
+        "output": "127",
+        "correct": false
+      },
+      {
+        "input": "19+16=",
+        "expected": 35,
+        "output": "11",
+        "correct": false
+      },
+      {
+        "input": "93+75=",
+        "expected": 168,
+        "output": "168",
+        "correct": true
+      },
+      {
+        "input": "22+29=",
+        "expected": 51,
+        "output": "41",
+        "correct": false
+      },
+      {
+        "input": "93+35=",
+        "expected": 128,
+        "output": "128",
+        "correct": true
+      }
+    ]
+  },
+  {
+    "label": "3-digit (0-999)",
+    "maxDigit": 1000,
+    "results": [
+      {
+        "input": "888+146=",
+        "expected": 1034,
+        "output": "1034",
+        "correct": true
+      },
+      {
+        "input": "511+213=",
+        "expected": 724,
+        "output": "724",
+        "correct": true
+      },
+      {
+        "input": "462+445=",
+        "expected": 907,
+        "output": "907",
+        "correct": true
+      },
+      {
+        "input": "33+522=",
+        "expected": 555,
+        "output": "555",
+        "correct": true
+      },
+      {
+        "input": "876+967=",
+        "expected": 1843,
+        "output": "1843",
+        "correct": true
+      },
+      {
+        "input": "640+334=",
+        "expected": 974,
+        "output": "974",
+        "correct": true
+      },
+      {
+        "input": "808+814=",
+        "expected": 1622,
+        "output": "1622",
+        "correct": true
+      },
+      {
+        "input": "814+910=",
+        "expected": 1724,
+        "output": "1724",
+        "correct": true
+      },
+      {
+        "input": "260+15=",
+        "expected": 275,
+        "output": "275",
+        "correct": true
+      },
+      {
+        "input": "80+326=",
+        "expected": 406,
+        "output": "406",
+        "correct": true
+      },
+      {
+        "input": "580+313=",
+        "expected": 893,
+        "output": "893",
+        "correct": true
+      },
+      {
+        "input": "599+465=",
+        "expected": 1064,
+        "output": "1064",
+        "correct": true
+      },
+      {
+        "input": "779+795=",
+        "expected": 1574,
+        "output": "1574",
+        "correct": true
+      },
+      {
+        "input": "245+269=",
+        "expected": 514,
+        "output": "514",
+        "correct": true
+      },
+      {
+        "input": "829+441=",
+        "expected": 1270,
+        "output": "1270",
+        "correct": true
+      },
+      {
+        "input": "69+981=",
+        "expected": 1050,
+        "output": "1050",
+        "correct": true
+      },
+      {
+        "input": "682+487=",
+        "expected": 1169,
+        "output": "1169",
+        "correct": true
+      },
+      {
+        "input": "254+97=",
+        "expected": 351,
+        "output": "351",
+        "correct": true
+      },
+      {
+        "input": "163+600=",
+        "expected": 763,
+        "output": "763",
+        "correct": true
+      },
+      {
+        "input": "315+1=",
+        "expected": 316,
+        "output": "316",
+        "correct": true
+      }
+    ]
+  }
+]

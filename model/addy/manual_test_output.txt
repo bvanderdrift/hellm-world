@@ -1,0 +1,42 @@
+$ bun index.ts run addy "33+7="
+37
+
+$ bun index.ts run addy "33+7="
+58
+
+$ bun index.ts run addy "33+7="
+58
+
+$ bun index.ts run addy "33+7="
+47
+
+$ bun index.ts run addy "33+7="
+37
+
+➜  hellm-world git:(main) ✗ bun llm addy 100+102=
+$ bun index.ts run addy "100+102="
+202
+➜  hellm-world git:(main) ✗ bun llm addy 500+500 
+$ bun index.ts run addy "500+500"
+=1000
+➜  hellm-world git:(main) ✗ bun llm addy 501+500=
+$ bun index.ts run addy "501+500="
+1001
+➜  hellm-world git:(main) ✗ bun llm addy 499+501=
+$ bun index.ts run addy "499+501="
+990
+➜  hellm-world git:(main) ✗ bun llm addy 499+501=
+$ bun index.ts run addy "499+501="
+900
+➜  hellm-world git:(main) ✗ bun llm addy 500+501=
+$ bun index.ts run addy "500+501="
+1001
+➜  hellm-world git:(main) ✗ bun llm addy 510+501=
+$ bun index.ts run addy "510+501="
+1011
+➜  hellm-world git:(main) ✗ bun llm addy 523+501=
+$ bun index.ts run addy "523+501="
+1024
+➜  hellm-world git:(main) ✗ bun llm addy 523+543= 
+$ bun index.ts run addy "523+543="
+1066

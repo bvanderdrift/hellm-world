@@ -4,7 +4,7 @@ import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmax } from "../shared/math.ts";
-import { doSingleTrainingPass } from "./training.ts";
+import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 
 describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {
@@ -18,7 +18,7 @@ describe("doSingleTrainingPass", () => {
     };
 
     const { averageLoss } = await doSingleTrainingPass(model, [
-      ["hello", "world", END_OF_SEQUENCE_TOKEN],
+      { sequence: ["hello", "world", END_OF_SEQUENCE_TOKEN], maskBeforeIndex: null },
     ]);
 
     expect(averageLoss).toBeCloseTo(Math.log(model.vocabulary.length), 10);
@@ -61,7 +61,9 @@ describe("doSingleTrainingPass", () => {
         )) /
       2;
 
-    const { averageLoss } = await doSingleTrainingPass(model, [sequence]);
+    const { averageLoss } = await doSingleTrainingPass(model, [
+      { sequence, maskBeforeIndex: null },
+    ]);
 
     expect(averageLoss).toBeCloseTo(expectedAverageLoss, 10);
   });
@@ -84,7 +86,7 @@ describe("doSingleTrainingPass", () => {
     const betaIndex = findTokenIndex(model.vocabulary, "beta");
 
     const { adjustedWeights } = await doSingleTrainingPass(model, [
-      ["alpha", "beta"],
+      { sequence: ["alpha", "beta"], maskBeforeIndex: null },
     ]);
 
     expect(adjustedWeights.embeddings[betaIndex]).toEqual(
