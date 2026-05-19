@@ -48,6 +48,30 @@ describe("runSelfAttentionHead", () => {
     expectMatrixCloseTo(output.output, matrixFrom([[1], [4 / 3]]));
   });
 
+  it("each head attends using its own column range of Q and K", () => {
+    const output = runSelfAttentionHead(
+      matrixFrom([
+        [10, 0, 0, 0],
+        [10, 0, 0, 0],
+      ]),
+      matrixFrom([
+        [10, 0, 0, 0],
+        [0, 0, 0, 0],
+      ]),
+      matrixFrom([
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+      ]),
+      2,
+      2,
+    );
+
+    expectMatrixCloseTo(output.output, matrixFrom([
+      [1, 2, 3, 4],
+      [1, 2, 5, 6],
+    ]), 0);
+  });
+
   it("does not attend to future keys and values", () => {
     const output = runSelfAttentionHead(
       matrixFrom([[1], [0]]),

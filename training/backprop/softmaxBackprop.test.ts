@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { softmax } from "../../shared/math.ts";
 import { softmaxBackprop } from "./softmaxBackprop.ts";
+import {
+  FINITE_DIFFERENCE_PRECISION,
+  TESTING_PRECISION,
+} from "../../testing/constants.ts";
 
 describe("softmaxBackprop", () => {
   const softmaxObjective = (
@@ -22,8 +26,8 @@ describe("softmaxBackprop", () => {
 
     const gradients = softmaxBackprop(inputs, outputGradients);
 
-    expect(gradients[0]).toBeCloseTo(-4 / 9, 10);
-    expect(gradients[1]).toBeCloseTo(4 / 9, 10);
+    expect(gradients[0]).toBeCloseTo(-4 / 9, TESTING_PRECISION);
+    expect(gradients[1]).toBeCloseTo(4 / 9, TESTING_PRECISION);
   });
 
   it("matches finite differences for plain softmax backprop", () => {
@@ -45,7 +49,10 @@ describe("softmaxBackprop", () => {
           softmaxObjective(decreasedInputs, outputGradients)) /
         (2 * epsilon);
 
-      expect(gradients[inputIndex]).toBeCloseTo(numericalGradient, 5);
+      expect(gradients[inputIndex]).toBeCloseTo(
+        numericalGradient,
+        FINITE_DIFFERENCE_PRECISION,
+      );
     }
   });
 });
