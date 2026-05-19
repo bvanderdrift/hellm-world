@@ -2,6 +2,8 @@ import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
   applyScalarToMatrix,
+  createMatrix,
+  getFlatIndex,
   getRawVector,
   multiplyMatrices,
   normalize,
@@ -100,16 +102,25 @@ export const llmForwardPassByTokens = (
   const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
   /** middle-state needed for backprop */
-  const inputPositionToVocabPosition = input.map((token) => {
-    return findTokenIndex(model.vocabulary, token);
-  });
+  const inputPositionToVocabPosition: number[] = [];
 
-  const startState = applyScalarToMatrix(
-    Math.sqrt(hiddenDimensionsSize),
-    model.embeddings,
-  );
+  const contextSize = input.length;
+  const startState = createMatrix(contextSize, hiddenDimensionsSize);
 
-  const contextSize = startState.vectors;
+  const scalar = Math.sqrt(hiddenDimensionsSize);
+
+  for (let tokenIndex = 0; tokenIndex < contextSize; tokenIndex++) {
+    const vocabIndex = findTokenIndex(model.vocabulary, input[tokenIndex]!);
+    inputPositionToVocabPosition.push(vocabIndex);
+
+    for (let j = 0; j < hiddenDimensionsSize; j++) {
+      startState.values[getFlatIndex(tokenIndex, j, hiddenDimensionsSize)] =
+        scalar *
+        model.embeddings.values[
+          getFlatIndex(vocabIndex, j, hiddenDimensionsSize)
+        ]!;
+    }
+  }
 
   const positionalEncoding = getPositionEncoding(
     contextSize,
