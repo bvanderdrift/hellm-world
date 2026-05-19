@@ -103,7 +103,7 @@ export const runSelfAttentionHead = (
             inputK.values[getFlatIndex(l, k + offset, inputK.dimensions)]!;
         }
 
-        relevancyLogits[l]! = summed / Math.sqrt(inputQ.dimensions);
+        relevancyLogits[l]! = summed / Math.sqrt(headDimensionsCount);
       }
 
       const relevancy = softmax(relevancyLogits);
