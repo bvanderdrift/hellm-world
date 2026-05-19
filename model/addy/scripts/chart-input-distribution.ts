@@ -13,30 +13,52 @@ const escapeXml = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-export const writeDistributionChart = async (
+const magnitudes = [
+  { label: "1-digit (0-9)", max: 10 },
+  { label: "2-digit (0-99)", max: 100 },
+  { label: "3-digit (0-999)", max: 1000 },
+];
+
+const classifyLine = (line: string): string | null => {
+  const match = line.match(/^(\d+)\+(\d+)=/);
+  if (!match) return null;
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+  const biggest = Math.max(a, b);
+
+  for (const mag of magnitudes) {
+    if (biggest < mag.max) return mag.label;
+  }
+  return null;
+};
+
+export const writeInputDistributionChart = async (
   modelName: string,
   trainingDataFileName: string,
 ) => {
-  const modelDirectory = join(import.meta.dirname, "..", "model", modelName);
+  const modelDirectory = join(import.meta.dirname, "..");
   const dataPath = join(modelDirectory, trainingDataFileName);
   const outputPath = join(
     modelDirectory,
-    trainingDataFileName.replace(".txt", "_distribution.png"),
+    trainingDataFileName.replace(".txt", "_input_distribution.png"),
   );
   const raw = await readFile(dataPath, "utf8");
   const lines = raw.split("\n").filter((line) => line.length > 0);
 
-  const buckets = new Map<number, number>();
-  for (const line of lines) {
-    const match = line.match(/=(\d+)<EOS>/);
-    if (!match) continue;
-    const digits = match[1]!.length;
-    buckets.set(digits, (buckets.get(digits) ?? 0) + 1);
+  const buckets = new Map<string, number>();
+  for (const mag of magnitudes) {
+    buckets.set(mag.label, 0);
   }
 
-  const sortedKeys = [...buckets.keys()].sort((a, b) => a - b);
-  const counts = sortedKeys.map((key) => buckets.get(key)!);
-  const labels = sortedKeys.map((key) => `${key}-digit`);
+  for (const line of lines) {
+    const label = classifyLine(line);
+    if (label) {
+      buckets.set(label, (buckets.get(label) ?? 0) + 1);
+    }
+  }
+
+  const labels = magnitudes.map((m) => m.label);
+  const counts = labels.map((l) => buckets.get(l)!);
   const maxCount = Math.max(...counts);
   const totalExamples = counts.reduce((sum, c) => sum + c, 0);
 
@@ -48,7 +70,7 @@ export const writeDistributionChart = async (
 
   const barGap = 24;
   const barWidth =
-    (chartWidth - barGap * (sortedKeys.length - 1)) / sortedKeys.length;
+    (chartWidth - barGap * (labels.length - 1)) / labels.length;
   const yMax = Math.ceil(maxCount / 10000) * 10000;
   const yFor = (value: number) =>
     margin.top + ((yMax - value) / yMax) * chartHeight;
@@ -62,7 +84,7 @@ export const writeDistributionChart = async (
     <text x="${margin.left - 14}" y="${y + 5}" text-anchor="end" class="axis-text">${value.toLocaleString("en-US")}</text>`;
   });
 
-  const bars = sortedKeys.map((_, index) => {
+  const bars = labels.map((_, index) => {
     const x = margin.left + index * (barWidth + barGap);
     const barHeight = (counts[index]! / yMax) * chartHeight;
     const y = margin.top + chartHeight - barHeight;
@@ -74,7 +96,7 @@ export const writeDistributionChart = async (
     <text x="${x + barWidth / 2}" y="${height - margin.bottom + 34}" text-anchor="middle" class="axis-text">${labels[index]}</text>`;
   });
 
-  const title = `${modelName} training data distribution`;
+  const title = `${modelName} training data distribution by input magnitude`;
   const subtitle = `${totalExamples.toLocaleString("en-US")} examples from ${trainingDataFileName}`;
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -91,7 +113,7 @@ export const writeDistributionChart = async (
   ${bars.join("")}
   <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" stroke="#111827" stroke-width="2" />
   <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" stroke="#111827" stroke-width="2" />
-  <text x="${width / 2}" y="${height - 24}" text-anchor="middle" class="axis-label">output digit count</text>
+  <text x="${width / 2}" y="${height - 24}" text-anchor="middle" class="axis-label">input magnitude</text>
   <text transform="translate(26 ${height / 2}) rotate(-90)" text-anchor="middle" class="axis-label">number of examples</text>
 </svg>`;
 
@@ -103,9 +125,11 @@ export const writeDistributionChart = async (
 
 const [modelName, dataFile] = process.argv.slice(2);
 if (!modelName || !dataFile) {
-  console.error("Usage: bun run scripts/chart-distribution.ts <model> <data-file.txt>");
+  console.error(
+    "Usage: bun run scripts/chart-input-distribution.ts <model> <data-file.txt>",
+  );
   process.exit(1);
 }
-writeDistributionChart(modelName, dataFile).then((path) =>
+writeInputDistributionChart(modelName, dataFile).then((path) =>
   console.log(`Written: ${path}`),
 );
