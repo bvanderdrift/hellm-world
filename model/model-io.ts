@@ -83,7 +83,7 @@ export const writeHistory = (
 ) => {
   writeFileSync(
     join(modelFolderPath, TRAINING_HISTORY_FILE_NAME),
-    JSON.stringify(history, null, 2),
+    JSON.stringify(history),
   );
 };
 
