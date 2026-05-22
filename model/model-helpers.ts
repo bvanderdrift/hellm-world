@@ -5,10 +5,6 @@ import {
 import { validateSameWeightsShape } from "./model-validation.ts";
 import type { TransformerWeights, Model, Weights } from "./model-types.ts";
 
-export const extractHiddenDimensionSize = (model: Model) => {
-  return model.embeddings.dimensions;
-};
-
 export const findTokenIndex = (vocabulary: string[], token: string) => {
   const tokenIndex = vocabulary.indexOf(token);
 
@@ -155,7 +151,6 @@ export const getModelParameterCount = (model: Model) => {
 
 export const describeModelToConsole = (model: Model) => {
   const paramCount = getModelParameterCount(model);
-  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
   const paramCountFormatted = new Intl.NumberFormat("en-US", {
     notation: "compact",
@@ -163,7 +158,7 @@ export const describeModelToConsole = (model: Model) => {
   }).format(paramCount);
 
   console.log(`Parameter count: ${paramCountFormatted}`);
-  console.log(`Transformer count: ${model.transformers.length}`);
-  console.log(`Attention head count: ${model.headsCount}`);
-  console.log(`Hidden dimensions size: ${hiddenDimensionsSize}`);
+  console.log(`Transformer count: ${model.counts.transformers}`);
+  console.log(`Attention head count: ${model.counts.attentionHeads}`);
+  console.log(`Hidden dimensions size: ${model.counts.hiddenDimensions}`);
 };

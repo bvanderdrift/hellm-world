@@ -6,8 +6,14 @@ import {
   writeFileSync,
 } from "fs";
 import { join } from "path";
-import type { ModelMetadata, Model, ModelCheckpoint } from "./model-types.ts";
+import {
+  type ModelMetadata,
+  type Model,
+  type ModelCheckpoint,
+  modelMetadataSchema,
+} from "./model-types.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
+import { getModelParameterCount } from "./model-helpers.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";
@@ -49,23 +55,7 @@ const getMetadata = (metadataFilePath: string): ModelMetadata => {
   const metadataJson = readFileSync(metadataFilePath);
   const metadata = JSON.parse(metadataJson.toString());
 
-  if (typeof metadata !== "object" || metadata === null) {
-    throw new Error(`Unexpected metadata: ${JSON.stringify(metadata)}`);
-  }
-
-  if (!("headsCount" in metadata) || typeof metadata.headsCount !== "number") {
-    throw new Error(`Unexpected metadata: ${JSON.stringify(metadata)}`);
-  }
-
-  if (
-    !("vocabulary" in metadata) ||
-    !Array.isArray(metadata.vocabulary) ||
-    !metadata.vocabulary.every((token: unknown) => typeof token === "string")
-  ) {
-    throw new Error(`Unexpected metadata: ${JSON.stringify(metadata)}`);
-  }
-
-  return metadata;
+  return modelMetadataSchema.parse(metadata);
 };
 
 const migrateOldCheckpoint = (old: ModelCheckpoint): ModelCheckpoint => ({
@@ -181,8 +171,7 @@ export const writeNewModel = (modelName: string, model: Model) => {
 
   const metadata: ModelMetadata = {
     vocabulary: model.vocabulary,
-    headsCount: model.headsCount,
-    mlpMultiple: model.mlpMultiple,
+    counts: model.counts,
   };
 
   writeFileSync(

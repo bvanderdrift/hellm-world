@@ -1,7 +1,6 @@
 import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
-  applyScalarToMatrix,
   createMatrix,
   getFlatIndex,
   getRawVector,
@@ -14,10 +13,7 @@ import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivation
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import type { Model } from "../model/model-types.ts";
-import {
-  extractHiddenDimensionSize,
-  findTokenIndex,
-} from "../model/model-helpers.ts";
+import { findTokenIndex } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { validateModel } from "../model/model-validation.ts";
@@ -99,7 +95,7 @@ export const llmForwardPassByTokens = (
   embeddings: Matrix;
   activations: Activations | null;
 } => {
-  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
+  const hiddenDimensionsSize = model.counts.hiddenDimensions;
 
   /** middle-state needed for backprop */
   const inputPositionToVocabPosition: number[] = [];
@@ -142,7 +138,7 @@ export const llmForwardPassByTokens = (
         // Normalize input only, don't normalize the intermediateState iself
         // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
         attentionInputEmbeddings,
-        model.headsCount,
+        model.counts.attentionHeads,
         transformer.attention,
       );
 

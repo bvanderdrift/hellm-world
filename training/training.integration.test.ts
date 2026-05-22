@@ -53,8 +53,12 @@ const zeroTransformer: TransformerWeights = {
 
 const model: Model = {
   vocabulary: ["prompt", "answer", END_OF_SEQUENCE_TOKEN],
-  headsCount: 2,
-  mlpMultiple: 1,
+  counts: {
+    attentionHeads: 2,
+    mlpMultiple: 1,
+    transformers: 1,
+    hiddenDimensions: 2,
+  },
   embeddings: matrixFrom([
     [0.25, -0.75],
     [0.5, -0.5],

@@ -14,7 +14,11 @@
     "=",
     "<EOS>"
   ],
-  "headsCount": 8,
-  "mlpMultiple": 4,
+  "counts": {
+    "attentionHeads": 8,
+    "mlpMultiple": 4,
+    "transformers": 6,
+    "hiddenDimensions": 256
+  },
   "trainingMaskSeparator": "="
 }

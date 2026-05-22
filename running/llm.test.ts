@@ -12,7 +12,6 @@ import {
   normalize,
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import { extractHiddenDimensionSize } from "../model/model-helpers.ts";
 import * as weightReading from "../model/model-io.ts";
 import type { Model, ModelCheckpoint } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
@@ -22,8 +21,12 @@ const MODEL_NAME = "timmy";
 
 const testModel: Model = {
   vocabulary: ["hello", "world", " ", "beer", "!", END_OF_SEQUENCE_TOKEN],
-  headsCount: 1,
-  mlpMultiple: 1,
+  counts: {
+    attentionHeads: 1,
+    mlpMultiple: 1,
+    transformers: 0,
+    hiddenDimensions: 4,
+  },
   embeddings: matrixFrom([
     [0.1, 0.2, 0.3, 0.4],
     [0.5, 0.6, 0.7, 0.8],
@@ -40,13 +43,17 @@ const testModel: Model = {
   ]),
   transformers: [],
 };
-const hiddenDimensionsSize = extractHiddenDimensionSize(testModel);
+const hiddenDimensionsSize = testModel.counts.hiddenDimensions;
 const vocabSize = testModel.vocabulary.length;
 
 const attentionOnlyModel: Model = {
   vocabulary: ["hello", "world", "beer"],
-  headsCount: 1,
-  mlpMultiple: 1,
+  counts: {
+    attentionHeads: 1,
+    mlpMultiple: 1,
+    transformers: 1,
+    hiddenDimensions: 3,
+  },
   embeddings: matrixFrom([
     [1, 0, 0],
     [0, 1, 0],
@@ -236,8 +243,12 @@ describe("runLlm", () => {
       history: { trainingLosses: [3], validationLosses: [] },
       model: {
         vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
-        headsCount: 1,
-        mlpMultiple: 1,
+        counts: {
+          attentionHeads: 1,
+          mlpMultiple: 1,
+          transformers: 0,
+          hiddenDimensions: 2,
+        },
         embeddings: matrixFrom([
           [0, 0],
           [0, 0],
@@ -293,8 +304,7 @@ describe("weights validation contract", () => {
       history: { trainingLosses: [3], validationLosses: [] },
       model: {
         vocabulary: [...testModel.vocabulary],
-        headsCount: testModel.headsCount,
-        mlpMultiple: testModel.mlpMultiple,
+        counts: testModel.counts,
         embeddings: {
           vectors: 6,
           dimensions: 4,

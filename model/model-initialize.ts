@@ -29,8 +29,12 @@ export const initializeModel = ({
 
   const model: Model = {
     vocabulary,
-    headsCount,
-    mlpMultiple,
+    counts: {
+      attentionHeads: headsCount,
+      transformers: transformerCount,
+      hiddenDimensions: hiddenDimensionCount,
+      mlpMultiple,
+    },
     transformers: new Array(transformerCount)
       .fill(0)
       .map((_): TransformerWeights => {

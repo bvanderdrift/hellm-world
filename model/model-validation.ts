@@ -1,7 +1,6 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
 import { type Matrix } from "../shared/matrices.ts";
-import { extractHiddenDimensionSize } from "./model-helpers.ts";
 import type { Model, Weights } from "./model-types.ts";
 
 export const validateModel = (model: Model) => {
@@ -9,13 +8,9 @@ export const validateModel = (model: Model) => {
     throw new Error("Provided vocabulary cannot be empty");
   }
 
-  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
+  const hiddenDimensionsSize = model.counts.hiddenDimensions;
 
-  if (model.headsCount <= 0) {
-    throw new Error("headsCount must be a positive integer");
-  }
-
-  divideToWhole(hiddenDimensionsSize, model.headsCount);
+  divideToWhole(hiddenDimensionsSize, model.counts.attentionHeads);
 
   const tokensDeduped = new Set(model.vocabulary);
 
@@ -59,9 +54,9 @@ export const validateSameModelShape = (model1: Model, model2: Model) => {
     throw new Error(`Vocabularies between weights don't match`);
   }
 
-  if (model1.headsCount !== model2.headsCount) {
+  if (model1.counts.attentionHeads !== model2.counts.attentionHeads) {
     throw new Error(
-      `Model 1 has different head count ${model1.headsCount} than Model 2 (${model2.headsCount})`,
+      `Model 1 has different head count ${model1.counts.attentionHeads} than Model 2 (${model2.counts.attentionHeads})`,
     );
   }
 

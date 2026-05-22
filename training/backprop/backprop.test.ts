@@ -19,8 +19,12 @@ describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", "gamma", "delta"],
-      headsCount: 1,
-      mlpMultiple: 1,
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 3,
+      },
       embeddings: matrixFrom([
         [0.5, -0.25, 0.75],
         [0.1, 0.2, -0.3],
@@ -139,8 +143,12 @@ describe("backprop", () => {
   it("stays finite when the correct token logit is far below the dominant logit", () => {
     const model: Model = {
       vocabulary: ["dominant", "tiny"],
-      headsCount: 1,
-      mlpMultiple: 1,
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 2,
+      },
       embeddings: matrixFrom([
         [1, 0],
         [0, 1],

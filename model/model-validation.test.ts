@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { createMatrix, type Matrix } from "../shared/matrices.ts";
 import { validateModel, validateSameModelShape } from "./model-validation.ts";
-import type { Model } from "./model-types.ts";
+import { type Model, modelMetadataSchema } from "./model-types.ts";
 
 const m = (rows: number, columns: number, value = 1): Matrix => {
   const mat = createMatrix(rows, columns, () => value);
@@ -17,8 +17,12 @@ const SMALLER_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * SMALLER_MLP_MULTIPLE;
 
 const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
-  headsCount: 2,
-  mlpMultiple: DEFAULT_MLP_MULTIPLE,
+  counts: {
+    attentionHeads: 2,
+    mlpMultiple: DEFAULT_MLP_MULTIPLE,
+    transformers: 1,
+    hiddenDimensions: HIDDEN_DIMENSION_SIZE,
+  },
   embeddings: m(4, HIDDEN_DIMENSION_SIZE),
   unembeddings: m(HIDDEN_DIMENSION_SIZE, 4),
   transformers: [
@@ -61,7 +65,7 @@ describe("validateModel", () => {
 
   it("rejects a headsCount that does not evenly divide the hidden width", () => {
     const malformedWeights = createModel({
-      headsCount: 3,
+      counts: { ...validModel.counts, attentionHeads: 3 },
     });
 
     expect(() => validateModel(malformedWeights)).toThrow(
@@ -103,14 +107,13 @@ describe("validateModel", () => {
     );
   });
 
-  it("rejects a negative headsCount", () => {
-    const malformedWeights = createModel({
-      headsCount: -2,
-    });
-
-    expect(() => validateModel(malformedWeights)).toThrow(
-      "headsCount must be a positive integer",
-    );
+  it("rejects a negative attentionHeads via schema validation", () => {
+    expect(() =>
+      modelMetadataSchema.parse({
+        vocabulary: validModel.vocabulary,
+        counts: { ...validModel.counts, attentionHeads: -2 },
+      }),
+    ).toThrow();
   });
 
   it("detects a corrupted matrix where values length mismatches dimensions", () => {
@@ -124,7 +127,7 @@ describe("validateModel", () => {
 
   it("uses mlpMultiple from metadata when validating MLP shapes", () => {
     const modelWithSmallerMlp = createModel({
-      mlpMultiple: SMALLER_MLP_MULTIPLE,
+      counts: { ...validModel.counts, mlpMultiple: SMALLER_MLP_MULTIPLE },
       transformers: [
         {
           ...structuredClone(validModel.transformers[0]!),
@@ -184,7 +187,7 @@ describe("validateSameWeightShape", () => {
 
   it("rejects different head counts", () => {
     const weightsWithDifferentHeadCount = createModel({
-      headsCount: 4,
+      counts: { ...validModel.counts, attentionHeads: 4 },
     });
 
     expect(() =>

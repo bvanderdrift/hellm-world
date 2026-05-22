@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { createMatrix, type Matrix } from "../shared/matrices.ts";
-import {
-  extractHiddenDimensionSize,
-  findTokenIndex,
-  operateCombinedWeights,
-} from "./model-helpers.ts";
+import { findTokenIndex, operateCombinedWeights } from "./model-helpers.ts";
 import type { Model } from "./model-types.ts";
 
 const m = (rows: number, columns: number, value = 1): Matrix =>
@@ -16,8 +12,12 @@ const DEFAULT_MLP_MULTIPLE = 4;
 const DEFAULT_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * DEFAULT_MLP_MULTIPLE;
 const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
-  headsCount: 2,
-  mlpMultiple: DEFAULT_MLP_MULTIPLE,
+  counts: {
+    attentionHeads: 2,
+    mlpMultiple: DEFAULT_MLP_MULTIPLE,
+    transformers: 1,
+    hiddenDimensions: HIDDEN_DIMENSION_SIZE,
+  },
   embeddings: m(4, HIDDEN_DIMENSION_SIZE),
   unembeddings: m(HIDDEN_DIMENSION_SIZE, 4),
   transformers: [
@@ -30,17 +30,11 @@ const validModel: Model = {
       },
       multilayerPerceptron: {
         wUp: {
-          weightsMatrix: m(
-            HIDDEN_DIMENSION_SIZE,
-            DEFAULT_MLP_DIMENSION_SIZE,
-          ),
+          weightsMatrix: m(HIDDEN_DIMENSION_SIZE, DEFAULT_MLP_DIMENSION_SIZE),
           biasVector: m(1, DEFAULT_MLP_DIMENSION_SIZE),
         },
         wDown: {
-          weightsMatrix: m(
-            DEFAULT_MLP_DIMENSION_SIZE,
-            HIDDEN_DIMENSION_SIZE,
-          ),
+          weightsMatrix: m(DEFAULT_MLP_DIMENSION_SIZE, HIDDEN_DIMENSION_SIZE),
           biasVector: m(1, HIDDEN_DIMENSION_SIZE),
         },
       },
@@ -80,12 +74,6 @@ const createModelWithValue = (value: number): Model => ({
       },
     },
   ],
-});
-
-describe("extractHiddenDimensionSize", () => {
-  it("derives the hidden width and vocab size from embeddings", () => {
-    expect(extractHiddenDimensionSize(validModel)).toEqual(4);
-  });
 });
 
 describe("findTokenIndex", () => {

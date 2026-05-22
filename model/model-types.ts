@@ -1,3 +1,4 @@
+import z from "zod";
 import type { Matrix } from "../shared/matrices.ts";
 
 export interface AttentionWeights {
@@ -29,12 +30,18 @@ export type Weights = {
   transformers: TransformerWeights[];
 };
 
-export type ModelMetadata = {
-  vocabulary: string[];
-  trainingMaskSeparator?: string;
-  headsCount: number;
-  mlpMultiple: number;
-};
+export const modelMetadataSchema = z.object({
+  vocabulary: z.array(z.string()),
+  trainingMaskSeparator: z.string().optional(),
+  counts: z.object({
+    transformers: z.int().positive(),
+    attentionHeads: z.int().positive(),
+    hiddenDimensions: z.int().positive(),
+    mlpMultiple: z.int().positive(),
+  }),
+});
+
+export type ModelMetadata = z.infer<typeof modelMetadataSchema>;
 
 export type Model = ModelMetadata & Weights;
 

@@ -4,10 +4,7 @@ import type {
   TransformerActivations,
 } from "../model/activations-types.ts";
 import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
-import {
-  extractHiddenDimensionSize,
-  findTokenIndex,
-} from "../model/model-helpers.ts";
+import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
@@ -36,7 +33,7 @@ export const llmForwardPassByTokensOnGPU = async (
   embeddings: Matrix;
   activations: Activations | null;
 }> => {
-  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
+  const hiddenDimensionsSize = model.counts.hiddenDimensions;
   const contextSize = input.length;
 
   const weightBuffers = loadWeightsIntoGpu(model);
@@ -79,7 +76,7 @@ export const llmForwardPassByTokensOnGPU = async (
   const transformerActivations: TransformerActivations[] = [];
 
   const uppedMlpBuffer = createMatrixBuffer(
-    createMatrix(contextSize, hiddenDimensionsSize * model.mlpMultiple),
+    createMatrix(contextSize, hiddenDimensionsSize * model.counts.mlpMultiple),
   );
 
   const outMlpBuffer = createMatrixBuffer(
@@ -98,7 +95,7 @@ export const llmForwardPassByTokensOnGPU = async (
       // Normalize input only, don't normalize the intermediateState iself
       // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
       attentionInputEmbeddings,
-      model.headsCount,
+      model.counts.attentionHeads,
       transformer.attention,
     );
 

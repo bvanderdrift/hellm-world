@@ -12,8 +12,12 @@ describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {
     const model: Model = {
       vocabulary: ["hello", "world", END_OF_SEQUENCE_TOKEN],
-      headsCount: 1,
-      mlpMultiple: 1,
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 1,
+      },
       embeddings: matrixFrom([[0], [0], [0]]),
       unembeddings: matrixFrom([[0, 0, 0]]),
       transformers: [],
@@ -32,8 +36,12 @@ describe("doSingleTrainingPass", () => {
   it("uses each context position to predict the following token", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", END_OF_SEQUENCE_TOKEN],
-      headsCount: 1,
-      mlpMultiple: 1,
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 2,
+      },
       embeddings: matrixFrom([
         [1.5, -0.25],
         [-0.5, 1.25],
@@ -77,8 +85,12 @@ describe("doSingleTrainingPass", () => {
   it("does not update the target token embedding when it is not in the context", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta"],
-      headsCount: 1,
-      mlpMultiple: 1,
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 2,
+      },
       embeddings: matrixFrom([
         [1.5, -0.25],
         [-0.5, 1.25],
