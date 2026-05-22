@@ -43,7 +43,7 @@ export const getLatestCheckpointModel = (modelName: string): Model => {
   };
 };
 
-const getLatestCheckpointFile = (modelFolderPath: string): string => {
+export const getLatestCheckpointFile = (modelFolderPath: string): string => {
   const checkpointFiles = readdirSync(modelFolderPath).filter(
     (file) => file.startsWith("checkpoint_") && file.endsWith(".bin"),
   );
