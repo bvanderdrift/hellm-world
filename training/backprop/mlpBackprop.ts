@@ -1,9 +1,10 @@
 import type { MultilayerPerceptronActivations } from "../../model/activations-types.ts";
 import type { MultilayerPerceptronWeights } from "../../model/model-types.ts";
 import {
-  getMatrixSize,
-  validateSize,
   addVectorsInMatrix,
+  createMatrix,
+  getFlatIndex,
+  type Matrix,
 } from "../../shared/matrices.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 
@@ -11,9 +12,9 @@ export const backpropMlp = (
   weights: MultilayerPerceptronWeights,
   activations: MultilayerPerceptronActivations,
   /** C x D matrix */
-  outputGradients: number[][],
+  outputGradients: Matrix,
 ): {
-  inputActivationGradients: number[][];
+  inputActivationGradients: Matrix;
   weightGradients: MultilayerPerceptronWeights;
 } => {
   // dL/db = dL/dMLP * dMLP/db = outputGradients * 1
@@ -60,21 +61,24 @@ export const backpropMlp = (
 };
 
 export const reluBackprop = (
-  inputActivations: number[][],
-  outputGradients: number[][],
+  inputActivations: Matrix,
+  outputGradients: Matrix,
 ) => {
-  const inputSize = getMatrixSize(inputActivations);
-  validateSize(
-    outputGradients,
-    inputSize.vectorCount,
-    inputSize.dimensionsCount,
+  const output = createMatrix(
+    outputGradients.vectors,
+    outputGradients.dimensions,
   );
 
-  return outputGradients.map((gradientVector, vectorIndex) =>
-    gradientVector.map((gradient, dimensionIndex) => {
-      const inputActivation = inputActivations[vectorIndex]![dimensionIndex]!;
+  for (let index = 0; index < output.vectors; index++) {
+    for (let j = 0; j < output.dimensions; j++) {
+      const flatIndex = getFlatIndex(index, j, output.dimensions);
 
-      return inputActivation > 0 ? gradient : 0;
-    }),
-  );
+      output.values[flatIndex] =
+        inputActivations.values[flatIndex]! > 0
+          ? outputGradients.values[flatIndex]!
+          : 0;
+    }
+  }
+
+  return output;
 };

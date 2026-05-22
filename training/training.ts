@@ -6,6 +6,8 @@ import {
 } from "../model/model-helpers.ts";
 import {
   getLatestCheckpointModel,
+  getModelFolderPath,
+  getModelHistory,
   readRawTrainingData,
 } from "../model/model-io.ts";
 import { prepareExampleData } from "./prepareExampleData.ts";
@@ -33,7 +35,9 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   endDefinition: EndDefinition | null,
   parallelism: "cpu-single" | "cpu-multi",
 ) => {
-  const { history, model: modelLoaded } = getLatestCheckpointModel(modelName);
+  const modelFolderPath = getModelFolderPath(modelName);
+  const history = getModelHistory(modelFolderPath);
+  const modelLoaded = getLatestCheckpointModel(modelName);
 
   if (endDefinition && endDefinition.count <= 0) {
     throw new Error(

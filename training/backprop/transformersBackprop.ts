@@ -1,17 +1,17 @@
 import type { TransformerActivations } from "../../model/activations-types.ts";
 import type { TransformerWeights } from "../../model/model-types.ts";
-import { addMatrices } from "../../shared/matrices.ts";
+import { addMatrices, type Matrix } from "../../shared/matrices.ts";
 import { attentionBackprop } from "./attentionBackprop.ts";
 import { backpropMlp } from "./mlpBackprop.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
 
 export const transformersBackprop = (
-  outputGradients: number[][],
+  outputGradients: Matrix,
   weights: TransformerWeights[],
   activations: TransformerActivations[],
 ): {
   transformerGradients: TransformerWeights[];
-  inputActivationGradients: number[][];
+  inputActivationGradients: Matrix;
 } => {
   if (weights.length !== activations.length) {
     throw new Error(
@@ -96,11 +96,6 @@ export const transformersBackprop = (
  *  = dL/dz_i * 1 + combinedOutputGradients_i
  */
 const combineGradients = (
-  combinedOutputGradients: number[][],
-  branchInputGradients: number[][],
-) =>
-  combinedOutputGradients.map((outputGradientVector, vectorIndex) => {
-    return outputGradientVector.map((dLdz_i, dimensionIndex) => {
-      return dLdz_i + branchInputGradients[vectorIndex]![dimensionIndex]!;
-    });
-  });
+  combinedOutputGradients: Matrix,
+  branchInputGradients: Matrix,
+) => addMatrices(combinedOutputGradients, branchInputGradients);

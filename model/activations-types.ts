@@ -1,31 +1,33 @@
+import type { Matrix } from "../shared/matrices.ts";
+
 export type AttentionHeadActivations = {
-  inputK: number[][];
-  inputV: number[][];
-  inputQ: number[][];
-  attentionRelevancyOutput: number[][];
-  softmaxOutput: number[][];
-  output: number[][];
+  inputK: Matrix;
+  inputV: Matrix;
+  inputQ: Matrix;
+  attentionRelevancyOutput: Matrix;
+  softmaxOutput: Matrix;
+  output: Matrix;
 };
 
 export type AttentionActivations = {
-  normalizedInput: number[][];
+  normalizedInput: Matrix;
   heads: AttentionHeadActivations[];
-  outMatrixInputActivations: number[][];
-  output: number[][];
+  outMatrixInputActivations: Matrix;
+  output: Matrix;
 };
 
 export type MultilayerPerceptronActivations = {
-  normalizedInputToUpping: number[][];
+  normalizedInputToUpping: Matrix;
   /** Already biased - can reverse-calculate subtracting bias weights */
-  uppingToNonLinear: number[][];
+  uppingToNonLinear: Matrix;
   /** C x 4D matrix */
-  nonLinearToDowning: number[][];
+  nonLinearToDowning: Matrix;
   /** Already biased - can reverse-calculate subtracting bias weights */
-  downingOutput: number[][];
+  downingOutput: Matrix;
 };
 
 export type TransformerActivations = {
-  transformerInput: number[][];
+  transformerInput: Matrix;
   attention: AttentionActivations;
   mlp: MultilayerPerceptronActivations;
   // Can calculate transformer output by taking input and adding both attention + mlp output
@@ -33,10 +35,10 @@ export type TransformerActivations = {
 
 export type Activations = {
   inputPositionToVocabPosition: number[];
-  tokensToPosition: number[][];
-  positionToTransformers: number[][];
+  tokensToPosition: Matrix;
+  positionToTransformers: Matrix;
   transformerActivations: TransformerActivations[];
-  transformersToNormalizer: number[][];
-  normalizerToUnembeddings: number[][];
-  unembeddingsOutputLogits: number[][];
+  transformersToNormalizer: Matrix;
+  normalizerToUnembeddings: Matrix;
+  unembeddingsOutputLogits: Matrix;
 };

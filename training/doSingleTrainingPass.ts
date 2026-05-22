@@ -34,6 +34,7 @@ export const doSingleTrainingPass = async (
         activations,
         correctTokenIndices,
         outputProbabilities,
+        outputLosses,
         unmaskedTokenCount,
       } = getSequenceLoss(example, model);
 
@@ -48,7 +49,7 @@ export const doSingleTrainingPass = async (
         `${(index + 1).toString().padStart(3, "0")}/${trainingData.length} - Duration: ${duration}ms`,
       );
 
-      const summedLoss = sum(outputProbabilities.map((o) => o.loss));
+      const summedLoss = sum(outputLosses);
 
       return {
         loss: acc.loss + summedLoss,

@@ -1,4 +1,8 @@
-import { writeNewCheckpoint } from "../model/model-io.ts";
+import {
+  getModelFolderPath,
+  writeHistory,
+  writeNewCheckpoint,
+} from "../model/model-io.ts";
 import type {
   Model,
   ModelTrainingHistory,
@@ -77,10 +81,8 @@ export const createStateStore = (
       };
     },
     writeNewCheckpoint: () => {
-      writeNewCheckpoint(modelName, {
-        history,
-        weights: modelUnderTraining,
-      });
+      writeHistory(getModelFolderPath(modelName), history);
+      writeNewCheckpoint(modelName, modelUnderTraining);
     },
   };
 };

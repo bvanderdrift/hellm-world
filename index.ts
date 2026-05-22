@@ -143,8 +143,8 @@ program
   .name("describe")
   .command("describe")
   .argument("<model>", "model to describe")
-  .action((modelName: string, opts: { steps: number }) => {
-    const model = getLatestCheckpointModel(modelName).model;
+  .action((modelName: string) => {
+    const model = getLatestCheckpointModel(modelName);
 
     describeModelToConsole(model);
   });
@@ -153,9 +153,8 @@ program
   .name("chart-loss")
   .command("chart-loss")
   .argument("<model>", "model to chart")
-  .argument("[checkpoint]", "checkpoint file", "checkpoint_000007.json")
-  .action(async (modelName: string, checkpointName: string) => {
-    console.log(await writeLossChart(modelName, checkpointName));
+  .action(async (modelName: string) => {
+    console.log(await writeLossChart(modelName));
   });
 
 program.parse();

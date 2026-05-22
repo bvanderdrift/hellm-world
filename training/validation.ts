@@ -18,12 +18,12 @@ export const runValidationCheck = async (
     async (accP, example) => {
       const acc = await accP;
 
-      const { outputProbabilities, unmaskedTokenCount } = getSequenceLoss(
+      const { unmaskedTokenCount, outputLosses } = getSequenceLoss(
         example,
         model,
       );
 
-      const summedLoss = sum(outputProbabilities.map((o) => o.loss));
+      const summedLoss = sum(outputLosses);
 
       return {
         summedLoss: acc.summedLoss + summedLoss,

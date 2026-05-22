@@ -9,6 +9,10 @@
     " ",
     "<EOS>"
   ],
-  "headsCount": 2,
-  "mlpMultiple": 4
+  "counts": {
+    "transformers": 2,
+    "attentionHeads": 2,
+    "mlpMultiple": 4,
+    "hiddenDimensions": 16
+  }
 }

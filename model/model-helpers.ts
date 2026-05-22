@@ -1,18 +1,9 @@
 import {
   getMatrixParameterCount,
-  getMatrixSize,
   operateOnMatrices,
-  operateOnVectors,
 } from "../shared/matrices.ts";
-import {
-  validateSameModelShape,
-  validateSameWeightsShape,
-} from "./model-validation.ts";
+import { validateSameWeightsShape } from "./model-validation.ts";
 import type { TransformerWeights, Model, Weights } from "./model-types.ts";
-
-export const extractHiddenDimensionSize = (model: Model) => {
-  return getMatrixSize(model.embeddings).dimensionsCount;
-};
 
 export const findTokenIndex = (vocabulary: string[], token: string) => {
   const tokenIndex = vocabulary.indexOf(token);
@@ -85,7 +76,7 @@ export const operateCombinedWeights = (
                 transformerWeights2.multilayerPerceptron.wDown.weightsMatrix,
                 operation,
               ),
-              biasVector: operateOnVectors(
+              biasVector: operateOnMatrices(
                 transformerWeights1.multilayerPerceptron.wDown.biasVector,
                 transformerWeights2.multilayerPerceptron.wDown.biasVector,
                 operation,
@@ -97,7 +88,7 @@ export const operateCombinedWeights = (
                 transformerWeights2.multilayerPerceptron.wUp.weightsMatrix,
                 operation,
               ),
-              biasVector: operateOnVectors(
+              biasVector: operateOnMatrices(
                 transformerWeights1.multilayerPerceptron.wUp.biasVector,
                 transformerWeights2.multilayerPerceptron.wUp.biasVector,
                 operation,
@@ -113,8 +104,8 @@ export const operateCombinedWeights = (
 export const makeZeroVersion = (weights: Weights) =>
   operateSingleWeights(weights, () => 0);
 
-export const getModelParameterCount = (model: Model) => {
-  const transformersParameterCount = model.transformers.reduce(
+export const getModelParameterCount = (weights: Weights) => {
+  const transformersParameterCount = weights.transformers.reduce(
     (sum, transformer) => {
       // All 4 should be same size, but let's just calculate each seperately just to be sure
       const kSize = getMatrixParameterCount(transformer.attention.K);
@@ -125,16 +116,16 @@ export const getModelParameterCount = (model: Model) => {
       const mlpUpSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wUp.weightsMatrix,
       );
-      const mlpUpBiasSize = getMatrixParameterCount([
+      const mlpUpBiasSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wUp.biasVector,
-      ]);
+      );
 
       const mlpDownSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wDown.weightsMatrix,
       );
-      const mlpDownBiasSize = getMatrixParameterCount([
+      const mlpDownBiasSize = getMatrixParameterCount(
         transformer.multilayerPerceptron.wDown.biasVector,
-      ]);
+      );
 
       const transformerParamterType =
         kSize +
@@ -152,15 +143,14 @@ export const getModelParameterCount = (model: Model) => {
   );
 
   return (
-    getMatrixParameterCount(model.embeddings) +
+    getMatrixParameterCount(weights.embeddings) +
     transformersParameterCount +
-    getMatrixParameterCount(model.unembeddings)
+    getMatrixParameterCount(weights.unembeddings)
   );
 };
 
 export const describeModelToConsole = (model: Model) => {
   const paramCount = getModelParameterCount(model);
-  const hiddenDimensionsSize = extractHiddenDimensionSize(model);
 
   const paramCountFormatted = new Intl.NumberFormat("en-US", {
     notation: "compact",
@@ -168,7 +158,7 @@ export const describeModelToConsole = (model: Model) => {
   }).format(paramCount);
 
   console.log(`Parameter count: ${paramCountFormatted}`);
-  console.log(`Transformer count: ${model.transformers.length}`);
-  console.log(`Attention head count: ${model.headsCount}`);
-  console.log(`Hidden dimensions size: ${hiddenDimensionsSize}`);
+  console.log(`Transformer count: ${model.counts.transformers}`);
+  console.log(`Attention head count: ${model.counts.attentionHeads}`);
+  console.log(`Hidden dimensions size: ${model.counts.hiddenDimensions}`);
 };

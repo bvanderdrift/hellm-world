@@ -5,7 +5,7 @@ import tgpu, {
   type UniformFlag,
 } from "typegpu";
 import { gpuContext } from "./gpu-context.ts";
-import { getMatrixSize } from "./matrices.ts";
+import type { Matrix } from "./matrices.ts";
 
 const SINGLE_DIMENSION_SIZE = 4_000;
 
@@ -79,36 +79,25 @@ export const multiplyMatricesOnGPU = (
   dotProductRunner.with(params).dispatchThreads(m1.vectors, m2.dimensions);
 };
 
-export const createMatrixBuffer = (m: number[][]): MatrixBuffer => {
-  const { vectorCount, dimensionsCount } = getMatrixSize(m);
-
+export const createMatrixBuffer = (m: Matrix): MatrixBuffer => {
   const embeddingsBuffer = gpuContext
-    .createBuffer(matrixBufferDefinition, {
-      values: new Float32Array(m.flat()),
-      vectors: vectorCount,
-      dimensions: dimensionsCount,
-    })
+    .createBuffer(matrixBufferDefinition, m)
     .$usage("storage");
 
   return {
     buffer: embeddingsBuffer,
-    vectors: vectorCount,
-    dimensions: dimensionsCount,
+    vectors: m.vectors,
+    dimensions: m.dimensions,
   };
 };
 
-export const extractMatrixBuffer = async (
-  m: MatrixBuffer,
-): Promise<number[][]> => {
+export const extractMatrixBuffer = async (m: MatrixBuffer): Promise<Matrix> => {
   const onCpu = await m.buffer.read();
 
-  return new Array(onCpu.vectors).fill(0).map((_, i) =>
-    new Array(onCpu.dimensions).fill(0).map((__, j) => {
-      const flatIndex = i * onCpu.dimensions + j;
-
-      return onCpu.values[flatIndex]!;
-    }),
-  );
+  return {
+    ...onCpu,
+    values: new Float32Array(onCpu.values),
+  };
 };
 
 const applyScalarParamsLayout = tgpu.bindGroupLayout({

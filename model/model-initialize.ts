@@ -1,6 +1,6 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { randomNormalDistribution } from "../shared/math.ts";
-import { createMatrix, createVector } from "../shared/matrices.ts";
+import { createMatrix } from "../shared/matrices.ts";
 import { validateModel } from "./model-validation.ts";
 import type { Model, TransformerWeights } from "./model-types.ts";
 
@@ -29,8 +29,16 @@ export const initializeModel = ({
 
   const model: Model = {
     vocabulary,
-    headsCount,
-    mlpMultiple,
+    counts: {
+      attentionHeads: headsCount,
+      transformers: transformerCount,
+      hiddenDimensions: hiddenDimensionCount,
+      mlpMultiple,
+    },
+    history: {
+      trainingLosses: [],
+      validationLosses: [],
+    },
     transformers: new Array(transformerCount)
       .fill(0)
       .map((_): TransformerWeights => {
@@ -64,7 +72,7 @@ export const initializeModel = ({
                 hiddenDimensionCount * mlpMultiple,
                 weightRandomNumberGenerator,
               ),
-              biasVector: createVector(hiddenDimensionCount * mlpMultiple),
+              biasVector: createMatrix(1, hiddenDimensionCount * mlpMultiple),
             },
             wDown: {
               weightsMatrix: createMatrix(
@@ -72,7 +80,7 @@ export const initializeModel = ({
                 hiddenDimensionCount,
                 weightRandomNumberGenerator,
               ),
-              biasVector: createVector(hiddenDimensionCount),
+              biasVector: createMatrix(1, hiddenDimensionCount),
             },
           },
         };

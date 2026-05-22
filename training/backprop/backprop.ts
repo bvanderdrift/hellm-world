@@ -5,20 +5,18 @@ import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
 import { transformersBackprop } from "./transformersBackprop.ts";
+import type { Matrix } from "../../shared/matrices.ts";
 
 export const backprop = (
   weights: Model,
   activations: Activations,
   /** -1 is mask aka ignore this token */
   correctTokenIndices: number[],
-  outputProbabilities: {
-    probabilities: number[];
-    loss: number;
-  }[],
+  outputProbabilities: Matrix,
 ): Weights => {
   const unembeddingsOutputActivationsGradients = probabilityOutputBackprop(
     activations.unembeddingsOutputLogits,
-    outputProbabilities.map((o) => o.probabilities),
+    outputProbabilities,
     correctTokenIndices,
   );
 

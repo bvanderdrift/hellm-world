@@ -1,5 +1,7 @@
 import type { TransformerActivations } from "../../model/activations-types.ts";
 import type { TransformerWeights } from "../../model/model-types.ts";
+import { addMatrices } from "../../shared/matrices.ts";
+import { matrixFrom } from "../../testing/testing-utils.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -22,19 +24,14 @@ vi.mock("./normalizeBackprop.ts", () => ({
 
 import { transformersBackprop } from "./transformersBackprop.ts";
 
-const addMatrices = (left: number[][], right: number[][]) =>
-  left.map((row, rowIndex) =>
-    row.map((value, dimensionIndex) => {
-      return value + right[rowIndex]![dimensionIndex]!;
-    }),
-  );
-
-const makeAttentionWeights = (seed: number): TransformerWeights["attention"] => {
+const makeAttentionWeights = (
+  seed: number,
+): TransformerWeights["attention"] => {
   return {
-    Q: [[seed]],
-    K: [[seed + 1]],
-    V: [[seed + 2]],
-    out: [[seed + 3]],
+    Q: matrixFrom([[seed]]),
+    K: matrixFrom([[seed + 1]]),
+    V: matrixFrom([[seed + 2]]),
+    out: matrixFrom([[seed + 3]]),
   };
 };
 
@@ -43,12 +40,12 @@ const makeMlpWeights = (
 ): TransformerWeights["multilayerPerceptron"] => {
   return {
     wUp: {
-      weightsMatrix: [[seed]],
-      biasVector: [seed + 1],
+      weightsMatrix: matrixFrom([[seed]]),
+      biasVector: matrixFrom([[seed + 1]]),
     },
     wDown: {
-      weightsMatrix: [[seed + 2]],
-      biasVector: [seed + 3],
+      weightsMatrix: matrixFrom([[seed + 2]]),
+      biasVector: matrixFrom([[seed + 3]]),
     },
   };
 };
@@ -60,46 +57,44 @@ const makeTransformerWeights = (seed: number): TransformerWeights => {
   };
 };
 
-const makeTransformerActivations = (
-  seed: number,
-): TransformerActivations => {
+const makeTransformerActivations = (seed: number): TransformerActivations => {
   return {
-    transformerInput: [
+    transformerInput: matrixFrom([
       [seed, seed + 1],
       [seed + 2, seed + 3],
-    ],
+    ]),
     attention: {
-      normalizedInput: [
+      normalizedInput: matrixFrom([
         [seed + 10, seed + 11],
         [seed + 12, seed + 13],
-      ],
+      ]),
       heads: [],
-      outMatrixInputActivations: [
+      outMatrixInputActivations: matrixFrom([
         [seed + 20, seed + 21],
         [seed + 22, seed + 23],
-      ],
-      output: [
+      ]),
+      output: matrixFrom([
         [seed + 30, seed + 31],
         [seed + 32, seed + 33],
-      ],
+      ]),
     },
     mlp: {
-      normalizedInputToUpping: [
+      normalizedInputToUpping: matrixFrom([
         [seed + 40, seed + 41],
         [seed + 42, seed + 43],
-      ],
-      uppingToNonLinear: [
+      ]),
+      uppingToNonLinear: matrixFrom([
         [seed + 50, seed + 51],
         [seed + 52, seed + 53],
-      ],
-      nonLinearToDowning: [
+      ]),
+      nonLinearToDowning: matrixFrom([
         [seed + 60, seed + 61],
         [seed + 62, seed + 63],
-      ],
-      downingOutput: [
+      ]),
+      downingOutput: matrixFrom([
         [seed + 70, seed + 71],
         [seed + 72, seed + 73],
-      ],
+      ]),
     },
   };
 };
@@ -110,28 +105,28 @@ describe("transformersBackprop", () => {
   });
 
   it("adds residual gradients around both transformer branches", () => {
-    const outputGradients = [
+    const outputGradients = matrixFrom([
       [10, 20],
       [30, 40],
-    ];
+    ]);
     const weights = [makeTransformerWeights(1)];
     const activations = [makeTransformerActivations(100)];
-    const mlpInputGradients = [
+    const mlpInputGradients = matrixFrom([
       [1, 2],
       [3, 4],
-    ];
-    const mlpNormInputGradients = [
+    ]);
+    const mlpNormInputGradients = matrixFrom([
       [5, 6],
       [7, 8],
-    ];
-    const attentionInputGradients = [
+    ]);
+    const attentionInputGradients = matrixFrom([
       [9, 10],
       [11, 12],
-    ];
-    const attentionNormInputGradients = [
+    ]);
+    const attentionNormInputGradients = matrixFrom([
       [13, 14],
       [15, 16],
-    ];
+    ]);
     const attentionOutputGradients = addMatrices(
       outputGradients,
       mlpNormInputGradients,
@@ -175,24 +170,24 @@ describe("transformersBackprop", () => {
   });
 
   it("walks layers backward but returns weight gradients in forward layer order", () => {
-    const outputGradients = [[1, 2]];
+    const outputGradients = matrixFrom([[1, 2]]);
     const weights = [makeTransformerWeights(1), makeTransformerWeights(100)];
     const activations = [
       makeTransformerActivations(10),
       makeTransformerActivations(200),
     ];
-    const layerOneMlpInputGradients = [[3, 4]];
-    const layerOneMlpNormGradients = [[5, 6]];
-    const layerOneAttentionInputGradients = [[7, 8]];
-    const layerOneAttentionNormGradients = [[9, 10]];
+    const layerOneMlpInputGradients = matrixFrom([[3, 4]]);
+    const layerOneMlpNormGradients = matrixFrom([[5, 6]]);
+    const layerOneAttentionInputGradients = matrixFrom([[7, 8]]);
+    const layerOneAttentionNormGradients = matrixFrom([[9, 10]]);
     const layerZeroOutputGradients = addMatrices(
       addMatrices(outputGradients, layerOneMlpNormGradients),
       layerOneAttentionNormGradients,
     );
-    const layerZeroMlpInputGradients = [[11, 12]];
-    const layerZeroMlpNormGradients = [[13, 14]];
-    const layerZeroAttentionInputGradients = [[15, 16]];
-    const layerZeroAttentionNormGradients = [[17, 18]];
+    const layerZeroMlpInputGradients = matrixFrom([[11, 12]]);
+    const layerZeroMlpNormGradients = matrixFrom([[13, 14]]);
+    const layerZeroAttentionInputGradients = matrixFrom([[15, 16]]);
+    const layerZeroAttentionNormGradients = matrixFrom([[17, 18]]);
     const layerZeroAttentionOutputGradients = addMatrices(
       layerZeroOutputGradients,
       layerZeroMlpNormGradients,
@@ -275,7 +270,7 @@ describe("transformersBackprop", () => {
   });
 
   it("uses the pre-MLP residual state when backpropagating the MLP layer norm", () => {
-    const outputGradients = [[1, 2]];
+    const outputGradients = matrixFrom([[1, 2]]);
     const weights = [makeTransformerWeights(1)];
     const activations = [makeTransformerActivations(100)];
     const expectedMlpNormalizationInput = addMatrices(
@@ -284,14 +279,14 @@ describe("transformersBackprop", () => {
     );
 
     mocks.backpropMlp.mockReturnValue({
-      inputActivationGradients: [[3, 4]],
+      inputActivationGradients: matrixFrom([[3, 4]]),
       weightGradients: makeMlpWeights(200),
     });
-    mocks.backpropNormalize.mockReturnValueOnce([[5, 6]]).mockReturnValueOnce([
-      [7, 8],
-    ]);
+    mocks.backpropNormalize
+      .mockReturnValueOnce(matrixFrom([[5, 6]]))
+      .mockReturnValueOnce(matrixFrom([[7, 8]]));
     mocks.attentionBackprop.mockReturnValue({
-      inputGradients: [[9, 10]],
+      inputGradients: matrixFrom([[9, 10]]),
       weightGradients: makeAttentionWeights(300),
     });
 

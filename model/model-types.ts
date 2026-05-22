@@ -1,18 +1,21 @@
+import z from "zod";
+import type { Matrix } from "../shared/matrices.ts";
+
 export interface AttentionWeights {
-  Q: number[][];
-  K: number[][];
-  V: number[][];
-  out: number[][];
+  Q: Matrix;
+  K: Matrix;
+  V: Matrix;
+  out: Matrix;
 }
 
 export interface MultilayerPerceptronWeights {
   wUp: {
-    weightsMatrix: number[][];
-    biasVector: number[];
+    weightsMatrix: Matrix;
+    biasVector: Matrix;
   };
   wDown: {
-    weightsMatrix: number[][];
-    biasVector: number[];
+    weightsMatrix: Matrix;
+    biasVector: Matrix;
   };
 }
 
@@ -22,27 +25,34 @@ export interface TransformerWeights {
 }
 
 export type Weights = {
-  embeddings: number[][]; // T x D
-  unembeddings: number[][]; // D x T
+  embeddings: Matrix; // T x D
+  unembeddings: Matrix; // D x T
   transformers: TransformerWeights[];
 };
 
-export type ModelMetadata = {
-  vocabulary: string[];
-  trainingMaskSeparator?: string;
-  headsCount: number;
-  mlpMultiple: number;
-};
+export const modelMetadataSchema = z.object({
+  vocabulary: z.array(z.string()),
+  trainingMaskSeparator: z.string().optional(),
+  counts: z.object({
+    transformers: z.int().positive(),
+    attentionHeads: z.int().positive(),
+    hiddenDimensions: z.int().positive(),
+    mlpMultiple: z.int().positive(),
+  }),
+});
 
-export type Model = ModelMetadata & Weights;
+export const modelTrainingHistorySchema = z.object({
+  validationLosses: z.array(
+    z.object({
+      stepIndex: z.number(),
+      loss: z.number(),
+    }),
+  ),
+  trainingLosses: z.array(z.number()),
+});
 
-export type ModelTrainingHistory = {
-  validationLosses: { stepIndex: number; loss: number }[];
-  trainingLosses: number[];
-};
+export type ModelMetadata = z.infer<typeof modelMetadataSchema>;
 
-export type ModelCheckpoint = {
-  // Average loss of every training step, so length is amount of steps taken
-  history: ModelTrainingHistory;
-  weights: Weights;
-};
+export type ModelTrainingHistory = z.infer<typeof modelTrainingHistorySchema>;
+
+export type Model = ModelMetadata & Weights & { history: ModelTrainingHistory };

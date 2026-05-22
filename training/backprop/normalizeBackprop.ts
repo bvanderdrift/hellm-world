@@ -1,4 +1,10 @@
 import { calculateStandardDeviation, sum } from "../../shared/math.ts";
+import {
+  createMatrix,
+  getFlatIndex,
+  getRawVector,
+  type Matrix,
+} from "../../shared/matrices.ts";
 
 /**
  * Normalize function is f(h_vi) where h_vi is input activation of vector v at index i
@@ -31,14 +37,20 @@ import { calculateStandardDeviation, sum } from "../../shared/math.ts";
  * dL/dh_k = sum_i(dL/dy_i * dy_i/dh_k)
  */
 export const backpropNormalize = (
-  outputGradients: number[][],
-  inputActivations: number[][],
-): number[][] => {
-  return inputActivations.map((vector, vectorIndex) => {
+  outputGradients: Matrix,
+  inputActivations: Matrix,
+): Matrix => {
+  const output = createMatrix(
+    outputGradients.vectors,
+    outputGradients.dimensions,
+  );
+
+  for (let vectorIndex = 0; vectorIndex < output.vectors; vectorIndex++) {
+    const vector = getRawVector(inputActivations, vectorIndex);
     const { average, standardDeviation } = calculateStandardDeviation(vector);
 
-    return vector.map((_, valueIndex) => {
-      const vectorOutputGradients = outputGradients[vectorIndex]!;
+    for (let valueIndex = 0; valueIndex < output.dimensions; valueIndex++) {
+      const vectorOutputGradients = getRawVector(outputGradients, vectorIndex);
 
       // To prevent divide-by-0
       const safeStandardDeviation = standardDeviation + Number.EPSILON;
@@ -64,9 +76,12 @@ export const backpropNormalize = (
         },
       );
 
-      return sum(vectorInputGradients);
-    });
-  });
+      output.values[getFlatIndex(vectorIndex, valueIndex, output.dimensions)]! =
+        sum(vectorInputGradients);
+    }
+  }
+
+  return output;
 };
 
 /**
@@ -84,7 +99,7 @@ export const backpropNormalize = (
  *  = (h_vh - mean) / (j * std)
  */
 const standardDeviationDerivative = (
-  values: number[],
+  values: Float32Array,
   derivativeIndex: number,
 ) => {
   const { average, standardDeviation } = calculateStandardDeviation(values);
