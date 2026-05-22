@@ -35,6 +35,10 @@ export const initializeModel = ({
       hiddenDimensions: hiddenDimensionCount,
       mlpMultiple,
     },
+    history: {
+      trainingLosses: [],
+      validationLosses: [],
+    },
     transformers: new Array(transformerCount)
       .fill(0)
       .map((_): TransformerWeights => {

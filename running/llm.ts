@@ -27,7 +27,7 @@ const contextTimeout = 100;
 export const runLlm = function* (input: string, modelName: string) {
   let outputTokens: string[] = [];
 
-  const { model } = getLatestCheckpointModel(modelName);
+  const model = getLatestCheckpointModel(modelName);
 
   validateModel(model);
 

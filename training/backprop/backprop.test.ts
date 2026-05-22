@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
-import type { Model } from "../../model/model-types.ts";
+import type { Model, ModelTrainingHistory } from "../../model/model-types.ts";
 import { safeSumExponatedLogits, softmax, sum } from "../../shared/math.ts";
 import type { Matrix } from "../../shared/matrices.ts";
 import {
@@ -15,10 +15,16 @@ import {
 import { backprop } from "./backprop.ts";
 import { FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
 
+const emptyHistory: ModelTrainingHistory = {
+  trainingLosses: [],
+  validationLosses: [],
+};
+
 describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", "gamma", "delta"],
+      history: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -143,6 +149,7 @@ describe("backprop", () => {
   it("stays finite when the correct token logit is far below the dominant logit", () => {
     const model: Model = {
       vocabulary: ["dominant", "tiny"],
+      history: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,

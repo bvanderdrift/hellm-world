@@ -5,7 +5,8 @@
 import { mkdir, readFile } from "fs/promises";
 import { dirname, join } from "path";
 import sharp from "sharp";
-import type { ModelCheckpoint } from "../model/model-types.ts";
+import type { ModelTrainingHistory } from "../model/model-types.ts";
+import { getModelFolderPath, getModelHistory } from "../model/model-io.ts";
 
 const escapeXml = (value: string) =>
   value
@@ -14,24 +15,18 @@ const escapeXml = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-export const writeLossChart = async (
-  modelName: string,
-  checkpointName: string,
-) => {
-  const modelDirectory = join(import.meta.dirname, "..", "model", modelName);
-  const checkpointPath = join(modelDirectory, checkpointName);
+export const writeLossChart = async (modelName: string) => {
+  const modelFolderPath = getModelFolderPath(modelName);
+  const history = getModelHistory(modelFolderPath);
+  const { trainingLosses: losses, validationLosses } = history;
+
   const outputPath = join(
-    modelDirectory,
-    checkpointName.replace(".json", "_loss.png"),
+    modelFolderPath,
+    `loss-${new Date().toISOString()}.png`,
   );
-  const checkpoint = JSON.parse(
-    await readFile(checkpointPath, "utf8"),
-  ) as ModelCheckpoint;
-  const losses = checkpoint.history.trainingLosses;
-  const validationLosses = checkpoint.history.validationLosses;
 
   if (!Array.isArray(losses) || losses.length === 0) {
-    throw new Error(`Checkpoint ${checkpointPath} has no loss history`);
+    throw new Error(`Model ${modelFolderPath} has no loss history`);
   }
 
   const width = 1400;
@@ -44,10 +39,7 @@ export const writeLossChart = async (
   };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
-  const allLossValues = [
-    ...losses,
-    ...validationLosses.map((v) => v.loss),
-  ];
+  const allLossValues = [...losses, ...validationLosses.map((v) => v.loss)];
   const maxLoss = Math.max(...allLossValues);
   const minLoss = Math.min(...allLossValues);
   const yMin = 0;
@@ -75,7 +67,7 @@ export const writeLossChart = async (
     <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${height - margin.bottom}" stroke="#f3f4f6" />
     <text x="${x}" y="${height - margin.bottom + 34}" text-anchor="middle" class="axis-text">${step + 1}</text>`;
   });
-  const title = `${modelName} ${checkpointName} loss history`;
+  const title = `${modelName} loss history`;
   const subtitle = `${losses.length.toLocaleString("en-US")} steps - start ${losses[0]!.toFixed(4)} - min ${minLoss.toFixed(4)} - final ${losses[losses.length - 1]!.toFixed(4)}`;
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">

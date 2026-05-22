@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type {
   Model,
+  ModelTrainingHistory,
   TransformerWeights,
   Weights,
 } from "../model/model-types.ts";
@@ -51,8 +52,14 @@ const zeroTransformer: TransformerWeights = {
   },
 };
 
+const emptyHistory: ModelTrainingHistory = {
+  trainingLosses: [],
+  validationLosses: [],
+};
+
 const model: Model = {
   vocabulary: ["prompt", "answer", END_OF_SEQUENCE_TOKEN],
+  history: emptyHistory,
   counts: {
     attentionHeads: 2,
     mlpMultiple: 1,

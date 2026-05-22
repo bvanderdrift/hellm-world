@@ -41,17 +41,18 @@ export const modelMetadataSchema = z.object({
   }),
 });
 
+export const modelTrainingHistorySchema = z.object({
+  validationLosses: z.array(
+    z.object({
+      stepIndex: z.number(),
+      loss: z.number(),
+    }),
+  ),
+  trainingLosses: z.array(z.number()),
+});
+
 export type ModelMetadata = z.infer<typeof modelMetadataSchema>;
 
-export type Model = ModelMetadata & Weights;
+export type ModelTrainingHistory = z.infer<typeof modelTrainingHistorySchema>;
 
-export type ModelTrainingHistory = {
-  validationLosses: { stepIndex: number; loss: number }[];
-  trainingLosses: number[];
-};
-
-export type ModelCheckpoint = {
-  // Average loss of every training step, so length is amount of steps taken
-  history: ModelTrainingHistory;
-  weights: Weights;
-};
+export type Model = ModelMetadata & Weights & { history: ModelTrainingHistory };

@@ -104,8 +104,8 @@ export const operateCombinedWeights = (
 export const makeZeroVersion = (weights: Weights) =>
   operateSingleWeights(weights, () => 0);
 
-export const getModelParameterCount = (model: Model) => {
-  const transformersParameterCount = model.transformers.reduce(
+export const getModelParameterCount = (weights: Weights) => {
+  const transformersParameterCount = weights.transformers.reduce(
     (sum, transformer) => {
       // All 4 should be same size, but let's just calculate each seperately just to be sure
       const kSize = getMatrixParameterCount(transformer.attention.K);
@@ -143,9 +143,9 @@ export const getModelParameterCount = (model: Model) => {
   );
 
   return (
-    getMatrixParameterCount(model.embeddings) +
+    getMatrixParameterCount(weights.embeddings) +
     transformersParameterCount +
-    getMatrixParameterCount(model.unembeddings)
+    getMatrixParameterCount(weights.unembeddings)
   );
 };
 

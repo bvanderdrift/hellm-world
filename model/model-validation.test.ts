@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { createMatrix, type Matrix } from "../shared/matrices.ts";
 import { validateModel, validateSameModelShape } from "./model-validation.ts";
-import { type Model, modelMetadataSchema } from "./model-types.ts";
+import { type Model, type ModelTrainingHistory, modelMetadataSchema } from "./model-types.ts";
 
 const m = (rows: number, columns: number, value = 1): Matrix => {
   const mat = createMatrix(rows, columns, () => value);
@@ -14,9 +14,14 @@ const DEFAULT_MLP_MULTIPLE = 4;
 const DEFAULT_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * DEFAULT_MLP_MULTIPLE;
 const SMALLER_MLP_MULTIPLE = 2;
 const SMALLER_MLP_DIMENSION_SIZE = HIDDEN_DIMENSION_SIZE * SMALLER_MLP_MULTIPLE;
+const emptyHistory: ModelTrainingHistory = {
+  trainingLosses: [],
+  validationLosses: [],
+};
 
 const validModel: Model = {
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
+  history: emptyHistory,
   counts: {
     attentionHeads: 2,
     mlpMultiple: DEFAULT_MLP_MULTIPLE,

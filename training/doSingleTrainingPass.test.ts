@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Model } from "../model/model-types.ts";
+import type { Model, ModelTrainingHistory } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
@@ -8,10 +8,16 @@ import { getRawVector } from "../shared/matrices.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
 
+const emptyHistory: ModelTrainingHistory = {
+  trainingLosses: [],
+  validationLosses: [],
+};
+
 describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {
     const model: Model = {
       vocabulary: ["hello", "world", END_OF_SEQUENCE_TOKEN],
+      history: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -36,6 +42,7 @@ describe("doSingleTrainingPass", () => {
   it("uses each context position to predict the following token", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", END_OF_SEQUENCE_TOKEN],
+      history: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -85,6 +92,7 @@ describe("doSingleTrainingPass", () => {
   it("does not update the target token embedding when it is not in the context", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta"],
+      history: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,

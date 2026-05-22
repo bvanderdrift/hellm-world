@@ -14,7 +14,7 @@ const MODEL_NAME = "addy";
 const TOKEN_COUNTS = [1, 3, 5, 10];
 
 const main = async () => {
-  const { model } = getLatestCheckpointModel(MODEL_NAME);
+  const model = getLatestCheckpointModel(MODEL_NAME);
   validateModel(model);
 
   console.log("inference CPU vs GPU benchmark");

@@ -13,14 +13,19 @@ import {
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import * as weightReading from "../model/model-io.ts";
-import type { Model, ModelCheckpoint } from "../model/model-types.ts";
+import type { Model, ModelTrainingHistory } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
 const MODEL_NAME = "timmy";
+const emptyHistory: ModelTrainingHistory = {
+  trainingLosses: [],
+  validationLosses: [],
+};
 
 const testModel: Model = {
   vocabulary: ["hello", "world", " ", "beer", "!", END_OF_SEQUENCE_TOKEN],
+  history: emptyHistory,
   counts: {
     attentionHeads: 1,
     mlpMultiple: 1,
@@ -48,6 +53,7 @@ const vocabSize = testModel.vocabulary.length;
 
 const attentionOnlyModel: Model = {
   vocabulary: ["hello", "world", "beer"],
+  history: emptyHistory,
   counts: {
     attentionHeads: 1,
     mlpMultiple: 1,
@@ -237,32 +243,28 @@ describe("llmForwardPassByTokens", () => {
 
 describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
-    const eosStoppingWeights: Omit<ModelCheckpoint, "weights"> & {
-      model: Model;
-    } = {
+    const eosStoppingModel: Model = {
+      vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
       history: { trainingLosses: [3], validationLosses: [] },
-      model: {
-        vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
-        counts: {
-          attentionHeads: 1,
-          mlpMultiple: 1,
-          transformers: 0,
-          hiddenDimensions: 2,
-        },
-        embeddings: matrixFrom([
-          [0, 0],
-          [0, 0],
-        ]),
-        unembeddings: matrixFrom([
-          [0, -1],
-          [0, 1],
-        ]),
-        transformers: [],
+      counts: {
+        attentionHeads: 1,
+        mlpMultiple: 1,
+        transformers: 0,
+        hiddenDimensions: 2,
       },
+      embeddings: matrixFrom([
+        [0, 0],
+        [0, 0],
+      ]),
+      unembeddings: matrixFrom([
+        [0, -1],
+        [0, 1],
+      ]),
+      transformers: [],
     };
 
     vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
-      eosStoppingWeights,
+      eosStoppingModel,
     );
 
     expect(Array.from(runLlm("hello", MODEL_NAME))).toEqual([]);
@@ -298,25 +300,21 @@ describe("llm pipeline contracts", () => {
 
 describe("weights validation contract", () => {
   it("fails fast when loaded weights have wrong total parameter count", () => {
-    const malformedWeights: Omit<ModelCheckpoint, "weights"> & {
-      model: Model;
-    } = {
-      history: { trainingLosses: [3], validationLosses: [] },
-      model: {
-        vocabulary: [...testModel.vocabulary],
-        counts: testModel.counts,
-        embeddings: {
-          vectors: 6,
-          dimensions: 4,
-          values: new Float32Array(23),
-        },
-        unembeddings: testModel.unembeddings,
-        transformers: testModel.transformers,
+    const malformedModel: Model = {
+      vocabulary: [...testModel.vocabulary],
+      history: emptyHistory,
+      counts: testModel.counts,
+      embeddings: {
+        vectors: 6,
+        dimensions: 4,
+        values: new Float32Array(23),
       },
+      unembeddings: testModel.unembeddings,
+      transformers: testModel.transformers,
     };
 
     vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
-      malformedWeights,
+      malformedModel,
     );
 
     expect(() => Array.from(runLlm("hello", MODEL_NAME))).toThrow();
