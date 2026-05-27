@@ -13,7 +13,7 @@ export type InputMessagePayload = {
 };
 
 export type OutputMessagePayload = {
-  averageLoss: number;
+  losses: number[];
   adjustedWeights: Weights;
 };
 

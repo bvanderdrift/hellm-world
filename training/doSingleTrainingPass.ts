@@ -19,10 +19,17 @@ export const doSingleTrainingPass = async (
   model: Model,
   trainingData: TrainingExample[],
 ): Promise<{
-  averageLoss: number;
+  losses: number[];
   adjustedWeights: Weights;
 }> => {
-  const summedLossWithGradients = await trainingData.reduce(
+  const summedLossWithGradients = await trainingData.reduce<
+    Promise<{
+      losses: number[];
+      // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
+      flatTrainingSize: number;
+      gradients: Weights;
+    }>
+  >(
     async (accP, example, index) => {
       const acc = await accP;
 
@@ -48,11 +55,9 @@ export const doSingleTrainingPass = async (
       console.log(
         `${(index + 1).toString().padStart(3, "0")}/${trainingData.length} - Duration: ${duration}ms`,
       );
-
       const summedLoss = sum(outputLosses);
-
       return {
-        loss: acc.loss + summedLoss,
+        losses: [...acc.losses, summedLoss / unmaskedTokenCount],
         // The full sequence won't be trained against (there's nothing to predict) so we remove 1 testcase per sequence
         flatTrainingSize: acc.flatTrainingSize + unmaskedTokenCount,
         gradients: operateCombinedWeights(
@@ -63,21 +68,19 @@ export const doSingleTrainingPass = async (
       };
     },
     Promise.resolve({
-      loss: 0,
+      losses: [],
       flatTrainingSize: 0,
       gradients: makeZeroVersion(model),
     }),
   );
 
-  const averageLoss =
-    summedLossWithGradients.loss / summedLossWithGradients.flatTrainingSize;
   const averageGradient = operateSingleWeights(
     summedLossWithGradients.gradients,
     (v1) => v1 / summedLossWithGradients.flatTrainingSize,
   );
 
   return {
-    averageLoss,
+    losses: summedLossWithGradients.losses,
     adjustedWeights: operateCombinedWeights(
       model,
       averageGradient,

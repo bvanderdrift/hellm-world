@@ -163,9 +163,11 @@ describe("training/backprop integration readiness", () => {
     expect(flattenWeights(gradients).some((value) => value !== 0)).toBe(true);
 
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
-    const { averageLoss, adjustedWeights } = await doSingleTrainingPass(model, [
+    const { losses, adjustedWeights } = await doSingleTrainingPass(model, [
       { sequence: trainingSequence, maskBeforeIndex: null },
     ]);
+    const averageLoss =
+      losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
     const trainedModel: Model = { ...model, ...adjustedWeights };
     const afterTargetLoss = lossForNextToken(
       trainedModel,

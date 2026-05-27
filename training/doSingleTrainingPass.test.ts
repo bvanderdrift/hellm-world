@@ -29,13 +29,15 @@ describe("doSingleTrainingPass", () => {
       transformers: [],
     };
 
-    const { averageLoss } = await doSingleTrainingPass(model, [
+    const { losses } = await doSingleTrainingPass(model, [
       {
         sequence: ["hello", "world", END_OF_SEQUENCE_TOKEN],
         maskBeforeIndex: null,
       },
     ]);
 
+    const averageLoss =
+      losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
     expect(averageLoss).toBeCloseTo(Math.log(model.vocabulary.length), 5);
   });
 
@@ -82,10 +84,12 @@ describe("doSingleTrainingPass", () => {
         )) /
       2;
 
-    const { averageLoss } = await doSingleTrainingPass(model, [
+    const { losses } = await doSingleTrainingPass(model, [
       { sequence, maskBeforeIndex: null },
     ]);
 
+    const averageLoss =
+      losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
     expect(averageLoss).toBeCloseTo(expectedAverageLoss, 5);
   });
 
