@@ -11,11 +11,10 @@ import {
   readRawTrainingData,
 } from "../model/model-io.ts";
 import { prepareExampleData } from "./prepareExampleData.ts";
-import { cpus } from "os";
 import type {
   InputMessagePayload,
   OutputMessagePayload,
-} from "./training-worker.ts";
+} from "./workers/training-worker.ts";
 import {
   doSingleTrainingPass,
   type TrainingExample,
@@ -28,6 +27,9 @@ import {
   createLossRecord,
   sampleIndices,
 } from "./loss-weighted-sampling.ts";
+import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
+import { cpus } from "os";
+import { splitAcrossWorkers } from "./workers/batching.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
@@ -164,26 +166,6 @@ const logStateProgress = (
 
 const cpuCount = cpus().length;
 
-let cachedWorkers: Worker[] | null = null;
-
-export const terminateWorkers = () => {
-  cachedWorkers?.forEach((worker) => worker.terminate());
-};
-
-export const getWorkers = (count: number) => {
-  if (cachedWorkers && cachedWorkers.length !== count) {
-    console.log(`Workers were initialized at different size`);
-  }
-
-  cachedWorkers =
-    cachedWorkers ??
-    new Array(count)
-      .fill(0)
-      .map(() => new Worker("./training/training-worker.ts"));
-
-  return cachedWorkers;
-};
-
 const runTrainingPasses = async (
   model: Model,
   trainingData: TrainingExample[],
@@ -200,11 +182,7 @@ const runTrainingPasses = async (
 
   const workers = getWorkers(effectiveCpuCount);
 
-  const batchSize = Math.ceil(trainingData.length / workers.length);
-
-  const splitData = workers.map((_, cpuIndex) => {
-    return trainingData.slice(cpuIndex * batchSize, (cpuIndex + 1) * batchSize);
-  });
+  const splitData = splitAcrossWorkers(trainingData, workers.length);
 
   const results = await Promise.all(
     splitData.map(async (singleBatch, workerIndex) => {

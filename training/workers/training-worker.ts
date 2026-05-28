@@ -1,8 +1,8 @@
-import type { Model, Weights } from "../model/model-types.ts";
+import type { Model, Weights } from "../../model/model-types.ts";
 import {
   doSingleTrainingPass,
   type TrainingExample,
-} from "./doSingleTrainingPass.ts";
+} from "../doSingleTrainingPass.ts";
 
 // prevents TS errors
 declare var self: Worker;
