@@ -3,7 +3,7 @@ import type { Model, ModelTrainingHistory } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { softmax } from "../shared/math.ts";
+import { softmax } from "../shared/softmax.ts";
 import { getRawVector } from "../shared/matrices.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";

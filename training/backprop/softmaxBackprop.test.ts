@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { softmax } from "../../shared/math.ts";
+import { softmax } from "../../shared/softmax.ts";
 import { softmaxBackprop } from "./softmaxBackprop.ts";
 import {
   FINITE_DIFFERENCE_EPSILON,

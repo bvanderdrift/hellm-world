@@ -1,4 +1,5 @@
-import { safeSumExponatedLogits, sum } from "../../shared/math.ts";
+import { sum } from "../../shared/math.ts";
+import { safeSumExponatedLogits } from "../../shared/softmax.ts";
 
 /**
  * s_i = e^x_i / sum(e^x_j)

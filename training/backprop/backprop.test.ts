@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
 import type { Model, ModelTrainingHistory } from "../../model/model-types.ts";
-import { safeSumExponatedLogits, softmax, sum } from "../../shared/math.ts";
+import { sum } from "../../shared/math.ts";
+import { safeSumExponatedLogits, softmax } from "../../shared/softmax.ts";
 import type { Matrix } from "../../shared/matrices.ts";
 import {
   createMatrix,

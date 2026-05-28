@@ -1,4 +1,3 @@
-import { softmax } from "../shared/math.ts";
 import {
   addMatrices,
   createMatrix,
@@ -21,6 +20,7 @@ import type {
   Activations,
   TransformerActivations,
 } from "../model/activations-types.ts";
+import { softmax } from "../shared/softmax.ts";
 
 const contextTimeout = 100;
 

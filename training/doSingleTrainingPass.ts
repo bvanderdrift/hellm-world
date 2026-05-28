@@ -8,7 +8,7 @@ import { sum } from "../shared/math.ts";
 import { backprop } from "./backprop/backprop.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
 
-const TRAINING_ALPHA = 0.003;
+const TRAINING_ALPHA = 0.01;
 
 export type TrainingExample = {
   sequence: string[];

@@ -8,7 +8,7 @@ import type {
 } from "../model/model-types.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { softmax } from "../shared/math.ts";
+import { softmax } from "../shared/softmax.ts";
 import { backprop } from "./backprop/backprop.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
