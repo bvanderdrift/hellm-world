@@ -38,7 +38,7 @@ export type EndDefinition = { type: "minutes" | "steps"; count: number };
 export const doTrainingLoopAndStoreCheckpoint = async (
   modelName: string,
   endDefinition: EndDefinition | null,
-  parallelism: "cpu-single" | "cpu-multi",
+  workersCount: number,
 ) => {
   const modelFolderPath = getModelFolderPath(modelName);
   const history = getModelHistory(modelFolderPath);
@@ -101,7 +101,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     const { losses, adjustedWeights } = await runTrainingPasses(
       state.model,
       trainingDataToWorkWith.map(({ trainingData }) => trainingData),
-      parallelism,
+      workersCount,
     );
 
     let summedLoss = 0;
@@ -187,12 +187,12 @@ export const getWorkers = (count: number) => {
 const runTrainingPasses = async (
   model: Model,
   trainingData: TrainingExample[],
-  parallelism: "cpu-single" | "cpu-multi",
+  workersCount: number,
 ): Promise<{
   losses: number[];
   adjustedWeights: Weights;
 }> => {
-  const effectiveCpuCount = parallelism === "cpu-single" ? 1 : cpuCount;
+  const effectiveCpuCount = Math.min(workersCount, cpuCount);
 
   if (effectiveCpuCount === 1) {
     return doSingleTrainingPass(model, trainingData);

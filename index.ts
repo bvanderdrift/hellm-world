@@ -36,11 +36,11 @@ program
     "-t, --time <time>",
     "Amount of minutes before storing another checkpoint",
   )
-  .option("-m, --multi-thread", "Whether to multithread")
+  .option("-m, --multi-thread <workers>", "Whether to multithread")
   .action(
     async (
       modelName: string,
-      opts: { steps?: number; multiThread?: boolean; time?: number },
+      opts: { steps?: number; multiThread?: number; time?: number },
     ) => {
       if (opts.steps && opts.time) {
         throw new Error(
@@ -63,7 +63,7 @@ program
       await doTrainingLoopAndStoreCheckpoint(
         modelName,
         endDefinition,
-        opts.multiThread ? "cpu-multi" : "cpu-single",
+        opts.multiThread ?? 1,
       );
     },
   );
