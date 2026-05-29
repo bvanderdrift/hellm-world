@@ -165,7 +165,7 @@ describe("training/backprop integration readiness", () => {
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
     const { losses, adjustedWeights } = await doSingleTrainingPass(model, [
       { sequence: trainingSequence, maskBeforeIndex: null },
-    ]);
+    ], () => {});
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
     const trainedModel: Model = { ...model, ...adjustedWeights };

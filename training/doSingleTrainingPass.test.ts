@@ -34,7 +34,7 @@ describe("doSingleTrainingPass", () => {
         sequence: ["hello", "world", END_OF_SEQUENCE_TOKEN],
         maskBeforeIndex: null,
       },
-    ]);
+    ], () => {});
 
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
@@ -86,7 +86,7 @@ describe("doSingleTrainingPass", () => {
 
     const { losses } = await doSingleTrainingPass(model, [
       { sequence, maskBeforeIndex: null },
-    ]);
+    ], () => {});
 
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
@@ -117,7 +117,7 @@ describe("doSingleTrainingPass", () => {
 
     const { adjustedWeights } = await doSingleTrainingPass(model, [
       { sequence: ["alpha", "beta"], maskBeforeIndex: null },
-    ]);
+    ], () => {});
 
     expect(getRawVector(adjustedWeights.embeddings, betaIndex)).toEqual(
       getRawVector(model.embeddings, betaIndex),
