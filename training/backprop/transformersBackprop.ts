@@ -9,6 +9,7 @@ export const transformersBackprop = (
   outputGradients: Matrix,
   weights: TransformerWeights[],
   activations: TransformerActivations[],
+  headsCount: number,
 ): {
   transformerGradients: TransformerWeights[];
   inputActivationGradients: Matrix;
@@ -62,6 +63,7 @@ export const transformersBackprop = (
       transformerWeights.attention,
       attentionOutputGradients,
       transformerActivations.attention,
+      headsCount,
     );
 
     const preAttentionNormInputGradients = backpropNormalize(

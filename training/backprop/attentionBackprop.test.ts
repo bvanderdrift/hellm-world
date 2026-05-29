@@ -1,4 +1,4 @@
-import { describe, it } from "vitest";
+import { describe, it, expect } from "vitest";
 import type { AttentionWeights } from "../../model/model-types.ts";
 import type { AttentionHeadActivations } from "../../model/activations-types.ts";
 import {
@@ -7,7 +7,11 @@ import {
 } from "../../transforming/attention.ts";
 import {
   attentionBackprop,
-  attentionHeadBackprop,
+  attentionHeadsBackprop,
+  getInputVGradients,
+  getSoftmaxOutputGradients,
+  getSoftmaxInputGradients,
+  getQKInputGradients,
 } from "./attentionBackprop.ts";
 import {
   createMatrix,
@@ -95,7 +99,7 @@ const attentionObjective = (
     outputGradients,
   );
 
-describe("attentionHeadBackprop", () => {
+describe("attentionHeadsBackprop", () => {
   it("matches finite differences for value gradients through the causal lookback window", () => {
     const inputQ = matrixFrom([
       [0.2, -0.5],
@@ -118,18 +122,13 @@ describe("attentionHeadBackprop", () => {
       [1.1, -0.5],
     ]);
 
-    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 2);
-    const activations: AttentionHeadActivations = {
-      inputK: rawActivations.inputK,
-      inputQ: rawActivations.inputQ,
-      inputV: rawActivations.inputV,
-      attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
-      softmaxOutput: rawActivations.softmaxOutput[0]!,
-      output: rawActivations.output,
-    };
-    const { inputVGradients } = attentionHeadBackprop(
+    // For a single head the flattened activation already matches the
+    // AttentionHeadActivations shape, so it can be passed straight through.
+    const activations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 2);
+    const { inputVGradients } = attentionHeadsBackprop(
       activations,
       outputGradients,
+      1,
     );
 
     const numericalVGradients = finiteDifferenceMatrix(inputV, (perturbedV) =>
@@ -145,18 +144,11 @@ describe("attentionHeadBackprop", () => {
     const inputV = matrixFrom([[1.5], [-0.4]]);
     const outputGradients = matrixFrom([[0.3], [1.2]]);
 
-    const rawActivations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 1);
-    const activations: AttentionHeadActivations = {
-      inputK: rawActivations.inputK,
-      inputQ: rawActivations.inputQ,
-      inputV: rawActivations.inputV,
-      attentionRelevancyOutput: rawActivations.attentionRelevancyOutput[0]!,
-      softmaxOutput: rawActivations.softmaxOutput[0]!,
-      output: rawActivations.output,
-    };
-    const { inputQGradients, inputKGradients } = attentionHeadBackprop(
+    const activations = runSelfAttentionHead(inputQ, inputK, inputV, 1, 1);
+    const { inputQGradients, inputKGradients } = attentionHeadsBackprop(
       activations,
       outputGradients,
+      1,
     );
 
     const numericalQGradients = finiteDifferenceMatrix(inputQ, (perturbedQ) =>
@@ -215,6 +207,7 @@ describe("attentionBackprop", () => {
       weights,
       outputGradients,
       activations,
+      2,
     );
 
     const numericalOutGradients = finiteDifferenceMatrix(
@@ -269,5 +262,184 @@ describe("attentionBackprop", () => {
     expectMatrixCloseTo(weightGradients.V, numericalVGradients, multiHeadPrecision);
     expectMatrixCloseTo(weightGradients.Q, numericalQGradients, multiHeadPrecision);
     expectMatrixCloseTo(weightGradients.K, numericalKGradients, multiHeadPrecision);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Unit tests for the individual helpers attentionHeadsBackprop is built from.
+// Each uses headDimensionality != contextLength so the flattened per-head
+// indexing (which has been the source of every bug here) is actually exercised.
+// ---------------------------------------------------------------------------
+
+const emptyMatrix = matrixFrom([[0]]);
+
+// Builds a full AttentionHeadActivations, filling unused fields with dummies so
+// each test only has to specify the matrices the function under test reads.
+const headActivationsWith = (
+  fields: Partial<AttentionHeadActivations>,
+): AttentionHeadActivations => ({
+  inputK: emptyMatrix,
+  inputV: emptyMatrix,
+  inputQ: emptyMatrix,
+  attentionRelevancyOutput: emptyMatrix,
+  softmaxOutput: emptyMatrix,
+  output: emptyMatrix,
+  ...fields,
+});
+
+const expectArrayCloseTo = (
+  actual: Float32Array,
+  expected: number[],
+  precision = 5,
+) => {
+  expect(actual.length).toBe(expected.length);
+  expected.forEach((value, index) =>
+    expect(actual[index]).toBeCloseTo(value, precision),
+  );
+};
+
+describe("getInputVGradients", () => {
+  it("weights each value token by its head's softmax score for the query", () => {
+    // contextLength 3, headsCount 2, headDim 2, hidden 4; query is vectorIndex 1
+    // (sees keys 0 and 1). dL/dV[key, headCol] = softmax(query attends key) * dL/dOutput.
+    const outputGradients = matrixFrom([
+      [0, 0, 0, 0],
+      [10, 20, 30, 40],
+      [0, 0, 0, 0],
+    ]);
+    // softmaxOutput row 1, laid out [head0: keys 0,1,2 | head1: keys 0,1,2].
+    const softmaxOutput = matrixFrom([
+      [0, 0, 0, 0, 0, 0],
+      [0.25, 0.75, 0, 0.5, 0.5, 0],
+      [0, 0, 0, 0, 0, 0],
+    ]);
+
+    const result = getInputVGradients(
+      outputGradients,
+      headActivationsWith({ softmaxOutput }),
+      1,
+      2,
+    );
+
+    // key 0: head0 0.25*[10,20]=[2.5,5], head1 0.5*[30,40]=[15,20]
+    // key 1: head0 0.75*[10,20]=[7.5,15], head1 0.5*[30,40]=[15,20]
+    expectMatrixCloseTo(
+      result,
+      matrixFrom([
+        [2.5, 5, 15, 20],
+        [7.5, 15, 15, 20],
+        [0, 0, 0, 0],
+      ]),
+    );
+  });
+});
+
+describe("getSoftmaxOutputGradients", () => {
+  it("dots the query's per-head output gradient with each visible value token", () => {
+    // contextLength 3, headsCount 2, headDim 2, hidden 4; query vectorIndex 1.
+    const outputGradients = matrixFrom([
+      [0, 0, 0, 0],
+      [10, 20, 30, 40],
+      [0, 0, 0, 0],
+    ]);
+    const inputV = matrixFrom([
+      [1, 2, 3, 4],
+      [5, 6, 7, 8],
+      [0, 0, 0, 0],
+    ]);
+
+    // softmaxLength = headsCount * (vectorIndex + 1) = 4, headDimensionality = 2.
+    const result = getSoftmaxOutputGradients(
+      outputGradients,
+      headActivationsWith({ inputV }),
+      2,
+      4,
+      1,
+      2,
+    );
+
+    // head0: [10,20]·[1,2]=50, [10,20]·[5,6]=170; head1: [30,40]·[3,4]=250, [30,40]·[7,8]=530
+    expectArrayCloseTo(result, [50, 170, 250, 530]);
+  });
+});
+
+describe("getSoftmaxInputGradients", () => {
+  it("backprops through each head's own softmax slice and places results by head", () => {
+    // Uniform logits (all zero) per head -> softmax [0.5,0.5], so for upstream
+    // gradient [g0,g1] the result is [0.25(g0-g1), -0.25(g0-g1)].
+    // vectorIndex 1, headsCount 2, contextLength 3, softmaxLength 4.
+    const attentionRelevancyOutput = matrixFrom([
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+      [0, 0, 0, 0, 0, 0],
+    ]);
+    const softmaxOutputGradients = new Float32Array([4, 0, 0, 8]);
+
+    const result = getSoftmaxInputGradients(
+      softmaxOutputGradients,
+      headActivationsWith({ attentionRelevancyOutput }),
+      2,
+      4,
+      1,
+      3,
+    );
+
+    // head0 grad [4,0] -> [1,-1]; head1 grad [0,8] -> [-2,2]
+    expectArrayCloseTo(result, [1, -1, -2, 2]);
+  });
+});
+
+describe("getQKInputGradients", () => {
+  // contextLength 3, headsCount 2, headDim 2, hidden 4; query vectorIndex 0
+  // (sees only key 0), so vectorIndex+1 (1) != contextLength (3).
+  // relevancy_h = Q_h · K_h, so dQ_h = dr_h @ K_h and dK_h[l] = dr_h[l] * Q_h.
+  const outputGradients = matrixFrom([
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  const inputK = matrixFrom([
+    [1, 2, 3, 4],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  const inputQ = matrixFrom([
+    [5, 6, 7, 8],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
+  ]);
+  const relevancyVectorGradients = matrixFrom([[2, 3]]); // head0 dr=[2], head1 dr=[3]
+
+  it("computes per-head query gradients", () => {
+    const { inputQGradientsMatrix } = getQKInputGradients(
+      outputGradients,
+      relevancyVectorGradients,
+      headActivationsWith({ inputK, inputQ }),
+      0,
+      2,
+    );
+
+    // head0: 2*[1,2]=[2,4]; head1: 3*[3,4]=[9,12]
+    expectMatrixCloseTo(inputQGradientsMatrix, matrixFrom([[2, 4, 9, 12]]));
+  });
+
+  it("scatters per-head key gradients to the right token rows and head columns", () => {
+    const { inputKGradients } = getQKInputGradients(
+      outputGradients,
+      relevancyVectorGradients,
+      headActivationsWith({ inputK, inputQ }),
+      0,
+      2,
+    );
+
+    // Only key 0 contributes. head0: dr 2 * Q[5,6]=[10,12]; head1: dr 3 * Q[7,8]=[21,24].
+    expectMatrixCloseTo(
+      inputKGradients,
+      matrixFrom([
+        [10, 12, 21, 24],
+        [0, 0, 0, 0],
+        [0, 0, 0, 0],
+      ]),
+    );
   });
 });

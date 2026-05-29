@@ -11,7 +11,7 @@ export type AttentionHeadActivations = {
 
 export type AttentionActivations = {
   normalizedInput: Matrix;
-  heads: AttentionHeadActivations[];
+  headsActivations: AttentionHeadActivations;
   outMatrixInputActivations: Matrix;
   output: Matrix;
 };

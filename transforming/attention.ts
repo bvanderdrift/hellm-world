@@ -7,10 +7,7 @@ import {
   getFlatIndex,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
-import type {
-  AttentionActivations,
-  AttentionHeadActivations,
-} from "../model/activations-types.ts";
+import type { AttentionActivations } from "../model/activations-types.ts";
 import { softmax } from "../shared/softmax.ts";
 
 export const runSelfAttentionMechanism = (
@@ -26,7 +23,7 @@ export const runSelfAttentionMechanism = (
 
   const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
-  const headActivations = runSelfAttentionHead(
+  const headsActivations = runSelfAttentionHead(
     inputQ,
     inputK,
     inputV,
@@ -35,42 +32,14 @@ export const runSelfAttentionMechanism = (
   );
 
   const attentionUpdate = multiplyMatrices(
-    headActivations.output,
+    headsActivations.output,
     attentionWeights.out,
   );
 
   return {
     normalizedInput: input,
-    heads: new Array(headsCount)
-      .fill(0)
-      .map((_, h): AttentionHeadActivations => {
-        return {
-          attentionRelevancyOutput:
-            headActivations.attentionRelevancyOutput[h]!,
-          inputK: sliceRows(
-            headActivations.inputK,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          inputQ: sliceRows(
-            headActivations.inputQ,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          inputV: sliceRows(
-            headActivations.inputV,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          output: sliceRows(
-            headActivations.output,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          softmaxOutput: headActivations.softmaxOutput[h]!,
-        };
-      }),
-    outMatrixInputActivations: headActivations.output,
+    headsActivations,
+    outMatrixInputActivations: headsActivations.output,
     output: attentionUpdate,
   };
 };
@@ -81,12 +50,14 @@ export const runSelfAttentionHead = (
   headCount: number,
   headDimensionsCount: number,
 ) => {
-  const attentionRelevancyOutput = new Array(headCount)
-    .fill(0)
-    .map((_) => createMatrix(inputQ.vectors, inputQ.vectors));
-  const matchingKeyProducts = new Array(headCount)
-    .fill(0)
-    .map((_) => createMatrix(inputQ.vectors, inputQ.vectors));
+  const attentionRelevancyOutput = createMatrix(
+    inputQ.vectors,
+    inputQ.vectors * headCount,
+  );
+  const matchingKeyProducts = createMatrix(
+    inputQ.vectors,
+    inputQ.vectors * headCount,
+  );
   const output = createMatrix(inputQ.vectors, inputQ.dimensions);
 
   for (let h = 0; h < headCount; h++) {
@@ -109,21 +80,27 @@ export const runSelfAttentionHead = (
 
       const relevancy = softmax(relevancyLogits);
 
-      const startIndexToSet = getFlatIndex(i, 0, inputQ.vectors);
-      attentionRelevancyOutput[h]!.values.set(relevancyLogits, startIndexToSet);
-      matchingKeyProducts[h]!.values.set(relevancy, startIndexToSet);
+      const startIndexToSet = getFlatIndex(
+        i,
+        h * inputQ.vectors,
+        attentionRelevancyOutput.dimensions,
+      );
+      attentionRelevancyOutput.values.set(relevancyLogits, startIndexToSet);
+      matchingKeyProducts.values.set(relevancy, startIndexToSet);
     }
   }
 
   for (let i = 0; i < output.vectors; i++) {
     for (let j = 0; j < output.dimensions; j++) {
       const h = Math.floor(j / headDimensionsCount);
+      const offset = h * inputQ.vectors;
       const outputIndex = getFlatIndex(i, j, output.dimensions);
 
       for (let l = 0; l < i + 1; l++) {
         output.values[outputIndex]! +=
-          matchingKeyProducts[h]!.values[getFlatIndex(i, l, output.vectors)]! *
-          inputV.values[getFlatIndex(l, j, inputV.dimensions)]!;
+          matchingKeyProducts.values[
+            getFlatIndex(i, offset + l, matchingKeyProducts.dimensions)
+          ]! * inputV.values[getFlatIndex(l, j, inputV.dimensions)]!;
       }
     }
   }

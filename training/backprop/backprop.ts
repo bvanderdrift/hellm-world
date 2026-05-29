@@ -8,7 +8,7 @@ import { transformersBackprop } from "./transformersBackprop.ts";
 import type { Matrix } from "../../shared/matrices.ts";
 
 export const backprop = (
-  weights: Model,
+  model: Model,
   activations: Activations,
   /** -1 is mask aka ignore this token */
   correctTokenIndices: number[],
@@ -24,7 +24,7 @@ export const backprop = (
     weightGradients: unembeddingWeightGradients,
     activationGradients: unembeddingInputActivationGradients,
   } = matrixBackprop(
-    weights.unembeddings,
+    model.unembeddings,
     activations.normalizerToUnembeddings,
     unembeddingsOutputActivationsGradients,
   );
@@ -39,15 +39,16 @@ export const backprop = (
     inputActivationGradients: transformerInputActivationGradients,
   } = transformersBackprop(
     preUnembeddingNormalizationGradients,
-    weights.transformers,
+    model.transformers,
     activations.transformerActivations,
+    model.counts.attentionHeads,
   );
 
   return {
     unembeddings: unembeddingWeightGradients,
     transformers: transformerGradients,
     embeddings: embeddingsBackprop(
-      weights.embeddings,
+      model.embeddings,
       transformerInputActivationGradients,
       activations.inputPositionToVocabPosition,
     ),

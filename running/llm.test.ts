@@ -171,7 +171,7 @@ describe("llmForwardPassByTokens", () => {
 
     const transformerActivations = activations!.transformerActivations[0]!;
     const attentionActivations = transformerActivations.attention;
-    const headActivations = attentionActivations.heads[0]!;
+    const headActivations = attentionActivations.headsActivations;
 
     expect(activations!.positionToTransformers).toEqual(
       getPositionEncoding(2, 3),
@@ -189,7 +189,8 @@ describe("llmForwardPassByTokens", () => {
     expect(attentionActivations.normalizedInput.dimensions).toBe(3);
     expect(attentionActivations.output.vectors).toBe(2);
     expect(attentionActivations.output.dimensions).toBe(3);
-    expect(attentionActivations.heads).toHaveLength(1);
+    // Single head: the flattened softmax width is contextLength * headsCount = 2 * 1.
+    expect(headActivations.softmaxOutput.dimensions).toBe(2);
 
     expect(headActivations.inputQ.vectors).toBe(2);
     expect(headActivations.inputQ.dimensions).toBe(3);

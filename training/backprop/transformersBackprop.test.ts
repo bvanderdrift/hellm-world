@@ -68,7 +68,14 @@ const makeTransformerActivations = (seed: number): TransformerActivations => {
         [seed + 10, seed + 11],
         [seed + 12, seed + 13],
       ]),
-      heads: [],
+      headsActivations: {
+        inputK: matrixFrom([[seed + 14]]),
+        inputV: matrixFrom([[seed + 15]]),
+        inputQ: matrixFrom([[seed + 16]]),
+        attentionRelevancyOutput: matrixFrom([[seed + 17]]),
+        softmaxOutput: matrixFrom([[seed + 18]]),
+        output: matrixFrom([[seed + 19]]),
+      },
       outMatrixInputActivations: matrixFrom([
         [seed + 20, seed + 21],
         [seed + 22, seed + 23],
@@ -98,6 +105,8 @@ const makeTransformerActivations = (seed: number): TransformerActivations => {
     },
   };
 };
+
+const HEADS_COUNT = 2;
 
 describe("transformersBackprop", () => {
   beforeEach(() => {
@@ -148,12 +157,14 @@ describe("transformersBackprop", () => {
       outputGradients,
       weights,
       activations,
+      HEADS_COUNT,
     );
 
     expect(mocks.attentionBackprop).toHaveBeenCalledWith(
       weights[0]!.attention,
       attentionOutputGradients,
       activations[0]!.attention,
+      HEADS_COUNT,
     );
     expect(mocks.backpropNormalize.mock.calls[0]![0]).toEqual(
       mlpInputGradients,
@@ -225,6 +236,7 @@ describe("transformersBackprop", () => {
       outputGradients,
       weights,
       activations,
+      HEADS_COUNT,
     );
 
     expect(mocks.backpropMlp).toHaveBeenNthCalledWith(
@@ -238,6 +250,7 @@ describe("transformersBackprop", () => {
       weights[1]!.attention,
       addMatrices(outputGradients, layerOneMlpNormGradients),
       activations[1]!.attention,
+      HEADS_COUNT,
     );
     expect(mocks.backpropMlp).toHaveBeenNthCalledWith(
       2,
@@ -250,6 +263,7 @@ describe("transformersBackprop", () => {
       weights[0]!.attention,
       layerZeroAttentionOutputGradients,
       activations[0]!.attention,
+      HEADS_COUNT,
     );
     expect(gradients.transformerGradients).toEqual([
       {
@@ -290,7 +304,7 @@ describe("transformersBackprop", () => {
       weightGradients: makeAttentionWeights(300),
     });
 
-    transformersBackprop(outputGradients, weights, activations);
+    transformersBackprop(outputGradients, weights, activations, HEADS_COUNT);
 
     expect(mocks.backpropNormalize.mock.calls[0]![1]).toEqual(
       expectedMlpNormalizationInput,
