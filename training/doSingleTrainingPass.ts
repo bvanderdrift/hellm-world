@@ -15,13 +15,16 @@ export type TrainingExample = {
   maskBeforeIndex: number | null;
 };
 
+export type TrainingPassOutput = {
+  losses: number[];
+  adjustedWeights: Weights;
+};
+
 export const doSingleTrainingPass = async (
   model: Model,
   trainingData: TrainingExample[],
-): Promise<{
-  losses: number[];
-  adjustedWeights: Weights;
-}> => {
+  onStepComplete: (durationMs: number) => void,
+): Promise<TrainingPassOutput> => {
   const summedLossWithGradients = await trainingData.reduce<
     Promise<{
       losses: number[];
@@ -52,9 +55,7 @@ export const doSingleTrainingPass = async (
         outputProbabilities,
       );
       const duration = Date.now() - start;
-      console.log(
-        `${(index + 1).toString().padStart(3, "0")}/${trainingData.length} - Duration: ${duration}ms`,
-      );
+      onStepComplete(duration);
       const summedLoss = sum(outputLosses);
       return {
         losses: [...acc.losses, summedLoss / unmaskedTokenCount],

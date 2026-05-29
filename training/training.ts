@@ -14,6 +14,7 @@ import { prepareExampleData } from "./prepareExampleData.ts";
 import type {
   InputMessagePayload,
   OutputMessagePayload,
+  ResultsMessagePayload,
 } from "./workers/training-worker.ts";
 import {
   doSingleTrainingPass,
@@ -165,6 +166,7 @@ const logStateProgress = (
 };
 
 const cpuCount = cpus().length;
+const PROGRESS_BAR_LENGTH = 20;
 
 const runTrainingPasses = async (
   model: Model,
@@ -176,8 +178,26 @@ const runTrainingPasses = async (
 }> => {
   const effectiveCpuCount = Math.min(workersCount, cpuCount);
 
+  let stepsCompleted = 0;
+  const onStepComplete = (durationMs: number) => {
+    stepsCompleted++;
+
+    const progressPct = stepsCompleted / trainingData.length;
+    const progressBarComplete = Math.floor(progressPct * PROGRESS_BAR_LENGTH);
+
+    const progressBar =
+      "[" +
+      "-".repeat(progressBarComplete) +
+      " ".repeat(PROGRESS_BAR_LENGTH - progressBarComplete) +
+      "]";
+
+    process.stdout.write(
+      `\r${progressBar} (${(progressPct * 100).toFixed(0)}%) - Duration: ${durationMs}ms`,
+    );
+  };
+
   if (effectiveCpuCount === 1) {
-    return doSingleTrainingPass(model, trainingData);
+    return doSingleTrainingPass(model, trainingData, onStepComplete);
   }
 
   const workers = getWorkers(effectiveCpuCount);
@@ -186,9 +206,17 @@ const runTrainingPasses = async (
 
   const results = await Promise.all(
     splitData.map(async (singleBatch, workerIndex) => {
-      return runTrainingWorker(model, singleBatch, workers[workerIndex]!);
+      return runTrainingWorker(
+        model,
+        singleBatch,
+        workers[workerIndex]!,
+        onStepComplete,
+      );
     }),
   );
+
+  // Newline to finish the progress writing
+  console.log("");
 
   let losses: number[] = [];
   let summedWeightAdjustements: Weights = makeZeroVersion(model);
@@ -218,12 +246,18 @@ const runTrainingWorker = async (
   model: Model,
   trainingData: TrainingExample[],
   trainingWorker: Worker,
-): Promise<OutputMessagePayload> => {
+  onStepComplete: (durationMs: number) => void,
+): Promise<ResultsMessagePayload> => {
   return new Promise((resolve, reject) => {
     trainingWorker.onerror = (e) => reject(e);
     trainingWorker.onmessageerror = (e) => reject(e);
     trainingWorker.onmessage = (event: MessageEvent<OutputMessagePayload>) => {
-      resolve(event.data);
+      if (event.data.type === "results") {
+        resolve(event.data);
+        return;
+      }
+
+      onStepComplete(event.data.durationMs);
     };
 
     const input: InputMessagePayload = {
