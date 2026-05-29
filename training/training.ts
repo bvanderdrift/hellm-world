@@ -97,8 +97,11 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     let averageValidationLoss: number | null = null;
 
     if (shouldRunValidation) {
-      console.log(`Starting validation test`);
+      const prefix = `(step ${state.history.trainingLosses.length})`;
+      console.log(`${prefix} - Starting validation test`);
       averageValidationLoss = await runValidationCheck(modelName, state.model);
+
+      console.log(`${prefix} - validation loss: ${averageValidationLoss}`);
     }
 
     const pickedTrainingData = trainingDataToWorkWith.map(
@@ -128,7 +131,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       averageValidationLoss,
     );
 
-    logStateProgress(stateStore, averageValidationLoss);
+    logStateProgress(stateStore);
   }
 
   stateStore.writeNewCheckpoint();
@@ -150,10 +153,7 @@ const runNaNGuard = (losses: number[], dataPoints: TrainingExample[]) => {
   throw new Error("NaN detected");
 };
 
-const logStateProgress = (
-  store: StateStore,
-  newValidationLossAverage: number | null,
-) => {
+const logStateProgress = (store: StateStore) => {
   const {
     stepsInThisRun,
     percentDone: newPercentDone,
@@ -182,9 +182,6 @@ const logStateProgress = (
   console.log(
     `${stepFormatted}${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
   );
-  if (newValidationLossAverage !== null) {
-    console.log(`${stepFormatted}validation loss: ${newValidationLossAverage}`);
-  }
 };
 
 const cpuCount = cpus().length;
