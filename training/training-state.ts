@@ -10,6 +10,8 @@ import type {
 } from "../model/model-types.ts";
 import type { EndDefinition } from "./training.ts";
 
+const STORE_INTERVAL = 500;
+
 export const createStateStore = (
   endDefinition: EndDefinition | null,
   modelName: string,
@@ -33,16 +35,14 @@ export const createStateStore = (
   };
 
   const getState = () => {
-    const currentStepIndex = index;
-
     if (!endDefinition) {
       return {
         model: modelUnderTraining,
         history,
-        currentStepIndex,
         startTime,
         isDone: false,
         percentDone: null,
+        stepsInThisRun: index,
       };
     }
 
@@ -51,11 +51,16 @@ export const createStateStore = (
     return {
       model: modelUnderTraining,
       history,
-      currentStepIndex,
       startTime,
       isDone: percentDone >= 1,
       percentDone,
+      stepsInThisRun: index,
     };
+  };
+
+  const writeNewCheckpointAndHistory = () => {
+    writeHistory(getModelFolderPath(modelName), history);
+    writeNewCheckpoint(modelName, modelUnderTraining);
   };
 
   return {
@@ -79,11 +84,13 @@ export const createStateStore = (
         ...modelUnderTraining,
         ...weights,
       };
+
+      if (index % STORE_INTERVAL === 0) {
+        // Auto-safe
+        writeNewCheckpointAndHistory();
+      }
     },
-    writeNewCheckpoint: () => {
-      writeHistory(getModelFolderPath(modelName), history);
-      writeNewCheckpoint(modelName, modelUnderTraining);
-    },
+    writeNewCheckpoint: writeNewCheckpointAndHistory,
   };
 };
 

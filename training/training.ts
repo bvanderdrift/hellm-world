@@ -155,7 +155,7 @@ const logStateProgress = (
   newValidationLossAverage: number | null,
 ) => {
   const {
-    currentStepIndex: index,
+    stepsInThisRun,
     percentDone: newPercentDone,
     startTime,
     history,
@@ -163,17 +163,21 @@ const logStateProgress = (
 
   const lastLoss = history.trainingLosses[history.trainingLosses.length - 1]!;
 
-  const indexPadded = index.toString().padStart(index.toString().length, "0");
+  const currentStep = history.trainingLosses.length + 1;
+
+  const currentStepPadded = currentStep
+    .toString()
+    .padStart(currentStep.toString().length, "0");
 
   const totalDuration = Date.now() - startTime;
-  const avgDuration = totalDuration / index;
+  const avgDuration = totalDuration / stepsInThisRun;
 
   const percentFormatted =
     newPercentDone === null
       ? ""
       : `(${(newPercentDone * 100).toFixed(2)}% complete) `;
 
-  const stepFormatted = `(step ${indexPadded}) - `;
+  const stepFormatted = `(step ${currentStepPadded}) - `;
 
   console.log(
     `${stepFormatted}${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
