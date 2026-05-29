@@ -26,7 +26,7 @@ export const parseExampleData = (
   const sequences = fileContent
     .split(END_OF_SEQUENCE_TOKEN)
     // Remove empty lines
-    .filter((sequence) => !!sequence)
+    .filter((sequence) => !!sequence.trim())
     // Add back the EOS token we split on
     .map((sequence) => `${sequence}${END_OF_SEQUENCE_TOKEN}`);
 
