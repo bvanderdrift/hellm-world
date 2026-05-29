@@ -101,11 +101,17 @@ export const doTrainingLoopAndStoreCheckpoint = async (
       averageValidationLoss = await runValidationCheck(modelName, state.model);
     }
 
+    const pickedTrainingData = trainingDataToWorkWith.map(
+      ({ trainingData }) => trainingData,
+    );
+
     const { losses, adjustedWeights } = await runTrainingPasses(
       state.model,
-      trainingDataToWorkWith.map(({ trainingData }) => trainingData),
+      pickedTrainingData,
       workersCount,
     );
+
+    runNaNGuard(losses, pickedTrainingData);
 
     let summedLoss = 0;
     for (let index = 0; index < losses.length; index++) {
@@ -130,6 +136,18 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   terminateWorkers();
 
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
+};
+
+const runNaNGuard = (losses: number[], dataPoints: TrainingExample[]) => {
+  const firstNaN = losses.findIndex((l) => !Number.isFinite(l));
+  if (firstNaN === -1) {
+    return;
+  }
+
+  const trainingData = dataPoints[firstNaN]!;
+  console.error(`Training example: ${JSON.stringify(trainingData)}`);
+  console.error(`All losses: ${losses}`);
+  throw new Error("NaN detected");
 };
 
 const logStateProgress = (
