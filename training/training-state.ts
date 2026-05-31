@@ -25,13 +25,12 @@ export const createStateStore = (
   endDefinition: EndDefinition | null,
   modelName: string,
   incomingModel: Model,
-  initialHistory: ModelTrainingHistory,
   initialSamplingState: SamplerState,
 ) => {
   const startTime = Date.now();
   let index = 0;
   let modelUnderTraining = incomingModel;
-  const history = initialHistory;
+  const history = incomingModel.history;
   const samplingState = initialSamplingState;
 
   const getPercentComplete = (def: EndDefinition) => {

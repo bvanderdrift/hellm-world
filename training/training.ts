@@ -37,8 +37,6 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   endDefinition: EndDefinition | null,
   workersCount: number,
 ) => {
-  const modelFolderPath = getModelFolderPath(modelName);
-  const history = getModelHistory(modelFolderPath);
   const modelLoaded = getLatestCheckpointModel(modelName);
 
   if (endDefinition && endDefinition.count <= 0) {
@@ -59,16 +57,10 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     );
   }
 
-  const stateStore = createStateStore(
-    endDefinition,
-    modelName,
-    modelLoaded,
-    history,
-    {
-      type: "loss-weighted",
-      lossRecord: createLossRecord(),
-    },
-  );
+  const stateStore = createStateStore(endDefinition, modelName, modelLoaded, {
+    type: "loss-weighted",
+    lossRecord: createLossRecord(),
+  });
 
   const trainingData = prepareExampleData(
     readRawTrainingData(modelName),
