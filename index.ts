@@ -9,6 +9,7 @@ import { getLatestCheckpointModel, writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
 import { writeLossChart } from "./scripts/chart-loss.ts";
+import { inspectTopLosses } from "./scripts/inspect-top-losses.ts";
 
 program
   .name("llm")
@@ -155,6 +156,15 @@ program
   .argument("<model>", "model to chart")
   .action(async (modelName: string) => {
     console.log(await writeLossChart(modelName));
+  });
+
+program
+  .name("inspect-losses")
+  .command("inspect-losses")
+  .argument("<model>", "model to inspect")
+  .argument("<checkpoint>", "checkpoint version number")
+  .action((modelName: string, checkpoint: string) => {
+    inspectTopLosses(modelName, Number(checkpoint));
   });
 
 program.parse();

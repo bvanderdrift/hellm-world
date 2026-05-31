@@ -36,7 +36,7 @@ export const getLatestCheckpointModel = (modelName: string): Model => {
   const modelFolderPath = getModelFolderPath(modelName);
   const { fileName: latestCheckpointFile, versionNumber } =
     getLatestCheckpointFile(modelFolderPath);
-  const metadata = getMetadata(join(modelFolderPath, METADATA_FILE_NAME));
+  const metadata = getMetadata(modelFolderPath);
   const history = getModelHistory(modelFolderPath, versionNumber);
   const weights = getCheckpoint(
     metadata,
@@ -86,7 +86,8 @@ export const getLatestCheckpointFile = (modelFolderPath: string) => {
   };
 };
 
-const getMetadata = (metadataFilePath: string): ModelMetadata => {
+export const getMetadata = (modelFolderPath: string): ModelMetadata => {
+  const metadataFilePath = join(modelFolderPath, METADATA_FILE_NAME);
   const metadataJson = readFileSync(metadataFilePath);
   const metadata = JSON.parse(metadataJson.toString());
 
