@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type {
   Model,
-  ModelTrainingHistory,
+  ModelTrainingState,
   TransformerWeights,
   Weights,
 } from "../model/model-types.ts";
@@ -52,14 +52,15 @@ const zeroTransformer: TransformerWeights = {
   },
 };
 
-const emptyHistory: ModelTrainingHistory = {
+const emptyHistory: ModelTrainingState = {
   trainingLosses: [],
   validationLosses: [],
+  samplerState: { type: "uniform" },
 };
 
 const model: Model = {
   vocabulary: ["prompt", "answer", END_OF_SEQUENCE_TOKEN],
-  history: emptyHistory,
+  trainingState: emptyHistory,
   counts: {
     attentionHeads: 2,
     mlpMultiple: 1,
@@ -163,9 +164,11 @@ describe("training/backprop integration readiness", () => {
     expect(flattenWeights(gradients).some((value) => value !== 0)).toBe(true);
 
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
-    const { losses, adjustedWeights } = await doSingleTrainingPass(model, [
-      { sequence: trainingSequence, maskBeforeIndex: null },
-    ], () => {});
+    const { losses, adjustedWeights } = await doSingleTrainingPass(
+      model,
+      [{ sequence: trainingSequence, maskBeforeIndex: null }],
+      () => {},
+    );
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
     const trainedModel: Model = { ...model, ...adjustedWeights };

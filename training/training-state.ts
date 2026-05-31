@@ -1,23 +1,17 @@
 import {
   getModelFolderPath,
   writeCheckpoint,
-  writeHistory,
+  writeTrainingState,
 } from "../model/model-io.ts";
-import type {
-  Model,
-  ModelTrainingHistory,
-  Weights,
-} from "../model/model-types.ts";
+import type { Model, Weights } from "../model/model-types.ts";
 import type { TrainingExample } from "./doSingleTrainingPass.ts";
 import {
   computeSamplingWeights,
   sampleIndices,
 } from "./sampling/loss-weighted-sampling.ts";
-import {
-  MAX_TRAINING_DATA_PER_PASS,
-  type SamplerState,
-} from "./sampling/sampling.ts";
 import type { EndDefinition } from "./training.ts";
+
+const MAX_TRAINING_DATA_PER_PASS = 100;
 
 const STORE_INTERVAL = 500;
 
@@ -25,13 +19,11 @@ export const createStateStore = (
   endDefinition: EndDefinition | null,
   modelName: string,
   incomingModel: Model,
-  initialSamplingState: SamplerState,
 ) => {
   const startTime = Date.now();
   let index = 0;
   let modelUnderTraining = incomingModel;
-  const history = incomingModel.history;
-  const samplingState = initialSamplingState;
+  const trainingState = incomingModel.trainingState;
 
   const getPercentComplete = (def: EndDefinition) => {
     if (def.type === "steps") {
@@ -49,7 +41,7 @@ export const createStateStore = (
     if (!endDefinition) {
       return {
         model: modelUnderTraining,
-        history: history,
+        history: trainingState,
         startTime,
         isDone: false,
         percentDone: null,
@@ -61,7 +53,7 @@ export const createStateStore = (
 
     return {
       model: modelUnderTraining,
-      history: history,
+      history: trainingState,
       startTime,
       isDone: percentDone >= 1,
       percentDone,
@@ -70,10 +62,10 @@ export const createStateStore = (
   };
 
   const writeNewCheckpointAndHistory = () => {
-    writeHistory(getModelFolderPath(modelName), history);
+    writeTrainingState(getModelFolderPath(modelName), trainingState);
     writeCheckpoint(
       modelName,
-      history.trainingLosses.length,
+      trainingState.trainingLosses.length,
       modelUnderTraining,
     );
   };
@@ -82,16 +74,30 @@ export const createStateStore = (
     getState,
     updateModelWithNewWeights: (
       weights: Weights,
-      latestLoss: number,
+      losses: {
+        trainingDataIndex: number;
+        loss: number;
+      }[],
       averageValidationLoss: number | null,
     ) => {
-      history.trainingLosses.push(latestLoss);
+      const summedLosses = losses.reduce((a, b) => a + b.loss, 0);
+      const latestAverageLoss = summedLosses / losses.length;
+
+      trainingState.trainingLosses.push(latestAverageLoss);
 
       if (averageValidationLoss !== null) {
-        history.validationLosses.push({
+        trainingState.validationLosses.push({
           loss: averageValidationLoss,
-          stepIndex: history.trainingLosses.length,
+          stepIndex: trainingState.trainingLosses.length,
         });
+      }
+
+      if (trainingState.samplerState.type === "loss-weighted") {
+        for (let index = 0; index < losses.length; index++) {
+          const { loss, trainingDataIndex } = losses[index]!;
+
+          trainingState.samplerState.lossRecord[trainingDataIndex] = loss;
+        }
       }
 
       index++;
@@ -107,19 +113,20 @@ export const createStateStore = (
     },
     writeNewCheckpoint: writeNewCheckpointAndHistory,
     sampleBatch: (trainingData: TrainingExample[]) => {
-      if (samplingState.type === "uniform") {
-        const offset =
-          Math.random() * (trainingData.length - MAX_TRAINING_DATA_PER_PASS);
+      if (trainingState.samplerState.type === "uniform") {
+        const offset = Math.floor(
+          Math.random() * (trainingData.length - MAX_TRAINING_DATA_PER_PASS),
+        );
         return trainingData
           .slice(offset, offset + MAX_TRAINING_DATA_PER_PASS)
           .map((dataPoint, index) => ({
-            originalIndex: index,
+            originalIndex: offset + index,
             trainingData: dataPoint,
           }));
       }
 
       const weights = computeSamplingWeights(
-        samplingState.lossRecord,
+        trainingState.samplerState.lossRecord,
         trainingData.length,
       );
       const indices = sampleIndices(weights, MAX_TRAINING_DATA_PER_PASS);

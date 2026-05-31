@@ -41,7 +41,7 @@ export const modelMetadataSchema = z.object({
   }),
 });
 
-export const modelTrainingHistorySchema = z.object({
+export const legacyModelTrainingHistorySchema = z.object({
   validationLosses: z.array(
     z.object({
       stepIndex: z.number(),
@@ -51,8 +51,35 @@ export const modelTrainingHistorySchema = z.object({
   trainingLosses: z.array(z.number()),
 });
 
+export const lossRecordSchema = z.record(
+  // coerce b/c JSON will always turn it into a string key
+  z.coerce.number(),
+  z.number(),
+);
+
+export type LossRecord = z.infer<typeof lossRecordSchema>;
+
+export const samplerStateSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("uniform"),
+  }),
+  z.object({
+    type: z.literal("loss-weighted"),
+    lossRecord: lossRecordSchema,
+  }),
+]);
+
+export type SamplerState = z.infer<typeof samplerStateSchema>;
+
+export const modelTrainingStateSchema = legacyModelTrainingHistorySchema.extend(
+  {
+    samplerState: samplerStateSchema,
+  },
+);
+
 export type ModelMetadata = z.infer<typeof modelMetadataSchema>;
 
-export type ModelTrainingHistory = z.infer<typeof modelTrainingHistorySchema>;
+export type ModelTrainingState = z.infer<typeof modelTrainingStateSchema>;
 
-export type Model = ModelMetadata & Weights & { history: ModelTrainingHistory };
+export type Model = ModelMetadata &
+  Weights & { trainingState: ModelTrainingState };

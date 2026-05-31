@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Model, ModelTrainingHistory } from "../model/model-types.ts";
+import type { Model, ModelTrainingState } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
@@ -8,16 +8,17 @@ import { getRawVector } from "../shared/matrices.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
 
-const emptyHistory: ModelTrainingHistory = {
+const emptyHistory: ModelTrainingState = {
   trainingLosses: [],
   validationLosses: [],
+  samplerState: { type: "uniform" },
 };
 
 describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {
     const model: Model = {
       vocabulary: ["hello", "world", END_OF_SEQUENCE_TOKEN],
-      history: emptyHistory,
+      trainingState: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -29,12 +30,16 @@ describe("doSingleTrainingPass", () => {
       transformers: [],
     };
 
-    const { losses } = await doSingleTrainingPass(model, [
-      {
-        sequence: ["hello", "world", END_OF_SEQUENCE_TOKEN],
-        maskBeforeIndex: null,
-      },
-    ], () => {});
+    const { losses } = await doSingleTrainingPass(
+      model,
+      [
+        {
+          sequence: ["hello", "world", END_OF_SEQUENCE_TOKEN],
+          maskBeforeIndex: null,
+        },
+      ],
+      () => {},
+    );
 
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
@@ -44,7 +49,7 @@ describe("doSingleTrainingPass", () => {
   it("uses each context position to predict the following token", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta", END_OF_SEQUENCE_TOKEN],
-      history: emptyHistory,
+      trainingState: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -84,9 +89,11 @@ describe("doSingleTrainingPass", () => {
         )) /
       2;
 
-    const { losses } = await doSingleTrainingPass(model, [
-      { sequence, maskBeforeIndex: null },
-    ], () => {});
+    const { losses } = await doSingleTrainingPass(
+      model,
+      [{ sequence, maskBeforeIndex: null }],
+      () => {},
+    );
 
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
@@ -96,7 +103,7 @@ describe("doSingleTrainingPass", () => {
   it("does not update the target token embedding when it is not in the context", async () => {
     const model: Model = {
       vocabulary: ["alpha", "beta"],
-      history: emptyHistory,
+      trainingState: emptyHistory,
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -115,9 +122,11 @@ describe("doSingleTrainingPass", () => {
     };
     const betaIndex = findTokenIndex(model.vocabulary, "beta");
 
-    const { adjustedWeights } = await doSingleTrainingPass(model, [
-      { sequence: ["alpha", "beta"], maskBeforeIndex: null },
-    ], () => {});
+    const { adjustedWeights } = await doSingleTrainingPass(
+      model,
+      [{ sequence: ["alpha", "beta"], maskBeforeIndex: null }],
+      () => {},
+    );
 
     expect(getRawVector(adjustedWeights.embeddings, betaIndex)).toEqual(
       getRawVector(model.embeddings, betaIndex),

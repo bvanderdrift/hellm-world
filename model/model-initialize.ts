@@ -35,9 +35,13 @@ export const initializeModel = ({
       hiddenDimensions: hiddenDimensionCount,
       mlpMultiple,
     },
-    history: {
+    trainingState: {
       trainingLosses: [],
       validationLosses: [],
+      samplerState: {
+        lossRecord: {},
+        type: "loss-weighted",
+      },
     },
     transformers: new Array(transformerCount)
       .fill(0)

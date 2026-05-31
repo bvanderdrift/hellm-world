@@ -13,19 +13,20 @@ import {
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import * as weightReading from "../model/model-io.ts";
-import type { Model, ModelTrainingHistory } from "../model/model-types.ts";
+import type { Model, ModelTrainingState } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
 const MODEL_NAME = "timmy";
-const emptyHistory: ModelTrainingHistory = {
+const emptyHistory: ModelTrainingState = {
   trainingLosses: [],
   validationLosses: [],
+  samplerState: { type: "uniform" },
 };
 
 const testModel: Model = {
   vocabulary: ["hello", "world", " ", "beer", "!", END_OF_SEQUENCE_TOKEN],
-  history: emptyHistory,
+  trainingState: emptyHistory,
   counts: {
     attentionHeads: 1,
     mlpMultiple: 1,
@@ -53,7 +54,7 @@ const vocabSize = testModel.vocabulary.length;
 
 const attentionOnlyModel: Model = {
   vocabulary: ["hello", "world", "beer"],
-  history: emptyHistory,
+  trainingState: emptyHistory,
   counts: {
     attentionHeads: 1,
     mlpMultiple: 1,
@@ -246,7 +247,11 @@ describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
     const eosStoppingModel: Model = {
       vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
-      history: { trainingLosses: [3], validationLosses: [] },
+      trainingState: {
+        trainingLosses: [3],
+        validationLosses: [],
+        samplerState: { type: "uniform" },
+      },
       counts: {
         attentionHeads: 1,
         mlpMultiple: 1,
@@ -303,7 +308,7 @@ describe("weights validation contract", () => {
   it("fails fast when loaded weights have wrong total parameter count", () => {
     const malformedModel: Model = {
       vocabulary: [...testModel.vocabulary],
-      history: emptyHistory,
+      trainingState: emptyHistory,
       counts: testModel.counts,
       embeddings: {
         vectors: 6,
