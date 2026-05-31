@@ -1,4 +1,4 @@
-type LossRecord = Map<number, number>;
+export type LossRecord = Map<number, number>;
 
 export const createLossRecord = (): LossRecord => new Map<number, number>();
 

@@ -23,16 +23,10 @@ import {
 import { createStateStore, type StateStore } from "./training-state.ts";
 import { startKeyboardListening } from "./keyboard-listener.ts";
 import { runValidationCheck } from "./validation.ts";
-import {
-  computeSamplingWeights,
-  createLossRecord,
-  sampleIndices,
-} from "./loss-weighted-sampling.ts";
+import { createLossRecord } from "./sampling/loss-weighted-sampling.ts";
 import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
 import { cpus } from "os";
 import { splitAcrossWorkers } from "./workers/batching.ts";
-
-const MAX_TRAINING_DATA_PER_PASS = 100;
 
 const VALIDATION_INTERVAL = 20;
 
@@ -70,6 +64,10 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     modelName,
     modelLoaded,
     history,
+    {
+      type: "loss-weighted",
+      lossRecord: createLossRecord(),
+    },
   );
 
   const trainingData = prepareExampleData(
@@ -84,12 +82,7 @@ export const doTrainingLoopAndStoreCheckpoint = async (
   startKeyboardListening(stateStore);
 
   while (!(state = stateStore.getState()).isDone) {
-    const weights = computeSamplingWeights(lossRecord, trainingData.length);
-    const indices = sampleIndices(weights, MAX_TRAINING_DATA_PER_PASS);
-    const trainingDataToWorkWith = indices.map((pickedIndex) => ({
-      originalIndex: pickedIndex,
-      trainingData: trainingData[pickedIndex]!,
-    }));
+    const trainingDataToWorkWith = stateStore.sampleBatch(trainingData);
 
     const shouldRunValidation =
       state.history.trainingLosses.length % VALIDATION_INTERVAL === 0;
