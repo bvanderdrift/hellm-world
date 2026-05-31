@@ -118,18 +118,6 @@ export const readRawValidationData = (modelName: string) => {
   return readFileSync(modelValidationDataFile).toString();
 };
 
-export const writeNewCheckpoint = (modelName: string, checkpoint: Weights) => {
-  const modelFolderPath = join(import.meta.dirname, modelName);
-  const lastFile = getLatestCheckpointFile(modelFolderPath);
-
-  const [_, numberAsStringWithExtension] = lastFile.split("_");
-
-  const lastNumber = Number(numberAsStringWithExtension?.replace(".bin", ""));
-  const newNumber = lastNumber + 1;
-
-  writeCheckpoint(modelFolderPath, newNumber, checkpoint);
-};
-
 export const flattenWeights = (weights: Weights) => {
   const paramCount = getModelParameterCount(weights);
   const singleBuffer = new Float32Array(paramCount);
@@ -252,10 +240,12 @@ export const unwrapFlatWeights = (
 };
 
 export const writeCheckpoint = (
-  modelFolderPath: string,
+  modelName: string,
   versionNumber: number,
   weights: Weights,
 ) => {
+  const modelFolderPath = join(import.meta.dirname, modelName);
+
   const newFileName = `checkpoint_${versionNumber.toString().padStart(6, "0")}.bin`;
 
   const flattenedWeights = flattenWeights(weights);
@@ -300,5 +290,5 @@ export const writeNewModel = (modelName: string, model: Model) => {
   writeHistory(modelFolderPath, history);
 
   // First checkpoint file
-  writeCheckpoint(modelFolderPath, 0, model);
+  writeCheckpoint(modelName, 0, model);
 };
