@@ -2,10 +2,9 @@
  * THIS FILE IS AI-GENERATED
  */
 
-import { mkdir, readFile } from "fs/promises";
+import { mkdir } from "fs/promises";
 import { dirname, join } from "path";
 import sharp from "sharp";
-import type { ModelTrainingHistory } from "../model/model-types.ts";
 import {
   getModelFolderPath,
   getModelHistory,
@@ -21,11 +20,14 @@ const escapeXml = (value: string) =>
 
 export const writeLossChart = async (modelName: string) => {
   const modelFolderPath = getModelFolderPath(modelName);
-  const history = getModelHistory(modelFolderPath);
+  const latestCheckpoint = getLatestCheckpointFile(modelFolderPath);
+  const history = getModelHistory(
+    modelFolderPath,
+    latestCheckpoint.versionNumber,
+  );
   const { trainingLosses: losses, validationLosses } = history;
 
-  const latestCheckpoint = getLatestCheckpointFile(modelFolderPath);
-  const checkpointName = latestCheckpoint.replace(".bin", "");
+  const checkpointName = latestCheckpoint.fileName.replace(".bin", "");
   const outputPath = join(modelFolderPath, `${checkpointName}_loss.png`);
 
   if (!Array.isArray(losses) || losses.length === 0) {

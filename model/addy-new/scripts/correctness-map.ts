@@ -59,16 +59,18 @@ const loadCheckpoint = (modelName: string, checkpointId: number): Model => {
   const modelFolderPath = getModelFolderPath(modelName);
 
   const metadata = modelMetadataSchema.parse(
-    JSON.parse(readFileSync(join(modelFolderPath, "_metadata.json")).toString()),
+    JSON.parse(
+      readFileSync(join(modelFolderPath, "_metadata.json")).toString(),
+    ),
   );
 
   const checkpointFile = `checkpoint_${checkpointId.toString().padStart(6, "0")}.bin`;
   const buffer = readFileSync(join(modelFolderPath, checkpointFile));
   const weights = unwrapFlatWeights(metadata, buffer);
 
-  const history = getModelHistory(modelFolderPath);
+  const history = getModelHistory(modelFolderPath, checkpointId);
 
-  return { ...metadata, ...weights, history };
+  return { ...metadata, ...weights, trainingState: history };
 };
 
 /** Greedy argmax of the next-token logits for a given token sequence. */
@@ -121,7 +123,11 @@ const isCorrect = (a: number, b: number, model: Model): boolean => {
 };
 
 /** Convert HSL (h in [0,360), s,l in [0,1]) to RGB bytes. */
-const hslToRgb = (h: number, s: number, l: number): [number, number, number] => {
+const hslToRgb = (
+  h: number,
+  s: number,
+  l: number,
+): [number, number, number] => {
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
   const m = l - c / 2;

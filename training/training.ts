@@ -6,8 +6,6 @@ import {
 } from "../model/model-helpers.ts";
 import {
   getLatestCheckpointModel,
-  getModelFolderPath,
-  getModelHistory,
   readRawTrainingData,
 } from "../model/model-io.ts";
 import { prepareExampleData } from "./prepareExampleData.ts";
@@ -23,7 +21,6 @@ import {
 import { createStateStore, type StateStore } from "./training-state.ts";
 import { startKeyboardListening } from "./keyboard-listener.ts";
 import { runValidationCheck } from "./validation.ts";
-import { createLossRecord } from "./sampling/loss-weighted-sampling.ts";
 import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
 import { cpus } from "os";
 import { splitAcrossWorkers } from "./workers/batching.ts";
@@ -57,17 +54,13 @@ export const doTrainingLoopAndStoreCheckpoint = async (
     );
   }
 
-  const stateStore = createStateStore(endDefinition, modelName, modelLoaded, {
-    type: "loss-weighted",
-    lossRecord: createLossRecord(),
-  });
+  const stateStore = createStateStore(endDefinition, modelName, modelLoaded);
 
   const trainingData = prepareExampleData(
     readRawTrainingData(modelName),
     modelLoaded.vocabulary,
     modelLoaded.trainingMaskSeparator ?? null,
   );
-  const lossRecord = createLossRecord();
 
   let state = stateStore.getState();
 
@@ -101,18 +94,12 @@ export const doTrainingLoopAndStoreCheckpoint = async (
 
     runNaNGuard(losses, pickedTrainingData);
 
-    let summedLoss = 0;
-    for (let index = 0; index < losses.length; index++) {
-      const loss = losses[index]!;
-      summedLoss += loss;
-      const { originalIndex } = trainingDataToWorkWith[index]!;
-
-      lossRecord.set(originalIndex, loss);
-    }
-
     stateStore.updateModelWithNewWeights(
       adjustedWeights,
-      summedLoss / losses.length,
+      losses.map((loss, index) => ({
+        loss,
+        trainingDataIndex: trainingDataToWorkWith[index]!.originalIndex,
+      })),
       averageValidationLoss,
     );
 

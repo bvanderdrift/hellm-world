@@ -12,25 +12,32 @@ import {
   modelMetadataSchema,
   type Weights,
   type TransformerWeights,
-  modelTrainingHistorySchema,
-  type ModelTrainingHistory,
+  modelTrainingStateSchema,
+  type ModelTrainingState,
+  legacyModelTrainingHistorySchema,
 } from "./model-types.ts";
 import { getModelParameterCount } from "./model-helpers.ts";
 import type { Matrix } from "../shared/matrices.ts";
 
 const METADATA_FILE_NAME = "_metadata.json";
-const TRAINING_HISTORY_FILE_NAME = "_training_history.json";
 const TRAINING_DATA_FILE_NAME = "_training_data.txt";
 const VALIDATION_DATA_FILE_NAME = "_validation_data.txt";
+
+const CHECKPOINT_WEIGHTS_PREFIX = "checkpoint_";
+const getCheckpointFileNameNoExtension = (versionNumber: number) =>
+  CHECKPOINT_WEIGHTS_PREFIX + versionNumber.toString().padStart(6, "0");
+const getCheckpointTrainingDataFileName = (versionNumber: number) =>
+  getCheckpointFileNameNoExtension(versionNumber) + "_training_state.json";
 
 export const getModelFolderPath = (modelName: string) =>
   join(import.meta.dirname, modelName);
 
 export const getLatestCheckpointModel = (modelName: string): Model => {
   const modelFolderPath = getModelFolderPath(modelName);
-  const latestCheckpointFile = getLatestCheckpointFile(modelFolderPath);
+  const { fileName: latestCheckpointFile, versionNumber } =
+    getLatestCheckpointFile(modelFolderPath);
   const metadata = getMetadata(join(modelFolderPath, METADATA_FILE_NAME));
-  const history = getModelHistory(modelFolderPath);
+  const history = getModelHistory(modelFolderPath, versionNumber);
   const weights = getCheckpoint(
     metadata,
     join(modelFolderPath, latestCheckpointFile),
@@ -39,13 +46,30 @@ export const getLatestCheckpointModel = (modelName: string): Model => {
   return {
     ...metadata,
     ...weights,
-    history,
+    trainingState: history,
   };
 };
 
-export const getLatestCheckpointFile = (modelFolderPath: string): string => {
+const getCheckpointVersionNumber = (checkpointFileName: string) => {
+  const [_, numberAsStringWithExtension] = checkpointFileName.split("_");
+
+  const versionNumber = Number(
+    numberAsStringWithExtension?.replace(".bin", ""),
+  );
+
+  if (!Number.isFinite(versionNumber)) {
+    throw new Error(
+      `Unable to parse checkpoint version number. Input: ${checkpointFileName} - Output: ${versionNumber}`,
+    );
+  }
+
+  return versionNumber;
+};
+
+export const getLatestCheckpointFile = (modelFolderPath: string) => {
   const checkpointFiles = readdirSync(modelFolderPath).filter(
-    (file) => file.startsWith("checkpoint_") && file.endsWith(".bin"),
+    (file) =>
+      file.startsWith(CHECKPOINT_WEIGHTS_PREFIX) && file.endsWith(".bin"),
   );
 
   const sortedCheckpoints = checkpointFiles.sort((a, b) => b.localeCompare(a));
@@ -56,7 +80,10 @@ export const getLatestCheckpointFile = (modelFolderPath: string): string => {
     throw new Error(`Failed to find checkpoints in ${modelFolderPath}`);
   }
 
-  return latestCheckpoint;
+  return {
+    fileName: latestCheckpoint,
+    versionNumber: getCheckpointVersionNumber(latestCheckpoint),
+  };
 };
 
 const getMetadata = (metadataFilePath: string): ModelMetadata => {
@@ -66,25 +93,62 @@ const getMetadata = (metadataFilePath: string): ModelMetadata => {
   return modelMetadataSchema.parse(metadata);
 };
 
-export const getModelHistory = (modelFolderPath: string) => {
-  return getHistory(join(modelFolderPath, TRAINING_HISTORY_FILE_NAME));
-};
-
-const getHistory = (historyFilePath: string) => {
-  const historyJson = readFileSync(historyFilePath);
-  const history = JSON.parse(historyJson.toString());
-
-  return modelTrainingHistorySchema.parse(history);
-};
-
-export const writeHistory = (
+export const getModelHistory = (
   modelFolderPath: string,
-  history: ModelTrainingHistory,
-) => {
-  writeFileSync(
-    join(modelFolderPath, TRAINING_HISTORY_FILE_NAME),
-    JSON.stringify(history),
+  versionNumber: number,
+): ModelTrainingState => {
+  const currentExpectedFile = join(
+    modelFolderPath,
+    getCheckpointTrainingDataFileName(versionNumber),
   );
+
+  if (existsSync(currentExpectedFile)) {
+    return getTrainingState(currentExpectedFile);
+  }
+
+  const legacyFile = join(modelFolderPath, "_training_history.json");
+
+  if (!existsSync(legacyFile)) {
+    throw new Error(
+      `Failed to find either current of legacy training file for checkpoint ${versionNumber}`,
+    );
+  }
+
+  const historyJson = readFileSync(legacyFile);
+  const legacyHistoryJson = JSON.parse(historyJson.toString());
+  const legacyHistory =
+    legacyModelTrainingHistorySchema.parse(legacyHistoryJson);
+
+  return {
+    ...legacyHistory,
+    samplerState: {
+      type: "loss-weighted",
+      lossRecord: {},
+    },
+  };
+};
+
+const getTrainingState = (trainingStateFilePath: string) => {
+  const stateJson = readFileSync(trainingStateFilePath);
+  const state = JSON.parse(stateJson.toString());
+
+  return modelTrainingStateSchema.parse(state);
+};
+
+export const writeTrainingState = (
+  modelFolderPath: string,
+  trainingState: ModelTrainingState,
+) => {
+  const newFileName = getCheckpointTrainingDataFileName(
+    trainingState.trainingLosses.length,
+  );
+
+  writeFileSync(
+    join(modelFolderPath, newFileName),
+    JSON.stringify(trainingState),
+  );
+
+  console.log(`✅ Checkpoint training state written to ${newFileName}`);
 };
 
 const BYTES_IN_32_BITS = 4;
@@ -246,7 +310,7 @@ export const writeCheckpoint = (
 ) => {
   const modelFolderPath = join(import.meta.dirname, modelName);
 
-  const newFileName = `checkpoint_${versionNumber.toString().padStart(6, "0")}.bin`;
+  const newFileName = getCheckpointFileNameNoExtension(versionNumber) + ".bin";
 
   const flattenedWeights = flattenWeights(weights);
 
@@ -272,11 +336,6 @@ export const writeNewModel = (modelName: string, model: Model) => {
     counts: model.counts,
   };
 
-  const history: ModelTrainingHistory = {
-    trainingLosses: [],
-    validationLosses: [],
-  };
-
   writeFileSync(
     join(modelFolderPath, METADATA_FILE_NAME),
     JSON.stringify(metadata, null, 2),
@@ -287,7 +346,7 @@ export const writeNewModel = (modelName: string, model: Model) => {
     "", // Initialize empty file
   );
 
-  writeHistory(modelFolderPath, history);
+  writeTrainingState(modelFolderPath, model.trainingState);
 
   // First checkpoint file
   writeCheckpoint(modelName, 0, model);

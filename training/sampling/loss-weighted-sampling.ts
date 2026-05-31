@@ -1,12 +1,10 @@
-export type LossRecord = Map<number, number>;
-
-export const createLossRecord = (): LossRecord => new Map<number, number>();
+import type { LossRecord } from "../../model/model-types.ts";
 
 export const computeSamplingWeights = (
   record: LossRecord,
   totalExamplesCount: number,
 ) => {
-  const losses = Array.from(record.values());
+  const losses = Object.values(record);
 
   if (losses.length > totalExamplesCount) {
     throw new Error(`Unexpected losses length: ${losses.length}`);
@@ -15,7 +13,7 @@ export const computeSamplingWeights = (
   const highestLoss = losses.sort((a, b) => b - a)[0] ?? Number.EPSILON;
 
   return new Array(totalExamplesCount).fill(0).map((_, index) => {
-    const storedLoss = record.get(index);
+    const storedLoss = record[index];
 
     if (storedLoss === undefined) {
       return highestLoss;
