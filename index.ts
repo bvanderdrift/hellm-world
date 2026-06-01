@@ -5,11 +5,12 @@ import {
   doTrainingLoopAndStoreCheckpoint,
   type EndDefinition,
 } from "./training/training.ts";
-import { getLatestCheckpointModel, writeNewModel } from "./model/model-io.ts";
+import { writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
 import { writeLossChart } from "./scripts/chart-loss.ts";
 import { inspectTopLosses } from "./scripts/inspect-top-losses.ts";
+import { getLatestCheckpointModel } from "./model/model-checkpoint-io.ts";
 
 program
   .name("llm")

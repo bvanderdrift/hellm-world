@@ -2,10 +2,10 @@
  * THIS FILE IS AI-GENERATED
  */
 
+import { getCheckpointTrainingState } from "../model/model-checkpoint-io.ts";
 import {
   getMetadata,
   getModelFolderPath,
-  getModelHistory,
   readRawTrainingData,
 } from "../model/model-io.ts";
 import { prepareExampleData } from "../training/prepareExampleData.ts";
@@ -17,15 +17,18 @@ export const inspectTopLosses = (
   checkpointNumber: number,
 ) => {
   const modelFolderPath = getModelFolderPath(modelName);
-  const history = getModelHistory(modelFolderPath, checkpointNumber);
+  const trainingState = getCheckpointTrainingState(
+    modelFolderPath,
+    checkpointNumber,
+  );
 
-  if (history.samplerState.type !== "loss-weighted") {
+  if (trainingState.samplerState.type !== "loss-weighted") {
     throw new Error(
-      `This script only supports the "loss-weighted" sampler, but checkpoint ${checkpointNumber} of model "${modelName}" uses "${history.samplerState.type}". No per-example loss scores are available to inspect.`,
+      `This script only supports the "loss-weighted" sampler, but checkpoint ${checkpointNumber} of model "${modelName}" uses "${trainingState.samplerState.type}". No per-example loss scores are available to inspect.`,
     );
   }
 
-  const { lossRecord } = history.samplerState;
+  const { lossRecord } = trainingState.samplerState;
 
   // Re-derive the exact example ordering the sampler indexes into.
   const metadata = getMetadata(modelFolderPath);

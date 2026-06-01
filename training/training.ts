@@ -4,10 +4,7 @@ import {
   operateCombinedWeights,
   operateSingleWeights,
 } from "../model/model-helpers.ts";
-import {
-  getLatestCheckpointModel,
-  readRawTrainingData,
-} from "../model/model-io.ts";
+import { readRawTrainingData } from "../model/model-io.ts";
 import { prepareExampleData } from "./prepareExampleData.ts";
 import type {
   InputMessagePayload,
@@ -24,6 +21,7 @@ import { runValidationCheck } from "./validation.ts";
 import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
 import { cpus } from "os";
 import { splitAcrossWorkers } from "./workers/batching.ts";
+import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 
 const VALIDATION_INTERVAL = 20;
 

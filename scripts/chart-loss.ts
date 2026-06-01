@@ -5,11 +5,12 @@
 import { mkdir } from "fs/promises";
 import { dirname, join } from "path";
 import sharp from "sharp";
+import { getModelFolderPath } from "../model/model-io.ts";
 import {
-  getModelFolderPath,
-  getModelHistory,
-  getLatestCheckpointFile,
-} from "../model/model-io.ts";
+  getCheckpointFolderPath,
+  getCheckpointTrainingState,
+  getLatestCheckpointFolderPath,
+} from "../model/model-checkpoint-io.ts";
 
 const escapeXml = (value: string) =>
   value
@@ -20,15 +21,17 @@ const escapeXml = (value: string) =>
 
 export const writeLossChart = async (modelName: string) => {
   const modelFolderPath = getModelFolderPath(modelName);
-  const latestCheckpoint = getLatestCheckpointFile(modelFolderPath);
-  const history = getModelHistory(
+  const latestCheckpoint = getLatestCheckpointFolderPath(modelFolderPath);
+  const history = getCheckpointTrainingState(
     modelFolderPath,
     latestCheckpoint.versionNumber,
   );
   const { trainingLosses: losses, validationLosses } = history;
 
-  const checkpointName = latestCheckpoint.fileName.replace(".bin", "");
-  const outputPath = join(modelFolderPath, `${checkpointName}_loss.png`);
+  const outputPath = join(
+    getCheckpointFolderPath(modelFolderPath, latestCheckpoint.versionNumber),
+    "loss.png",
+  );
 
   if (!Array.isArray(losses) || losses.length === 0) {
     throw new Error(`Model ${modelFolderPath} has no loss history`);

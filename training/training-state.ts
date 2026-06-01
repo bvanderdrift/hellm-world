@@ -1,7 +1,6 @@
+import { writeCheckpoint, writeTrainingState } from "../model/model-checkpoint-io.ts";
 import {
   getModelFolderPath,
-  writeCheckpoint,
-  writeTrainingState,
 } from "../model/model-io.ts";
 import type { Model, Weights } from "../model/model-types.ts";
 import type { TrainingExample } from "./doSingleTrainingPass.ts";

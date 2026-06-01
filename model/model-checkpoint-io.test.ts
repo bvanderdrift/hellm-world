@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelMetadata, Weights } from "./model-types.ts";
-import { flattenWeights, unwrapFlatWeights } from "./model-io.ts";
+import { flattenWeights, unwrapFlatWeights } from "./model-checkpoint-io.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
 const metadata: ModelMetadata = {

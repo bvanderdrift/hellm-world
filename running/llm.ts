@@ -13,7 +13,6 @@ import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import type { Model } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
-import { getLatestCheckpointModel } from "../model/model-io.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { validateModel } from "../model/model-validation.ts";
 import type {
@@ -21,6 +20,7 @@ import type {
   TransformerActivations,
 } from "../model/activations-types.ts";
 import { softmax } from "../shared/softmax.ts";
+import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 
 const contextTimeout = 100;
 

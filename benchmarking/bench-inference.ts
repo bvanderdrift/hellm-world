@@ -1,5 +1,5 @@
 import { llmForwardPassByTokens } from "../running/llm.ts";
-import { getLatestCheckpointModel } from "../model/model-io.ts";
+import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { validateModel } from "../model/model-validation.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
