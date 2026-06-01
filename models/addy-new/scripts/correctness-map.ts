@@ -12,12 +12,12 @@
  * Usage: bun run model/addy-new/scripts/correctness-map.ts <checkpointId>
  */
 
-import { readFileSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import sharp from "sharp";
 
 import { getModelFolderPath } from "../../../model/model-io.ts";
-import { modelMetadataSchema, type Model } from "../../../model/model-types.ts";
+import { type Model } from "../../../model/model-types.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
 import { getRawVector } from "../../../shared/matrices.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
@@ -26,8 +26,8 @@ import {
   llmForwardPassByTokens,
 } from "../../../running/llm.ts";
 import {
-  getCheckpointTrainingState,
-  unwrapFlatWeights,
+  getCheckpointFolderPath,
+  getCheckpointModel,
 } from "../../../model/model-checkpoint-io.ts";
 
 const MODEL_NAME = "addy-new";
@@ -54,23 +54,50 @@ const escapeXml = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-/** Load a *specific* checkpoint into a Model, reusing exported IO helpers. */
-const loadCheckpoint = (modelName: string, checkpointId: number): Model => {
-  const modelFolderPath = getModelFolderPath(modelName);
+/** Absolute path to this checkpoint's folder, where all artifacts live. */
+const checkpointFolderPath = (checkpointId: number): string =>
+  getCheckpointFolderPath(getModelFolderPath(MODEL_NAME), checkpointId);
 
-  const metadata = modelMetadataSchema.parse(
-    JSON.parse(
-      readFileSync(join(modelFolderPath, "_metadata.json")).toString(),
-    ),
-  );
+/** Single per-checkpoint file holding the raw grid bytes (overwritten on save). */
+const gridPath = (checkpointId: number): string =>
+  join(checkpointFolderPath(checkpointId), "correctness_grid.bin");
 
-  const checkpointFile = `checkpoint_${checkpointId.toString().padStart(6, "0")}.bin`;
-  const buffer = readFileSync(join(modelFolderPath, checkpointFile));
-  const weights = unwrapFlatWeights(metadata, buffer);
+/** Persist the raw Uint8Array grid, overwriting the checkpoint's single file. */
+const saveGrid = (grid: Uint8Array, checkpointId: number) => {
+  writeFileSync(gridPath(checkpointId), grid);
+};
 
-  const history = getCheckpointTrainingState(modelFolderPath, checkpointId);
+/**
+ * Load a previously saved grid for this checkpoint, or return a fresh one.
+ * `testCount`/`correctCount` are derived from the grid: each non-null cell is a
+ * recorded test, each TRUE cell a correct one.
+ */
+const loadGrid = (
+  checkpointId: number,
+): { grid: Uint8Array; testCount: number; correctCount: number } => {
+  const path = gridPath(checkpointId);
+  if (!existsSync(path)) {
+    return { grid: new Uint8Array(CELL_COUNT), testCount: 0, correctCount: 0 };
+  }
 
-  return { ...metadata, ...weights, trainingState: history };
+  const buffer = readFileSync(path);
+  if (buffer.length !== CELL_COUNT) {
+    throw new Error(
+      `Saved grid ${path} has ${buffer.length} bytes, expected ${CELL_COUNT}`,
+    );
+  }
+  const grid = new Uint8Array(buffer);
+
+  let testCount = 0;
+  let correctCount = 0;
+  for (let i = 0; i < grid.length; i++) {
+    const value = grid[i]!;
+    if (value === NULL) continue;
+    testCount++;
+    if (value === TRUE) correctCount++;
+  }
+
+  return { grid, testCount, correctCount };
 };
 
 /** Greedy argmax of the next-token logits for a given token sequence. */
@@ -277,8 +304,8 @@ const dumpImage = async (
 ) => {
   const svg = await buildSvg(grid, checkpointId, testCount, correctCount);
   const outputPath = join(
-    getModelFolderPath(MODEL_NAME),
-    `correctness_${checkpointId}_${testCount}.png`,
+    checkpointFolderPath(checkpointId),
+    `correctness_${testCount}.png`,
   );
   await sharp(Buffer.from(svg)).png().toFile(outputPath);
   return outputPath;
@@ -307,11 +334,21 @@ const main = async () => {
   const checkpointId = Number(checkpointArg);
 
   console.log(`Loading ${MODEL_NAME} checkpoint ${checkpointId}...`);
-  const model = loadCheckpoint(MODEL_NAME, checkpointId);
+  const model = getCheckpointModel(MODEL_NAME, checkpointId);
 
-  const grid = new Uint8Array(CELL_COUNT); // all NULL (0)
-  let testCount = 0;
-  let correctCount = 0;
+  const {
+    grid,
+    testCount: resumedTestCount,
+    correctCount: resumedCorrectCount,
+  } = loadGrid(checkpointId);
+  let testCount = resumedTestCount;
+  let correctCount = resumedCorrectCount;
+
+  if (testCount > 0) {
+    console.log(
+      `Resuming from ${gridPath(checkpointId)} — ${testCount.toLocaleString()} cells already tested.`,
+    );
+  }
 
   console.log("Sampling forever — Ctrl-C to stop.\n");
 
@@ -331,6 +368,8 @@ const main = async () => {
       // Batch complete: finish the bar, render, then start a fresh bar at 0%.
       writeProgress(1);
       process.stdout.write("\n");
+
+      saveGrid(grid, checkpointId);
 
       const outputPath = await dumpImage(
         grid,
