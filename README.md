@@ -34,7 +34,7 @@ Hidden dimensions size: 16
 
 I've written about the behavior and process of training the model here: [http://its.beer/thoughts/training-timmy](http://its.beer/thoughts/training-timmy).
 
-![Training curve of Timmy](./model/timmy/checkpoint_000007_loss.png)
+![Training curve of Timmy](./models/timmy/checkpoint_000007/loss.png)
 
 ## Thank you's & learning resources
 
