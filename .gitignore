@@ -1,6 +1,4 @@
 node_modules
 .DS_Store
 
-model
-!model/timmy
-!model/addy
+models/addy-new

@@ -16,12 +16,8 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import sharp from "sharp";
 
-import {
-  getModelFolderPath,
-  getModelHistory,
-  unwrapFlatWeights,
-} from "../../model-io.ts";
-import { modelMetadataSchema, type Model } from "../../model-types.ts";
+import { getModelFolderPath } from "../../../model/model-io.ts";
+import { modelMetadataSchema, type Model } from "../../../model/model-types.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
 import { getRawVector } from "../../../shared/matrices.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
@@ -29,6 +25,10 @@ import {
   getHighestValueIndex,
   llmForwardPassByTokens,
 } from "../../../running/llm.ts";
+import {
+  getCheckpointTrainingState,
+  unwrapFlatWeights,
+} from "../../../model/model-checkpoint-io.ts";
 
 const MODEL_NAME = "addy-new";
 
@@ -68,7 +68,7 @@ const loadCheckpoint = (modelName: string, checkpointId: number): Model => {
   const buffer = readFileSync(join(modelFolderPath, checkpointFile));
   const weights = unwrapFlatWeights(metadata, buffer);
 
-  const history = getModelHistory(modelFolderPath, checkpointId);
+  const history = getCheckpointTrainingState(modelFolderPath, checkpointId);
 
   return { ...metadata, ...weights, trainingState: history };
 };
