@@ -34,36 +34,9 @@ const escapeXml = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-/** Convert HSL (h in [0,360), s,l in [0,1]) to RGB bytes. */
-const hslToRgb = (
-  h: number,
-  s: number,
-  l: number,
-): [number, number, number] => {
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-
-  let r = 0;
-  let g = 0;
-  let bl = 0;
-  if (h < 60) [r, g, bl] = [c, x, 0];
-  else if (h < 120) [r, g, bl] = [x, c, 0];
-  else if (h < 180) [r, g, bl] = [0, c, x];
-  else if (h < 240) [r, g, bl] = [0, x, c];
-  else if (h < 300) [r, g, bl] = [x, 0, c];
-  else [r, g, bl] = [c, 0, x];
-
-  return [
-    Math.round((r + m) * 255),
-    Math.round((g + m) * 255),
-    Math.round((bl + m) * 255),
-  ];
-};
-
-/** Accuracy p in [0,1] -> colour. Red (0) -> yellow (0.5) -> green (1). */
-const accuracyColor = (p: number): [number, number, number] =>
-  hslToRgb(120 * p, 1, 0.5);
+// Binary colouring: a box is green only if it has zero mistakes, red otherwise.
+const CORRECT_COLOR: [number, number, number] = [0, 255, 0]; // green
+const WRONG_COLOR: [number, number, number] = [255, 0, 0]; // red
 
 /**
  * Scan the full grid into a PLOT_SIZE x PLOT_SIZE raw RGB raster. Each pixel
@@ -95,7 +68,8 @@ const buildRaster = (grid: Uint8Array): Buffer => {
         // black, already zeroed
         continue;
       }
-      const [r, g, b] = accuracyColor(trues / data);
+      // Green only if every tested cell in the box is correct; any mistake -> red.
+      const [r, g, b] = trues === data ? CORRECT_COLOR : WRONG_COLOR;
       raster[offset] = r;
       raster[offset + 1] = g;
       raster[offset + 2] = b;
@@ -106,7 +80,6 @@ const buildRaster = (grid: Uint8Array): Buffer => {
 };
 
 const margin = { top: 96, right: 40, bottom: 70, left: 80 };
-const legendHeight = 18;
 
 const buildSvg = async (
   grid: Uint8Array,
@@ -138,19 +111,15 @@ const buildSvg = async (
     <text x="${margin.left - 10}" y="${y + 4}" text-anchor="end" class="axis-text">${value}</text>`;
   });
 
-  // Red -> yellow -> green legend.
-  const legendStops = new Array(11).fill(0).map((_, i) => {
-    const p = i / 10;
-    const [r, g, b] = accuracyColor(p);
-    return `<stop offset="${p * 100}%" stop-color="rgb(${r},${g},${b})" />`;
-  });
-  const legendWidth = 240;
+  const swatch = 18;
   const legendX = margin.left;
   const legendY = 58;
+  const correctRgb = `rgb(${CORRECT_COLOR.join(",")})`;
+  const wrongRgb = `rgb(${WRONG_COLOR.join(",")})`;
 
   const accuracy = testCount > 0 ? (correctCount / testCount) * 100 : 0;
   const title = `${MODEL_NAME} checkpoint ${checkpointId} — correctness map`;
-  const subtitle = `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · each pixel = ${BOX}×${BOX} pairs (avg, black = untested)`;
+  const subtitle = `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · each pixel = ${BOX}×${BOX} pairs (red = any mistake, black = untested)`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -160,18 +129,14 @@ const buildSvg = async (
     .axis-text { font: 11px system-ui, -apple-system, sans-serif; fill: #9ca3af; }
     .axis-label { font: 700 13px system-ui, -apple-system, sans-serif; fill: #d1d5db; }
   </style>
-  <defs>
-    <linearGradient id="legend" x1="0%" y1="0%" x2="100%" y2="0%">
-      ${legendStops.join("")}
-    </linearGradient>
-  </defs>
   <rect width="100%" height="100%" fill="#111827" />
   <text x="${margin.left}" y="32" class="title">${escapeXml(title)}</text>
   <text x="${margin.left}" y="${legendY - 8}" class="subtitle">${escapeXml(subtitle)}</text>
 
-  <rect x="${legendX}" y="${legendY}" width="${legendWidth}" height="${legendHeight}" fill="url(#legend)" rx="3" />
-  <text x="${legendX}" y="${legendY + legendHeight + 14}" text-anchor="start" class="axis-text">0% (wrong)</text>
-  <text x="${legendX + legendWidth}" y="${legendY + legendHeight + 14}" text-anchor="end" class="axis-text">100% (correct)</text>
+  <rect x="${legendX}" y="${legendY}" width="${swatch}" height="${swatch}" fill="${correctRgb}" rx="3" />
+  <text x="${legendX + swatch + 8}" y="${legendY + swatch - 4}" text-anchor="start" class="axis-text">all correct</text>
+  <rect x="${legendX + 140}" y="${legendY}" width="${swatch}" height="${swatch}" fill="${wrongRgb}" rx="3" />
+  <text x="${legendX + 140 + swatch + 8}" y="${legendY + swatch - 4}" text-anchor="start" class="axis-text">≥1 mistake</text>
 
   <image x="${margin.left}" y="${margin.top}" width="${PLOT_SIZE}" height="${PLOT_SIZE}" href="${plotDataUri}" style="image-rendering: pixelated" preserveAspectRatio="none" />
   <rect x="${margin.left}" y="${margin.top}" width="${PLOT_SIZE}" height="${PLOT_SIZE}" fill="none" stroke="#374151" />
