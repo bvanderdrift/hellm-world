@@ -1,54 +1,53 @@
 import { divideToWhole } from "../shared/math.ts";
 import {
   multiplyMatrices,
-  validateSize,
   sliceRows,
   createMatrix,
-  createVector,
   type Matrix,
+  getFlatIndex,
 } from "../shared/matrices.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type {
   AttentionActivations,
   AttentionHeadActivations,
 } from "../model/activations-types.ts";
+import { softmax } from "../shared/softmax.ts";
 import {
   matrixBufferDefinition,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import type { AttentionGPUBuffers } from "../model/model-gpu-helpers.ts";
-import tgpu, { d } from "typegpu";
-import { softmaxOnGpu } from "../shared/math-gpu.ts";
+import tgpu from "typegpu";
 
 export const runSelfAttentionMechanismOnGPU = (
-  input: Matrix,
+  input: MatrixBuffer,
   headsCount: number,
-  attentionWeights: AttentionWeights,
+  attentionWeights: AttentionGPUBuffers,
+  inputQ: MatrixBuffer,
+  inputK: MatrixBuffer,
+  inputV: MatrixBuffer,
+  attentionUpdate: MatrixBuffer,
+  headsOut: MatrixBuffer,
 ): AttentionActivations => {
-  const contextLength = input.values;
   const hiddenDimensionsCount = input.dimensions;
 
-  const inputQ = multiplyMatrices(input, attentionWeights.Q);
-  const inputK = multiplyMatrices(input, attentionWeights.K);
-  const inputV = multiplyMatrices(input, attentionWeights.V);
+  multiplyMatricesOnGPU(input, attentionWeights.Q, inputQ);
+  multiplyMatricesOnGPU(input, attentionWeights.K, inputK);
+  multiplyMatricesOnGPU(input, attentionWeights.V, inputV);
 
   const headDimensionsCount = divideToWhole(hiddenDimensionsCount, headsCount);
 
-  const headActivations = runSelfAttentionHeadOnGPU(
+  runSelfAttentionHeadOnGPU(
     inputQ,
     inputK,
     inputV,
     headsCount,
     headDimensionsCount,
+    headsOut,
   );
 
-  const attentionUpdate = multiplyMatrices(
-    headActivations.output,
-    attentionWeights.out,
-  );
-
-  validateSize(attentionUpdate, contextLength, hiddenDimensionsCount);
+  multiplyMatricesOnGPU(headOut, attentionWeights.out, attentionUpdate);
 
   return {
     normalizedInput: input,
@@ -85,111 +84,75 @@ export const runSelfAttentionMechanismOnGPU = (
     output: attentionUpdate,
   };
 };
-
-export const runSelfAttentionMechanismOnGPUBackup = (
-  hiddenDimensionsCount: number,
-  headsCount: number,
-  attentionWeights: AttentionGPUBuffers,
-  buffers: {
-    input: MatrixBuffer;
-    q: MatrixBuffer;
-    k: MatrixBuffer;
-    v: MatrixBuffer;
-    headsOutputBuffer: MatrixBuffer;
-    output: MatrixBuffer;
-  },
-) => {
-  multiplyMatricesOnGPU(buffers.input, attentionWeights.Q, buffers.q);
-  multiplyMatricesOnGPU(buffers.input, attentionWeights.K, buffers.k);
-  multiplyMatricesOnGPU(buffers.input, attentionWeights.V, buffers.v);
-
-  // TODO: Run attention heads
-
-  multiplyMatricesOnGPU(
-    buffers.headsOutputBuffer,
-    attentionWeights.out,
-    buffers.output,
-  );
-};
-
-const paramsLayout = tgpu.bindGroupLayout({
-  q: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  k: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  v: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  output: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  dimensionsPerHead: {
-    uniform: d.u32,
-  },
-});
-
 export const runSelfAttentionHeadOnGPU = (
-  inputQ: Matrix,
-  inputK: Matrix,
-  inputV: Matrix,
+  inputQ: MatrixBuffer,
+  inputK: MatrixBuffer,
+  inputV: MatrixBuffer,
   headCount: number,
   headDimensionsCount: number,
+  headsOut: MatrixBuffer,
 ) => {
   const attentionRelevancyOutput = new Array(headCount)
     .fill(0)
-    .map((_) => createMatrix(inputQ.length, inputQ.length));
-  const matchingKeyProducts = new Array(headCount)
-    .fill(0)
-    .map((_) => createMatrix(inputQ.length, inputQ.length));
-  const output = createMatrix(inputQ.length, inputQ[0]!.length);
+    .map((_) => createMatrix(inputQ.vectors, inputQ.vectors));
+  const matchingKeyProducts = createMatrix(
+    headCount * inputQ.vectors,
+    inputQ.vectors,
+  );
 
   for (let h = 0; h < headCount; h++) {
     const offset = h * headDimensionsCount;
 
-    for (let i = 0; i < inputQ.length; i++) {
-      const relevancyLogits = createVector(i + 1);
+    for (let i = 0; i < inputQ.vectors; i++) {
+      const relevancyLogits = new Float32Array(i + 1).fill(0);
 
       for (let l = 0; l < relevancyLogits.length; l++) {
         let summed = 0;
 
         for (let k = 0; k < headDimensionsCount; k++) {
-          summed += inputQ[i]![k + offset]! * inputK[l]![k + offset]!;
+          summed +=
+            inputQ.values[getFlatIndex(i, k + offset, inputQ.dimensions)]! *
+            inputK.values[getFlatIndex(l, k + offset, inputK.dimensions)]!;
         }
 
         relevancyLogits[l]! = summed / Math.sqrt(headDimensionsCount);
       }
 
-      const relevancy = softmaxOnGpu(relevancyLogits);
+      const relevancy = softmax(relevancyLogits);
 
-      for (let l = 0; l < relevancy.length; l++) {
-        attentionRelevancyOutput[h]![i]! = relevancyLogits;
-        matchingKeyProducts[h]![i]! = relevancy;
-      }
+      const startIndexToSet = getFlatIndex(i, 0, inputQ.vectors);
+      attentionRelevancyOutput[h]!.values.set(relevancyLogits, startIndexToSet);
+      matchingKeyProducts[h]!.values.set(relevancy, startIndexToSet);
     }
   }
 
-  for (let i = 0; i < output.length; i++) {
-    for (let j = 0; j < output[0]!.length; j++) {
+  for (let i = 0; i < headsOut.vectors; i++) {
+    for (let j = 0; j < headsOut.dimensions; j++) {
       const h = Math.floor(j / headDimensionsCount);
+      const outputIndex = getFlatIndex(i, j, headsOut.dimensions);
 
       for (let l = 0; l < i + 1; l++) {
-        output[i]![j]! += matchingKeyProducts[h]![i]![l]! * inputV[l]![j]!;
+        output.values[outputIndex]! +=
+          matchingKeyProducts[h]!.values[getFlatIndex(i, l, output.vectors)]! *
+          inputV.values[getFlatIndex(l, j, inputV.dimensions)]!;
       }
     }
   }
-
-  return {
-    inputK,
-    inputQ,
-    inputV,
-    attentionRelevancyOutput,
-    softmaxOutput: matchingKeyProducts,
-    output,
-  };
 };
+
+const maskedDotProductParams = tgpu.bindGroupLayout({
+  m1: {
+    storage: matrixBufferDefinition,
+    access: "readonly",
+  },
+  m2: {
+    storage: matrixBufferDefinition,
+    access: "readonly",
+  },
+  mOut: {
+    storage: matrixBufferDefinition,
+    access: "mutable",
+  },
+});
+
+const maskedDotProduct = () => {};

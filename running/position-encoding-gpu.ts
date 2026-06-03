@@ -1,14 +1,21 @@
-import {
-  createMatrixBuffer,
-  type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import { getPositionEncoding } from "./position-encoding.ts";
+import { cos, sin } from "typegpu/std";
 
 export const getPositionEncodingOnGPU = (
-  tokenCount: number,
+  i: number,
+  j: number,
   dimensions: number,
-): MatrixBuffer => {
-  const matrix = getPositionEncoding(tokenCount, dimensions);
+): number => {
+  "use gpu";
 
-  return createMatrixBuffer(matrix);
+  const pairIndex = j - (j % 2);
+  const divider = Math.pow(10_000, pairIndex / dimensions);
+  const angle = i / divider;
+
+  if (j % 2 === 0) {
+    // even
+    return sin(angle);
+  } else {
+    // odd
+    return cos(angle);
+  }
 };

@@ -36,7 +36,7 @@ const multiplyMatrixParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
-const getFlatIndex = (i: number, j: number, dimensions: number) => {
+export const getFlatIndexOnGPU = (i: number, j: number, dimensions: number) => {
   "use gpu";
   return i * dimensions + j;
 };
@@ -52,14 +52,14 @@ const dotProductOnGPU = (i: number, j: number) => {
 
   for (let k = 0; k < m1.dimensions; k++) {
     summed +=
-      m1.values[getFlatIndex(i, k, m1.dimensions)]! *
-      m2.values[getFlatIndex(k, j, m2.dimensions)]!;
+      m1.values[getFlatIndexOnGPU(i, k, m1.dimensions)]! *
+      m2.values[getFlatIndexOnGPU(k, j, m2.dimensions)]!;
   }
 
   mOut.vectors = m1.vectors;
   mOut.dimensions = m2.dimensions;
 
-  mOut.values[getFlatIndex(i, j, mOut.dimensions)]! = summed;
+  mOut.values[getFlatIndexOnGPU(i, j, mOut.dimensions)]! = summed;
 };
 
 const dotProductRunner =
@@ -79,7 +79,22 @@ export const multiplyMatricesOnGPU = (
   dotProductRunner.with(params).dispatchThreads(m1.vectors, m2.dimensions);
 };
 
-export const createMatrixBuffer = (m: Matrix): MatrixBuffer => {
+export const createMatrixBuffer = (
+  vectorCount: number,
+  dimensionsCount: number,
+) => {
+  const embeddingsBuffer = gpuContext
+    .createBuffer(matrixBufferDefinition)
+    .$usage("storage");
+
+  return {
+    buffer: embeddingsBuffer,
+    vectors: vectorCount,
+    dimensions: dimensionsCount,
+  };
+};
+
+export const createMatrixBufferAndCopy = (m: Matrix): MatrixBuffer => {
   const embeddingsBuffer = gpuContext
     .createBuffer(matrixBufferDefinition, m)
     .$usage("storage");
@@ -124,7 +139,7 @@ export const applyScalarToMatrixOnGPU = (
       "use gpu";
       const scalar = applyScalarParamsLayout.$.scalar;
       const matrix = applyScalarParamsLayout.$.matrix;
-      const flatIndex = getFlatIndex(i, j, matrix.dimensions);
+      const flatIndex = getFlatIndexOnGPU(i, j, matrix.dimensions);
 
       matrix.values[flatIndex]! *= scalar;
     })
@@ -178,7 +193,7 @@ export const addVectorAcrossMatrixOnGPU = (
       "use gpu";
       const m1 = addMatricesParamsLayout.$.m1WillMutate;
       const m2 = addMatricesParamsLayout.$.m2;
-      const flatIndex = getFlatIndex(i, j, m1.dimensions);
+      const flatIndex = getFlatIndexOnGPU(i, j, m1.dimensions);
 
       m1.values[flatIndex]! = m1.values[flatIndex]! + m2.values[j]!;
     })

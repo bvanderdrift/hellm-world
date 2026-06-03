@@ -1,5 +1,5 @@
 import {
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import type { Weights } from "./model-types.ts";
@@ -35,30 +35,30 @@ export type WeightGPUBuffers = {
 
 export const loadWeightsIntoGpu = (weight: Weights): WeightGPUBuffers => {
   return {
-    embeddings: createMatrixBuffer(weight.embeddings),
-    unembeddings: createMatrixBuffer(weight.unembeddings),
+    embeddings: createMatrixBufferAndCopy(weight.embeddings),
+    unembeddings: createMatrixBufferAndCopy(weight.unembeddings),
     transformers: weight.transformers.map(
       (t): TransformerGPUBuffers => ({
         attention: {
-          K: createMatrixBuffer(t.attention.K),
-          V: createMatrixBuffer(t.attention.V),
-          Q: createMatrixBuffer(t.attention.Q),
-          out: createMatrixBuffer(t.attention.out),
+          K: createMatrixBufferAndCopy(t.attention.K),
+          V: createMatrixBufferAndCopy(t.attention.V),
+          Q: createMatrixBufferAndCopy(t.attention.Q),
+          out: createMatrixBufferAndCopy(t.attention.out),
         },
         multilayerPerceptron: {
           wDown: {
-            weightsMatrix: createMatrixBuffer(
+            weightsMatrix: createMatrixBufferAndCopy(
               t.multilayerPerceptron.wDown.weightsMatrix,
             ),
-            biasVector: createMatrixBuffer(
+            biasVector: createMatrixBufferAndCopy(
               t.multilayerPerceptron.wDown.biasVector,
             ),
           },
           wUp: {
-            weightsMatrix: createMatrixBuffer(
+            weightsMatrix: createMatrixBufferAndCopy(
               t.multilayerPerceptron.wUp.weightsMatrix,
             ),
-            biasVector: createMatrixBuffer(
+            biasVector: createMatrixBufferAndCopy(
               t.multilayerPerceptron.wUp.biasVector,
             ),
           },

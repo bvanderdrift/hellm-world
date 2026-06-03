@@ -10,10 +10,10 @@ import {
   getMatrixParameterCount,
   transpose,
   multiplyMatrices,
-  normalize,
   sliceRows,
   sliceToEqualSizes,
 } from "./matrices.ts";
+import { normalize } from "./normalize.ts";
 import {
   expectMatrixCloseTo,
   matrixFrom,

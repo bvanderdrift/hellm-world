@@ -1,5 +1,5 @@
 import {
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   extractMatrixBuffer,
   multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
@@ -33,9 +33,9 @@ const benchmarkGPU = async (
   a: Matrix,
   b: Matrix,
 ): Promise<{ stats: Stats; lastResult: Matrix }> => {
-  const m1 = createMatrixBuffer(a);
-  const m2 = createMatrixBuffer(b);
-  const mOut = createMatrixBuffer(createMatrix(a.vectors, b.dimensions));
+  const m1 = createMatrixBufferAndCopy(a);
+  const m2 = createMatrixBufferAndCopy(b);
+  const mOut = createMatrixBufferAndCopy(createMatrix(a.vectors, b.dimensions));
 
   const stats = await benchmark(async () => {
     multiplyMatricesOnGPU(m1, m2, mOut);

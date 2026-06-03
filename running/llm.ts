@@ -4,7 +4,6 @@ import {
   getFlatIndex,
   getRawVector,
   multiplyMatrices,
-  normalize,
   type Matrix,
 } from "../shared/matrices.ts";
 import { tokenize } from "../shared/tokenizer.ts";
@@ -21,6 +20,7 @@ import type {
 } from "../model/activations-types.ts";
 import { softmax } from "../shared/softmax.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
+import { normalize } from "../shared/normalize.ts";
 
 const contextTimeout = 100;
 

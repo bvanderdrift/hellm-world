@@ -1,4 +1,4 @@
-import { d } from "typegpu";
+import tgpu, { d, type StorageFlag, type TgpuBuffer } from "typegpu";
 import type {
   Activations,
   TransformerActivations,
@@ -9,10 +9,13 @@ import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   type MatrixBuffer,
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   applyScalarToMatrixOnGPU,
   addMatricesOnGPU,
   extractMatrixBuffer,
+  createMatrixBuffer,
+  matrixBufferDefinition,
+  getFlatIndexOnGPU,
 } from "../shared/matrices-gpu.ts";
 import {
   createMatrix,
@@ -24,6 +27,9 @@ import {
 import { runSelfAttentionMechanism } from "../transforming/attention.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import { getPositionEncodingOnGPU } from "./position-encoding-gpu.ts";
+import type { F32, WgslArray } from "typegpu/data";
+import { sqrt } from "typegpu/std";
+import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
 
 export const llmForwardPassByTokensOnGPU = async (
   input: string[],
@@ -43,43 +49,31 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const startStateInCPU = createMatrix(input.length, hiddenDimensionsSize);
-
-  for (let inputIndex = 0; inputIndex < input.length; inputIndex++) {
-    const token = input[inputIndex]!;
-    const vocabIndex = findTokenIndex(model.vocabulary, token);
-
-    for (let j = 0; j < hiddenDimensionsSize; j++) {
-      startStateInCPU.values[
-        getFlatIndex(inputIndex, j, hiddenDimensionsSize)
-      ] =
-        model.embeddings.values[
-          getFlatIndex(vocabIndex, j, hiddenDimensionsSize)
-        ]!;
-    }
-  }
-
-  const intermediateState: MatrixBuffer = createMatrixBuffer(startStateInCPU);
-
-  await applyScalarToMatrixOnGPU(
-    gpuContext.createUniform(d.f32, Math.sqrt(hiddenDimensionsSize)).buffer,
-    intermediateState,
+  const hiddenState = createMatrixBuffer(
+    inputPositionToVocabPosition.length,
+    model.counts.hiddenDimensions,
   );
 
-  const positionalEncoding = getPositionEncodingOnGPU(
-    contextSize,
-    hiddenDimensionsSize,
-  );
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
 
-  await addMatricesOnGPU(intermediateState, positionalEncoding);
+  prepareHiddenState(
+    inputPositionToVocabPositionGPUBuffer,
+    hiddenState,
+    weightBuffers.embeddings,
+  );
 
   const transformerActivations: TransformerActivations[] = [];
 
-  const uppedMlpBuffer = createMatrixBuffer(
+  const uppedMlpBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize * model.counts.mlpMultiple),
   );
 
-  const outMlpBuffer = createMatrixBuffer(
+  const outMlpBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize),
   );
 
@@ -87,7 +81,7 @@ export const llmForwardPassByTokensOnGPU = async (
     const transformer = model.transformers[transformerIndex]!;
     const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
 
-    const transformerInputState = await extractMatrixBuffer(intermediateState);
+    const transformerInputState = await extractMatrixBuffer(hiddenState);
 
     const attentionInputEmbeddings = normalize(transformerInputState);
 
@@ -101,7 +95,7 @@ export const llmForwardPassByTokensOnGPU = async (
 
     await addMatricesOnGPU(
       intermediateState,
-      createMatrixBuffer(attentionActivations.output),
+      createMatrixBufferAndCopy(attentionActivations.output),
     );
 
     const embeddingsWithAttentionUpdates =
