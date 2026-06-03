@@ -8,7 +8,7 @@ set -e
 
 # Node.js latest LTS via NodeSource
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs unzip tmux
+sudo apt-get install -y nodejs unzip tmux fontconfig fonts-dejavu-core
 
 # pnpm
 corepack enable
