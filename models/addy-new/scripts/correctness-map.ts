@@ -1,11 +1,13 @@
 /**
  * Correctness testing for the `addy-new` addition model.
  *
- * Given a checkpoint version number it loads that exact checkpoint, then forever
- * samples random pairs (a, b) with a, b < 10_000, runs the model on "a+b=" and
- * records whether the fully-correct answer is produced into a single grid file
- * (`correctness_grid.bin`). Every 1000 tests it saves the grid and dumps a
- * heatmap PNG via the charting module so accuracy can be inspected visually.
+ * Given a checkpoint version number it spins up `-m` worker processes (default
+ * 1), each of which loads that exact checkpoint and forever samples random
+ * pairs (a, b) with a, b < 10_000, running the model on "a+b=" and reporting
+ * whether the fully-correct answer is produced. This root process owns the
+ * single grid file (`correctness_grid.bin`): it folds every result in and, every
+ * 1000 tests, saves the grid and dumps a heatmap PNG via the charting module so
+ * accuracy can be inspected visually.
  *
  * The charting half lives in `correctness-chart.ts` and can be run on its own
  * to (re)render an already-saved grid without retesting.
@@ -13,18 +15,8 @@
  * This is an independent script: it only imports already-exported inference
  * helpers, it does not modify any inference/training code.
  *
- * Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId>
+ * Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-m <cpus>]
  */
-
-import { type Model } from "../../../model/model-types.ts";
-import { tokenize } from "../../../shared/tokenizer.ts";
-import { getRawVector } from "../../../shared/matrices.ts";
-import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
-import {
-  getHighestValueIndex,
-  llmForwardPassByTokens,
-} from "../../../running/llm.ts";
-import { getCheckpointModel } from "../../../model/model-checkpoint-io.ts";
 
 import {
   GRID_SIZE,
@@ -36,57 +28,9 @@ import {
   saveGrid,
 } from "./correctness-grid.ts";
 import { dumpImage } from "./correctness-chart.ts";
+import type { WorkerInput, WorkerOutput } from "./correctness-worker.ts";
 
 const DUMP_EVERY = 1000;
-
-/** Greedy argmax of the next-token logits for a given token sequence. */
-const nextToken = (tokens: string[], model: Model): string => {
-  const { embeddings: unembeddedState } = llmForwardPassByTokens(
-    tokens,
-    model,
-    false,
-  );
-  const logits = getRawVector(unembeddedState, unembeddedState.vectors - 1);
-  const index = getHighestValueIndex(logits);
-  const token = model.vocabulary[index];
-  if (!token) {
-    throw new Error(`Failed to find token at index ${index}`);
-  }
-  return token;
-};
-
-/**
- * Returns true iff the model produces exactly `expected` digits followed by
- * <EOS>. Stops generating as soon as a token diverges from the expected answer.
- */
-const isCorrect = (a: number, b: number, model: Model): boolean => {
-  const input = `${a}+${b}=`;
-  const inputTokens = tokenize(input, model.vocabulary);
-  const expected = String(a + b);
-
-  const generated: string[] = [];
-
-  // expected.length digit tokens, then one <EOS>. Small cap guards runaways.
-  const maxTokens = expected.length + 1;
-
-  for (let step = 0; step < maxTokens; step++) {
-    const token = nextToken([...inputTokens, ...generated], model);
-
-    if (step < expected.length) {
-      // Still expecting a digit; it must match exactly.
-      if (token !== expected[step]) {
-        return false;
-      }
-    } else {
-      // All digits matched; the sequence must now terminate.
-      return token === END_OF_SEQUENCE_TOKEN;
-    }
-
-    generated.push(token);
-  }
-
-  return false;
-};
 
 const PROGRESS_WIDTH = 30;
 
@@ -100,18 +44,37 @@ const writeProgress = (fraction: number) => {
   process.stdout.write(`\r[${bar}] ${pct}%`);
 };
 
-const main = async () => {
-  const checkpointArg = process.argv[2];
-  if (checkpointArg === undefined || Number.isNaN(Number(checkpointArg))) {
+/** Parse `<checkpointId> [-m <cpus>]` from argv; `-m` defaults to 1. */
+const parseArgs = (): { checkpointId: number; cpuCount: number } => {
+  const args = process.argv.slice(2);
+  let checkpointArg: string | undefined;
+  let cpuCount = 1;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "-m") {
+      cpuCount = Number(args[++i]);
+    } else {
+      checkpointArg = args[i];
+    }
+  }
+
+  if (
+    checkpointArg === undefined ||
+    Number.isNaN(Number(checkpointArg)) ||
+    !Number.isInteger(cpuCount) ||
+    cpuCount < 1
+  ) {
     console.error(
-      "Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId>",
+      "Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-m <cpus>]",
     );
     process.exit(1);
   }
-  const checkpointId = Number(checkpointArg);
 
-  console.log(`Loading ${MODEL_NAME} checkpoint ${checkpointId}...`);
-  const model = getCheckpointModel(MODEL_NAME, checkpointId);
+  return { checkpointId: Number(checkpointArg), cpuCount };
+};
+
+const main = async () => {
+  const { checkpointId, cpuCount } = parseArgs();
 
   const {
     grid,
@@ -127,42 +90,74 @@ const main = async () => {
     );
   }
 
+  console.log(
+    `Loading ${MODEL_NAME} checkpoint ${checkpointId} across ${cpuCount} worker(s)...`,
+  );
   console.log("Sampling forever — Ctrl-C to stop.\n");
 
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const a = Math.floor(Math.random() * GRID_SIZE);
-    const b = Math.floor(Math.random() * GRID_SIZE);
+  // The root owns the grid and persistence; workers only stream results in.
+  const onResults = async (results: WorkerOutput["results"]) => {
+    for (const { a, b, correct } of results) {
+      // A cell may be re-sampled by another worker; only count genuinely new
+      // tests so testCount/correctCount stay in sync with the grid's non-null
+      // cells (matching how loadGrid derives them).
+      const previous = grid[a * GRID_SIZE + b]!;
+      grid[a * GRID_SIZE + b] = correct ? TRUE : FALSE;
 
-    const correct = isCorrect(a, b, model);
-    grid[a * GRID_SIZE + b] = correct ? TRUE : FALSE;
+      if (previous === TRUE) correctCount--;
+      else if (previous === FALSE) {
+        // already counted as a test, nothing to add
+      } else {
+        testCount++;
+      }
+      if (correct) correctCount++;
 
-    testCount++;
-    if (correct) correctCount++;
+      const intoBatch = testCount % DUMP_EVERY;
+      if (intoBatch === 0) {
+        writeProgress(1);
+        process.stdout.write("\n");
 
-    const intoBatch = testCount % DUMP_EVERY;
-    if (intoBatch === 0) {
-      // Batch complete: finish the bar, render, then start a fresh bar at 0%.
-      writeProgress(1);
-      process.stdout.write("\n");
+        saveGrid(grid, checkpointId);
 
-      saveGrid(grid, checkpointId);
-
-      const outputPath = await dumpImage(
-        grid,
-        checkpointId,
-        testCount,
-        correctCount,
-      );
-      const accuracy = (correctCount / testCount) * 100;
-      console.log(
-        `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · wrote ${outputPath}`,
-      );
-      process.stdout.write("\n");
-    } else {
-      writeProgress(intoBatch / DUMP_EVERY);
+        const outputPath = await dumpImage(
+          grid,
+          checkpointId,
+          testCount,
+          correctCount,
+        );
+        const accuracy = (correctCount / testCount) * 100;
+        console.log(
+          `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · wrote ${outputPath}`,
+        );
+        process.stdout.write("\n");
+      } else {
+        writeProgress(intoBatch / DUMP_EVERY);
+      }
     }
-  }
+  };
+
+  // Serialize the async result-folding so two batches never interleave their
+  // grid writes / chart dumps.
+  let queue: Promise<void> = Promise.resolve();
+
+  const workers = new Array(cpuCount).fill(0).map(() => {
+    const worker = new Worker(
+      "./models/addy-new/scripts/correctness-worker.ts",
+    );
+    worker.onerror = (event) => {
+      console.error("\nWorker error:", event.message ?? event);
+      process.exit(1);
+    };
+    worker.onmessage = (event: MessageEvent<WorkerOutput>) => {
+      queue = queue.then(() => onResults(event.data.results));
+    };
+    const input: WorkerInput = { checkpointId };
+    worker.postMessage(input);
+    return worker;
+  });
+
+  // Keep the process alive forever; workers drive all the work via messages.
+  void workers;
 };
 
 main();
