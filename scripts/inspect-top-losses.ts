@@ -2,7 +2,12 @@
  * THIS FILE IS AI-GENERATED
  */
 
-import { getCheckpointTrainingState } from "../model/model-checkpoint-io.ts";
+import { writeFileSync } from "fs";
+import { join } from "path";
+import {
+  getCheckpointFolderPath,
+  getCheckpointTrainingState,
+} from "../model/model-checkpoint-io.ts";
 import {
   getMetadata,
   getModelFolderPath,
@@ -52,7 +57,8 @@ export const inspectTopLosses = (
     return;
   }
 
-  console.log(
+  const lines: string[] = [];
+  lines.push(
     `Top ${scored.length} highest-loss examples for "${modelName}" @ checkpoint ${checkpointNumber}:\n`,
   );
 
@@ -63,8 +69,18 @@ export const inspectTopLosses = (
         ? `<no example at index ${index}>`
         : example.sequence.join("");
 
-    console.log(`#${rank + 1}  loss=${loss.toFixed(6)}  (index ${index})`);
-    console.log(text);
-    console.log("");
+    lines.push(`#${rank + 1}  loss=${loss.toFixed(6)}  (index ${index})`);
+    lines.push(text);
+    lines.push("");
   });
+
+  const output = lines.join("\n");
+  console.log(output);
+
+  const outputPath = join(
+    getCheckpointFolderPath(modelFolderPath, checkpointNumber),
+    "struggles.txt",
+  );
+  writeFileSync(outputPath, output);
+  console.log(`Wrote ${outputPath}`);
 };
