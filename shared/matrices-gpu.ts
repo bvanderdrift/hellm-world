@@ -79,7 +79,22 @@ export const multiplyMatricesOnGPU = (
   dotProductRunner.with(params).dispatchThreads(m1.vectors, m2.dimensions);
 };
 
-export const createMatrixBuffer = (m: Matrix): MatrixBuffer => {
+export const createMatrixBuffer = (
+  vectorCount: number,
+  dimensionsCount: number,
+) => {
+  const embeddingsBuffer = gpuContext
+    .createBuffer(matrixBufferDefinition)
+    .$usage("storage");
+
+  return {
+    buffer: embeddingsBuffer,
+    vectors: vectorCount,
+    dimensions: dimensionsCount,
+  };
+};
+
+export const createMatrixBufferAndCopy = (m: Matrix): MatrixBuffer => {
   const embeddingsBuffer = gpuContext
     .createBuffer(matrixBufferDefinition, m)
     .$usage("storage");

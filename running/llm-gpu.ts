@@ -9,10 +9,11 @@ import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   type MatrixBuffer,
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   applyScalarToMatrixOnGPU,
   addMatricesOnGPU,
   extractMatrixBuffer,
+  createMatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import {
   createMatrix,
@@ -43,7 +44,7 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const startStateInCPU = createMatrix(input.length, hiddenDimensionsSize);
+  const hiddenState = createMatrixBuffer(input.length, hiddenDimensionsSize);
 
   for (let inputIndex = 0; inputIndex < input.length; inputIndex++) {
     const token = input[inputIndex]!;
@@ -59,11 +60,9 @@ export const llmForwardPassByTokensOnGPU = async (
     }
   }
 
-  const intermediateState: MatrixBuffer = createMatrixBuffer(startStateInCPU);
-
   await applyScalarToMatrixOnGPU(
     gpuContext.createUniform(d.f32, Math.sqrt(hiddenDimensionsSize)).buffer,
-    intermediateState,
+    hiddenState,
   );
 
   const positionalEncoding = getPositionEncodingOnGPU(
@@ -75,11 +74,11 @@ export const llmForwardPassByTokensOnGPU = async (
 
   const transformerActivations: TransformerActivations[] = [];
 
-  const uppedMlpBuffer = createMatrixBuffer(
+  const uppedMlpBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize * model.counts.mlpMultiple),
   );
 
-  const outMlpBuffer = createMatrixBuffer(
+  const outMlpBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize),
   );
 
@@ -101,7 +100,7 @@ export const llmForwardPassByTokensOnGPU = async (
 
     await addMatricesOnGPU(
       intermediateState,
-      createMatrixBuffer(attentionActivations.output),
+      createMatrixBufferAndCopy(attentionActivations.output),
     );
 
     const embeddingsWithAttentionUpdates =
@@ -166,3 +165,5 @@ export const llmForwardPassByTokensOnGPU = async (
       : null,
   };
 };
+
+export const prepare

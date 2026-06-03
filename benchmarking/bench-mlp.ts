@@ -1,6 +1,6 @@
 import { createMatrix } from "../shared/matrices.ts";
 import {
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   extractMatrixBuffer,
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
@@ -49,12 +49,12 @@ const weightsToGPU = (
   weights: MultilayerPerceptronWeights,
 ): MultilayerPerceptronGPUBuffers => ({
   wUp: {
-    weightsMatrix: createMatrixBuffer(weights.wUp.weightsMatrix),
-    biasVector: createMatrixBuffer(weights.wUp.biasVector),
+    weightsMatrix: createMatrixBufferAndCopy(weights.wUp.weightsMatrix),
+    biasVector: createMatrixBufferAndCopy(weights.wUp.biasVector),
   },
   wDown: {
-    weightsMatrix: createMatrixBuffer(weights.wDown.weightsMatrix),
-    biasVector: createMatrixBuffer(weights.wDown.biasVector),
+    weightsMatrix: createMatrixBufferAndCopy(weights.wDown.weightsMatrix),
+    biasVector: createMatrixBufferAndCopy(weights.wDown.biasVector),
   },
 });
 
@@ -69,20 +69,17 @@ const main = async () => {
     const encoding = createMatrix(contextLength, dimensions, rand);
     const weights = createTestWeights(dimensions);
 
-    const encodingBuf = createMatrixBuffer(encoding);
+    const encodingBuf = createMatrixBufferAndCopy(encoding);
     const perceptronBuf = weightsToGPU(weights);
-    const uppedBuf = createMatrixBuffer(
+    const uppedBuf = createMatrixBufferAndCopy(
       createMatrix(contextLength, dimensions * MLP_MULTIPLE),
     );
-    const outBuf = createMatrixBuffer(
+    const outBuf = createMatrixBufferAndCopy(
       createMatrix(contextLength, dimensions),
     );
 
     // Correctness check
-    const cpuResult = getMultilayerPerceptronActivations(
-      encoding,
-      weights,
-    );
+    const cpuResult = getMultilayerPerceptronActivations(encoding, weights);
     getMultilayerPerceptronActivationsOnGPU(
       encodingBuf,
       uppedBuf,
@@ -98,11 +95,11 @@ const main = async () => {
     }
 
     // Fresh buffers for benchmark runs
-    const freshEncodingBuf = createMatrixBuffer(encoding);
-    const freshUppedBuf = createMatrixBuffer(
+    const freshEncodingBuf = createMatrixBufferAndCopy(encoding);
+    const freshUppedBuf = createMatrixBufferAndCopy(
       createMatrix(contextLength, dimensions * MLP_MULTIPLE),
     );
-    const freshOutBuf = createMatrixBuffer(
+    const freshOutBuf = createMatrixBufferAndCopy(
       createMatrix(contextLength, dimensions),
     );
 

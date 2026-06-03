@@ -1,5 +1,5 @@
 import {
-  createMatrixBuffer,
+  createMatrixBufferAndCopy,
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
@@ -10,5 +10,5 @@ export const getPositionEncodingOnGPU = (
 ): MatrixBuffer => {
   const matrix = getPositionEncoding(tokenCount, dimensions);
 
-  return createMatrixBuffer(matrix);
+  return createMatrixBufferAndCopy(matrix);
 };
