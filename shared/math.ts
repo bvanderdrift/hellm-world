@@ -22,7 +22,6 @@ export const dotProduct = (v1: Float32Array, v2: Float32Array) => {
   return sum(multiples);
 };
 
-
 /** Rectified Linear Unit */
 export const relu = (matrix: Matrix) =>
   operateOnMatrix(matrix, (value) => Math.max(value, 0));
@@ -34,9 +33,14 @@ export const mean = (values: Float32Array) => {
 export const calculateStandardDeviation = (values: Float32Array) => {
   const average = mean(values);
 
-  const squareDeltas = values.map((value) => Math.pow(value - average, 2));
+  let summedSquareDeltas = 0;
 
-  const averageSquareDeltas = mean(squareDeltas);
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index]!;
+    summedSquareDeltas += Math.pow(value - average, 2);
+  }
+
+  const averageSquareDeltas = summedSquareDeltas / values.length;
 
   return {
     average,

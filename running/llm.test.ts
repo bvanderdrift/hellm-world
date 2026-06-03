@@ -6,13 +6,10 @@ import {
   pickToken,
   runLlm,
 } from "./llm.ts";
-import {
-  addMatrices,
-  multiplyMatrices,
-  normalize,
-} from "../shared/matrices.ts";
+import { addMatrices, multiplyMatrices } from "../shared/matrices.ts";
+import { normalize } from "../shared/normalize.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import * as weightReading from "../model/model-io.ts";
+import * as weightReading from "../model/model-checkpoint-io.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";

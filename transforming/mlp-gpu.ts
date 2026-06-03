@@ -4,7 +4,7 @@ import {
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
-import { reluOnGpu } from "../shared/math-gpu.ts";
+import { reluOnGpu } from "../shared/relu-gpu.ts";
 
 export const getMultilayerPerceptronActivationsOnGPU = (
   encoding: MatrixBuffer,

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalize,
-  getFlatIndex,
-  type Matrix,
-} from "../../shared/matrices.ts";
+import { getFlatIndex, type Matrix } from "../../shared/matrices.ts";
+import { normalize } from "../../shared/normalize.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
 import { matrixFrom } from "../../testing/testing-utils.ts";
 import { FINITE_DIFFERENCE_EPSILON, FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
