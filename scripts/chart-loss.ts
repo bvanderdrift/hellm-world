@@ -19,7 +19,10 @@ const escapeXml = (value: string) =>
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
-export const writeLossChart = async (modelName: string) => {
+export const writeLossChart = async (
+  modelName: string,
+  scale: "linear" | "log",
+) => {
   const modelFolderPath = getModelFolderPath(modelName);
   const latestCheckpoint = getLatestCheckpointFolderPath(modelFolderPath);
   const history = getCheckpointTrainingState(
@@ -48,25 +51,52 @@ export const writeLossChart = async (modelName: string) => {
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   const allLossValues = [...losses, ...validationLosses.map((v) => v.loss)];
-  const maxLoss = Math.max(...allLossValues);
-  const minLoss = Math.min(...allLossValues);
-  const yMin = 0;
-  const yMax = Math.ceil(maxLoss * 10) / 10;
+  const positiveLossValues = allLossValues.filter((value) => value > 0);
+  const maxLoss = Math.max(...positiveLossValues);
+  const minLoss = Math.min(...positiveLossValues);
+  const isLog = scale === "log";
   const xFor = (index: number) =>
     margin.left + (index / Math.max(losses.length - 1, 1)) * chartWidth;
-  const yFor = (loss: number) =>
-    margin.top + ((yMax - loss) / (yMax - yMin)) * chartHeight;
+
+  let yFor: (loss: number) => number;
+  let yTicks: string[];
+
+  if (isLog) {
+    // Use a log10 scale so changes across orders of magnitude stay legible.
+    const logMin = Math.floor(Math.log10(minLoss));
+    const logMax = Math.ceil(Math.log10(maxLoss));
+    const yMin = logMin;
+    const yMax = logMax === logMin ? logMin + 1 : logMax;
+    yFor = (loss: number) =>
+      margin.top +
+      ((yMax - Math.log10(Math.max(loss, Number.MIN_VALUE))) / (yMax - yMin)) *
+        chartHeight;
+    yTicks = new Array(yMax - yMin + 1).fill(0).map((_, index) => {
+      const value = Math.pow(10, yMin + index);
+      const y = yFor(value);
+
+      return `
+    <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#e5e7eb" />
+    <text x="${margin.left - 14}" y="${y + 5}" text-anchor="end" class="axis-text">${value.toPrecision(2)}</text>`;
+    });
+  } else {
+    const yMin = 0;
+    const yMax = Math.ceil(maxLoss * 10) / 10;
+    yFor = (loss: number) =>
+      margin.top + ((yMax - loss) / (yMax - yMin)) * chartHeight;
+    yTicks = new Array(6).fill(0).map((_, index) => {
+      const value = yMin + ((yMax - yMin) * index) / 5;
+      const y = yFor(value);
+
+      return `
+    <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#e5e7eb" />
+    <text x="${margin.left - 14}" y="${y + 5}" text-anchor="end" class="axis-text">${value.toFixed(2)}</text>`;
+    });
+  }
+
   const points = losses
     .map((loss, index) => `${xFor(index).toFixed(2)},${yFor(loss).toFixed(2)}`)
     .join(" ");
-  const yTicks = new Array(6).fill(0).map((_, index) => {
-    const value = yMin + ((yMax - yMin) * index) / 5;
-    const y = yFor(value);
-
-    return `
-    <line x1="${margin.left}" y1="${y}" x2="${width - margin.right}" y2="${y}" stroke="#e5e7eb" />
-    <text x="${margin.left - 14}" y="${y + 5}" text-anchor="end" class="axis-text">${value.toFixed(2)}</text>`;
-  });
   const xTicks = new Array(7).fill(0).map((_, index) => {
     const step = Math.round(((losses.length - 1) * index) / 6);
     const x = xFor(step);
@@ -95,13 +125,12 @@ export const writeLossChart = async (modelName: string) => {
   <polyline points="${points}" fill="none" stroke="#2563eb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
   <circle cx="${xFor(losses.length - 1)}" cy="${yFor(losses[losses.length - 1]!)}" r="5" fill="#2563eb" />
   ${validationLosses.length > 1 ? `<polyline points="${validationLosses.map((v) => `${xFor(v.stepIndex).toFixed(2)},${yFor(v.loss).toFixed(2)}`).join(" ")}" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 4" />` : ""}
-  ${validationLosses.map((v) => `<circle cx="${xFor(v.stepIndex).toFixed(2)}" cy="${yFor(v.loss).toFixed(2)}" r="4.5" fill="#f97316" />`).join("\n  ")}
   <line x1="${width - margin.right - 180}" y1="34" x2="${width - margin.right - 150}" y2="34" stroke="#2563eb" stroke-width="3" />
   <text x="${width - margin.right - 144}" y="39" class="axis-text">training</text>
   <line x1="${width - margin.right - 180}" y1="56" x2="${width - margin.right - 150}" y2="56" stroke="#f97316" stroke-width="2.5" stroke-dasharray="8 4" />
   <text x="${width - margin.right - 144}" y="61" class="axis-text">validation</text>
   <text x="${width / 2}" y="${height - 24}" text-anchor="middle" class="axis-label">training step</text>
-  <text transform="translate(26 ${height / 2}) rotate(-90)" text-anchor="middle" class="axis-label">average loss</text>
+  <text transform="translate(26 ${height / 2}) rotate(-90)" text-anchor="middle" class="axis-label">average loss${isLog ? " (log scale)" : ""}</text>
 </svg>`;
 
   await mkdir(dirname(outputPath), { recursive: true });

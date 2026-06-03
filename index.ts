@@ -155,8 +155,12 @@ program
   .name("chart-loss")
   .command("chart-loss")
   .argument("<model>", "model to chart")
-  .action(async (modelName: string) => {
-    console.log(await writeLossChart(modelName));
+  .argument("[scale]", "y-axis scale: linear or log", "linear")
+  .action(async (modelName: string, scale: string) => {
+    if (scale !== "linear" && scale !== "log") {
+      throw new Error(`Invalid scale "${scale}", expected "linear" or "log"`);
+    }
+    console.log(await writeLossChart(modelName, scale));
   });
 
 program
