@@ -1,22 +1,21 @@
 /**
- * Correctness map for the `addy-new` addition model.
+ * Correctness testing for the `addy-new` addition model.
  *
  * Given a checkpoint version number it loads that exact checkpoint, then forever
  * samples random pairs (a, b) with a, b < 10_000, runs the model on "a+b=" and
- * records whether the fully-correct answer is produced. Every 1000 tests it dumps
- * a downsampled heatmap PNG so accuracy can be inspected visually.
+ * records whether the fully-correct answer is produced into a single grid file
+ * (`correctness_grid.bin`). Every 1000 tests it saves the grid and dumps a
+ * heatmap PNG via the charting module so accuracy can be inspected visually.
+ *
+ * The charting half lives in `correctness-chart.ts` and can be run on its own
+ * to (re)render an already-saved grid without retesting.
  *
  * This is an independent script: it only imports already-exported inference
  * helpers, it does not modify any inference/training code.
  *
- * Usage: bun run model/addy-new/scripts/correctness-map.ts <checkpointId>
+ * Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId>
  */
 
-import { existsSync, readFileSync, writeFileSync } from "fs";
-import { join } from "path";
-import sharp from "sharp";
-
-import { getModelFolderPath } from "../../../model/model-io.ts";
 import { type Model } from "../../../model/model-types.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
 import { getRawVector } from "../../../shared/matrices.ts";
@@ -25,80 +24,20 @@ import {
   getHighestValueIndex,
   llmForwardPassByTokens,
 } from "../../../running/llm.ts";
+import { getCheckpointModel } from "../../../model/model-checkpoint-io.ts";
+
 import {
-  getCheckpointFolderPath,
-  getCheckpointModel,
-} from "../../../model/model-checkpoint-io.ts";
-
-const MODEL_NAME = "addy-new";
-
-// Result grid is 10_000 x 10_000 = 100M cells.
-const GRID_SIZE = 10_000;
-const CELL_COUNT = GRID_SIZE * GRID_SIZE;
-
-// Cell encoding (acts as the requested (boolean | null)[][]).
-const NULL = 0;
-const FALSE = 1;
-const TRUE = 2;
-
-// Each plot pixel summarises a BOX x BOX square of grid cells.
-const PLOT_SIZE = 1000; // 10_000 / 10
-const BOX = GRID_SIZE / PLOT_SIZE; // 10
+  GRID_SIZE,
+  MODEL_NAME,
+  TRUE,
+  FALSE,
+  gridPath,
+  loadGrid,
+  saveGrid,
+} from "./correctness-grid.ts";
+import { dumpImage } from "./correctness-chart.ts";
 
 const DUMP_EVERY = 1000;
-
-const escapeXml = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
-
-/** Absolute path to this checkpoint's folder, where all artifacts live. */
-const checkpointFolderPath = (checkpointId: number): string =>
-  getCheckpointFolderPath(getModelFolderPath(MODEL_NAME), checkpointId);
-
-/** Single per-checkpoint file holding the raw grid bytes (overwritten on save). */
-const gridPath = (checkpointId: number): string =>
-  join(checkpointFolderPath(checkpointId), "correctness_grid.bin");
-
-/** Persist the raw Uint8Array grid, overwriting the checkpoint's single file. */
-const saveGrid = (grid: Uint8Array, checkpointId: number) => {
-  writeFileSync(gridPath(checkpointId), grid);
-};
-
-/**
- * Load a previously saved grid for this checkpoint, or return a fresh one.
- * `testCount`/`correctCount` are derived from the grid: each non-null cell is a
- * recorded test, each TRUE cell a correct one.
- */
-const loadGrid = (
-  checkpointId: number,
-): { grid: Uint8Array; testCount: number; correctCount: number } => {
-  const path = gridPath(checkpointId);
-  if (!existsSync(path)) {
-    return { grid: new Uint8Array(CELL_COUNT), testCount: 0, correctCount: 0 };
-  }
-
-  const buffer = readFileSync(path);
-  if (buffer.length !== CELL_COUNT) {
-    throw new Error(
-      `Saved grid ${path} has ${buffer.length} bytes, expected ${CELL_COUNT}`,
-    );
-  }
-  const grid = new Uint8Array(buffer);
-
-  let testCount = 0;
-  let correctCount = 0;
-  for (let i = 0; i < grid.length; i++) {
-    const value = grid[i]!;
-    if (value === NULL) continue;
-    testCount++;
-    if (value === TRUE) correctCount++;
-  }
-
-  return { grid, testCount, correctCount };
-};
 
 /** Greedy argmax of the next-token logits for a given token sequence. */
 const nextToken = (tokens: string[], model: Model): string => {
@@ -149,168 +88,6 @@ const isCorrect = (a: number, b: number, model: Model): boolean => {
   return false;
 };
 
-/** Convert HSL (h in [0,360), s,l in [0,1]) to RGB bytes. */
-const hslToRgb = (
-  h: number,
-  s: number,
-  l: number,
-): [number, number, number] => {
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-
-  let r = 0;
-  let g = 0;
-  let bl = 0;
-  if (h < 60) [r, g, bl] = [c, x, 0];
-  else if (h < 120) [r, g, bl] = [x, c, 0];
-  else if (h < 180) [r, g, bl] = [0, c, x];
-  else if (h < 240) [r, g, bl] = [0, x, c];
-  else if (h < 300) [r, g, bl] = [x, 0, c];
-  else [r, g, bl] = [c, 0, x];
-
-  return [
-    Math.round((r + m) * 255),
-    Math.round((g + m) * 255),
-    Math.round((bl + m) * 255),
-  ];
-};
-
-/** Accuracy p in [0,1] -> colour. Red (0) -> yellow (0.5) -> green (1). */
-const accuracyColor = (p: number): [number, number, number] =>
-  hslToRgb(120 * p, 1, 0.5);
-
-/**
- * Scan the full grid into a PLOT_SIZE x PLOT_SIZE raw RGB raster. Each pixel
- * averages the non-null cells in its BOX x BOX square; no data -> black.
- * Pixel (px, py): py corresponds to `a` (rows), px to `b` (columns).
- */
-const buildRaster = (grid: Uint8Array): Buffer => {
-  const raster = Buffer.alloc(PLOT_SIZE * PLOT_SIZE * 3);
-
-  for (let py = 0; py < PLOT_SIZE; py++) {
-    const aStart = py * BOX;
-    for (let px = 0; px < PLOT_SIZE; px++) {
-      const bStart = px * BOX;
-
-      let data = 0;
-      let trues = 0;
-      for (let da = 0; da < BOX; da++) {
-        const rowBase = (aStart + da) * GRID_SIZE + bStart;
-        for (let db = 0; db < BOX; db++) {
-          const value = grid[rowBase + db]!;
-          if (value === NULL) continue;
-          data++;
-          if (value === TRUE) trues++;
-        }
-      }
-
-      const offset = (py * PLOT_SIZE + px) * 3;
-      if (data === 0) {
-        // black, already zeroed
-        continue;
-      }
-      const [r, g, b] = accuracyColor(trues / data);
-      raster[offset] = r;
-      raster[offset + 1] = g;
-      raster[offset + 2] = b;
-    }
-  }
-
-  return raster;
-};
-
-const margin = { top: 96, right: 40, bottom: 70, left: 80 };
-const legendHeight = 18;
-
-const buildSvg = async (
-  grid: Uint8Array,
-  checkpointId: number,
-  testCount: number,
-  correctCount: number,
-): Promise<string> => {
-  const raster = buildRaster(grid);
-  const plotPng = await sharp(raster, {
-    raw: { width: PLOT_SIZE, height: PLOT_SIZE, channels: 3 },
-  })
-    .png()
-    .toBuffer();
-  const plotDataUri = `data:image/png;base64,${plotPng.toString("base64")}`;
-
-  const width = margin.left + PLOT_SIZE + margin.right;
-  const height = margin.top + PLOT_SIZE + margin.bottom;
-
-  // Axis ticks at every 1000 (0 .. 10000).
-  const ticks = new Array(11).fill(0).map((_, i) => {
-    const value = i * 1000;
-    const along = (value / GRID_SIZE) * PLOT_SIZE;
-    const x = margin.left + along;
-    const y = margin.top + along;
-    return `
-    <line x1="${x}" y1="${margin.top}" x2="${x}" y2="${margin.top + PLOT_SIZE}" stroke="#ffffff22" />
-    <text x="${x}" y="${margin.top + PLOT_SIZE + 20}" text-anchor="middle" class="axis-text">${value}</text>
-    <line x1="${margin.left}" y1="${y}" x2="${margin.left + PLOT_SIZE}" y2="${y}" stroke="#ffffff22" />
-    <text x="${margin.left - 10}" y="${y + 4}" text-anchor="end" class="axis-text">${value}</text>`;
-  });
-
-  // Red -> yellow -> green legend.
-  const legendStops = new Array(11).fill(0).map((_, i) => {
-    const p = i / 10;
-    const [r, g, b] = accuracyColor(p);
-    return `<stop offset="${p * 100}%" stop-color="rgb(${r},${g},${b})" />`;
-  });
-  const legendWidth = 240;
-  const legendX = margin.left;
-  const legendY = 58;
-
-  const accuracy = testCount > 0 ? (correctCount / testCount) * 100 : 0;
-  const title = `${MODEL_NAME} checkpoint ${checkpointId} — correctness map`;
-  const subtitle = `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · each pixel = ${BOX}×${BOX} pairs (avg, black = untested)`;
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
-  <style>
-    .title { font: 700 24px system-ui, -apple-system, sans-serif; fill: #f9fafb; }
-    .subtitle { font: 500 14px system-ui, -apple-system, sans-serif; fill: #9ca3af; }
-    .axis-text { font: 11px system-ui, -apple-system, sans-serif; fill: #9ca3af; }
-    .axis-label { font: 700 13px system-ui, -apple-system, sans-serif; fill: #d1d5db; }
-  </style>
-  <defs>
-    <linearGradient id="legend" x1="0%" y1="0%" x2="100%" y2="0%">
-      ${legendStops.join("")}
-    </linearGradient>
-  </defs>
-  <rect width="100%" height="100%" fill="#111827" />
-  <text x="${margin.left}" y="32" class="title">${escapeXml(title)}</text>
-  <text x="${margin.left}" y="${legendY - 8}" class="subtitle">${escapeXml(subtitle)}</text>
-
-  <rect x="${legendX}" y="${legendY}" width="${legendWidth}" height="${legendHeight}" fill="url(#legend)" rx="3" />
-  <text x="${legendX}" y="${legendY + legendHeight + 14}" text-anchor="start" class="axis-text">0% (wrong)</text>
-  <text x="${legendX + legendWidth}" y="${legendY + legendHeight + 14}" text-anchor="end" class="axis-text">100% (correct)</text>
-
-  <image x="${margin.left}" y="${margin.top}" width="${PLOT_SIZE}" height="${PLOT_SIZE}" href="${plotDataUri}" style="image-rendering: pixelated" preserveAspectRatio="none" />
-  <rect x="${margin.left}" y="${margin.top}" width="${PLOT_SIZE}" height="${PLOT_SIZE}" fill="none" stroke="#374151" />
-  ${ticks.join("")}
-  <text x="${margin.left + PLOT_SIZE / 2}" y="${height - 8}" text-anchor="middle" class="axis-label">b</text>
-  <text transform="translate(20 ${margin.top + PLOT_SIZE / 2}) rotate(-90)" text-anchor="middle" class="axis-label">a</text>
-</svg>`;
-};
-
-const dumpImage = async (
-  grid: Uint8Array,
-  checkpointId: number,
-  testCount: number,
-  correctCount: number,
-) => {
-  const svg = await buildSvg(grid, checkpointId, testCount, correctCount);
-  const outputPath = join(
-    checkpointFolderPath(checkpointId),
-    `correctness_${testCount}.png`,
-  );
-  await sharp(Buffer.from(svg)).png().toFile(outputPath);
-  return outputPath;
-};
-
 const PROGRESS_WIDTH = 30;
 
 /** In-place progress bar towards the next render, e.g. "[------        ]  37%". */
@@ -327,7 +104,7 @@ const main = async () => {
   const checkpointArg = process.argv[2];
   if (checkpointArg === undefined || Number.isNaN(Number(checkpointArg))) {
     console.error(
-      "Usage: bun run model/addy-new/scripts/correctness-map.ts <checkpointId>",
+      "Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId>",
     );
     process.exit(1);
   }
