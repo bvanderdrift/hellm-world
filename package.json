@@ -21,6 +21,7 @@
   "dependencies": {
     "@inquirer/prompts": "^8.4.2",
     "commander": "^14.0.3",
+    "openai": "^6.39.1",
     "typegpu": "^0.11.3",
     "zod": "^4.4.3"
   },
