@@ -1,7 +1,7 @@
 import tgpu, { d } from "typegpu";
 import { matrixBufferDefinition, type MatrixBuffer } from "./matrices-gpu.ts";
 import { gpuContext } from "./gpu-context.ts";
-import { sqrt } from "typegpu/std";
+import { sqrt, workgroupBarrier } from "typegpu/std";
 import { builtin } from "typegpu/data";
 
 const normalizeParamsLayout = tgpu.bindGroupLayout({
@@ -11,12 +11,16 @@ const normalizeParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
+const WORKGROUP_SIZE = 64;
+const sharedSummedValues = tgpu.workgroupVar(d.arrayOf(d.f32, WORKGROUP_SIZE));
+const sharedSummedSquares = tgpu.workgroupVar(d.arrayOf(d.f32, WORKGROUP_SIZE));
+
 const normalizeKernel = tgpu.computeFn({
   in: {
     localId: builtin.localInvocationId,
     groupId: builtin.workgroupId,
   },
-  workgroupSize: [1],
+  workgroupSize: [WORKGROUP_SIZE],
 })((input) => {
   const t = input.localId.x;
   const vectorIndex = input.groupId.x;
@@ -28,13 +32,45 @@ const normalizeKernel = tgpu.computeFn({
 
   // standard deviation logic inline in kernel so we don't mess with the shifting window of the hidden state too much
 
-  let summedValues = d.f32(0);
-  let summedSquares = d.f32(0);
+  let partialSummedValues = d.f32(0);
+  let partialSummedSquares = d.f32(0);
 
-  for (let index = offset; index < offset + length; index++) {
-    summedValues += hiddenState.values[index]!;
-    summedSquares += hiddenState.values[index]! ** 2;
+  for (
+    let index = offset + t;
+    index < offset + length;
+    index += WORKGROUP_SIZE
+  ) {
+    partialSummedValues += hiddenState.values[index]!;
+    partialSummedSquares += hiddenState.values[index]! ** 2;
   }
+
+  sharedSummedValues.$[t] = partialSummedValues;
+  sharedSummedSquares.$[t] = partialSummedSquares;
+
+  workgroupBarrier();
+
+  /**
+   * Tree folding summation
+   * With WORKGROUP SIZE = 8, will sum
+   * - 4 sets of neighbours
+   * - 2 sets of neighbours
+   * - 1 set of neighbours
+   *
+   * So only 3 steps, which is log_2(8)
+   */
+  for (let stride = d.u32(WORKGROUP_SIZE / 2); stride > 0; stride /= 2) {
+    if (t < stride) {
+      sharedSummedValues.$[t] =
+        sharedSummedValues.$[t] + sharedSummedValues.$[t + stride]!;
+
+      sharedSummedSquares.$[t] =
+        sharedSummedSquares.$[t] + sharedSummedSquares.$[t + stride]!;
+    }
+    workgroupBarrier();
+  }
+
+  const summedValues = sharedSummedValues.$[0]!;
+  const summedSquares = sharedSummedSquares.$[0]!;
 
   const average = summedValues / d.f32(length);
   /**
@@ -51,7 +87,7 @@ const normalizeKernel = tgpu.computeFn({
 
   const standardDeviation = sqrt(averageSquareDeltas);
 
-  for (let j = 0; j < length; j++) {
+  for (let j = t; j < length; j += WORKGROUP_SIZE) {
     const valueIndex = offset + j;
 
     hiddenState.values[valueIndex] =
