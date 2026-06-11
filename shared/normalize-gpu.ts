@@ -1,9 +1,5 @@
 import tgpu, { d } from "typegpu";
-import {
-  getFlatIndexOnGPU,
-  matrixBufferDefinition,
-  type MatrixBuffer,
-} from "./matrices-gpu.ts";
+import { matrixBufferDefinition, type MatrixBuffer } from "./matrices-gpu.ts";
 import { gpuContext } from "./gpu-context.ts";
 import { pow, sqrt } from "typegpu/std";
 
