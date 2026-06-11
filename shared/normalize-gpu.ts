@@ -2,6 +2,7 @@ import tgpu, { d } from "typegpu";
 import { matrixBufferDefinition, type MatrixBuffer } from "./matrices-gpu.ts";
 import { gpuContext } from "./gpu-context.ts";
 import { sqrt } from "typegpu/std";
+import { builtin } from "typegpu/data";
 
 const normalizeParamsLayout = tgpu.bindGroupLayout({
   hiddenState: {
@@ -10,8 +11,15 @@ const normalizeParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
-const normalizeVectorKernel = (vectorIndex: number) => {
-  "use gpu";
+const normalizeKernel = tgpu.computeFn({
+  in: {
+    localId: builtin.localInvocationId,
+    groupId: builtin.workgroupId,
+  },
+  workgroupSize: [1],
+})((input) => {
+  const t = input.localId.x;
+  const vectorIndex = input.groupId.x;
 
   const hiddenState = normalizeParamsLayout.$.hiddenState;
 
@@ -52,16 +60,16 @@ const normalizeVectorKernel = (vectorIndex: number) => {
         // to prevent 0-divisions
         Number.EPSILON);
   }
-};
+});
 
-const normalizeVectorRunner = gpuContext.createGuardedComputePipeline(
-  normalizeVectorKernel,
-);
+const normalizeVectorRunner = gpuContext.createComputePipeline({
+  compute: normalizeKernel,
+});
 
 export const normalizeOnGpu = (hiddenState: MatrixBuffer) => {
   const bindGroup = gpuContext.createBindGroup(normalizeParamsLayout, {
     hiddenState: hiddenState.buffer,
   });
 
-  normalizeVectorRunner.with(bindGroup).dispatchThreads(hiddenState.vectors);
+  normalizeVectorRunner.with(bindGroup).dispatchWorkgroups(hiddenState.vectors);
 };
