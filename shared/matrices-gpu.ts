@@ -125,6 +125,17 @@ const applyScalarParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
+const applyScalarToMatrixKernel = gpuContext.createGuardedComputePipeline(
+  (i: number, j: number) => {
+    "use gpu";
+    const scalar = applyScalarParamsLayout.$.scalar;
+    const matrix = applyScalarParamsLayout.$.matrix;
+    const flatIndex = getFlatIndexOnGPU(i, j, matrix.dimensions);
+
+    matrix.values[flatIndex]! *= scalar;
+  },
+);
+
 export const applyScalarToMatrixOnGPU = (
   scalar: TgpuBuffer<d.F32> & UniformFlag,
   matrix: MatrixBuffer,
@@ -134,15 +145,7 @@ export const applyScalarToMatrixOnGPU = (
     matrix: matrix.buffer,
   });
 
-  gpuContext
-    .createGuardedComputePipeline((i: number, j: number) => {
-      "use gpu";
-      const scalar = applyScalarParamsLayout.$.scalar;
-      const matrix = applyScalarParamsLayout.$.matrix;
-      const flatIndex = getFlatIndexOnGPU(i, j, matrix.dimensions);
-
-      matrix.values[flatIndex]! *= scalar;
-    })
+  applyScalarToMatrixKernel
     .with(params)
     .dispatchThreads(matrix.vectors, matrix.dimensions);
 };
@@ -158,6 +161,16 @@ const addMatricesParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
+const addMatricesKernel = gpuContext.createGuardedComputePipeline(
+  (i: number) => {
+    "use gpu";
+    const m1 = addMatricesParamsLayout.$.m1WillMutate;
+    const m2 = addMatricesParamsLayout.$.m2;
+
+    m1.values[i]! = m1.values[i]! + m2.values[i]!;
+  },
+);
+
 export const addMatricesOnGPU = (
   m1WillMutate: MatrixBuffer,
   m2: MatrixBuffer,
@@ -167,17 +180,21 @@ export const addMatricesOnGPU = (
     m2: m2.buffer,
   });
 
-  gpuContext
-    .createGuardedComputePipeline((i: number) => {
-      "use gpu";
-      const m1 = addMatricesParamsLayout.$.m1WillMutate;
-      const m2 = addMatricesParamsLayout.$.m2;
-
-      m1.values[i]! = m1.values[i]! + m2.values[i]!;
-    })
+  addMatricesKernel
     .with(params)
     .dispatchThreads(m1WillMutate.vectors * m1WillMutate.dimensions);
 };
+
+const addVectorAcrossMatrixKernel = gpuContext.createGuardedComputePipeline(
+  (i: number, j: number) => {
+    "use gpu";
+    const m1 = addMatricesParamsLayout.$.m1WillMutate;
+    const m2 = addMatricesParamsLayout.$.m2;
+    const flatIndex = getFlatIndexOnGPU(i, j, m1.dimensions);
+
+    m1.values[flatIndex]! = m1.values[flatIndex]! + m2.values[j]!;
+  },
+);
 
 export const addVectorAcrossMatrixOnGPU = (
   m1WillMutate: MatrixBuffer,
@@ -188,15 +205,7 @@ export const addVectorAcrossMatrixOnGPU = (
     m2: vector.buffer,
   });
 
-  gpuContext
-    .createGuardedComputePipeline((i: number, j: number) => {
-      "use gpu";
-      const m1 = addMatricesParamsLayout.$.m1WillMutate;
-      const m2 = addMatricesParamsLayout.$.m2;
-      const flatIndex = getFlatIndexOnGPU(i, j, m1.dimensions);
-
-      m1.values[flatIndex]! = m1.values[flatIndex]! + m2.values[j]!;
-    })
+  addVectorAcrossMatrixKernel
     .with(params)
     .dispatchThreads(m1WillMutate.vectors, m1WillMutate.dimensions);
 };
