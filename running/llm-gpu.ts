@@ -99,6 +99,10 @@ export const llmForwardPassByTokensOnGPU = async (
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
 
+  const contextLengthBuffer = gpuContext
+    .createBuffer(d.u32, contextSize)
+    .$usage("uniform");
+
   for (const transformerIndex in model.transformers) {
     const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
 
@@ -107,6 +111,7 @@ export const llmForwardPassByTokensOnGPU = async (
     runSelfAttentionMechanismOnGPU(
       hiddenState,
       model.counts.attentionHeads,
+      contextLengthBuffer,
       headDimensionsCountBuffer,
       transformerBuffers.attention,
       attentionInputQBuffer,

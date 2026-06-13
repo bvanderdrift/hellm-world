@@ -1,5 +1,3 @@
-import { getFlatIndex } from "../../shared/matrices.ts";
-import { softmax } from "../../shared/softmax.ts";
 import {
   multiplyMatricesOnGPU,
   type MatrixBuffer,
@@ -8,10 +6,12 @@ import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
 import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
 import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
+import { softmaxAttentionHeadsOnGPU } from "./softmaxAttentionHeadsOnGPU.ts";
 
 export const runSelfAttentionMechanismOnGPU = (
   input: MatrixBuffer,
   headsCount: number,
+  contextLength: TgpuBuffer<d.U32> & UniformFlag,
   headDimensionsCount: TgpuBuffer<d.U32> & UniformFlag,
   attentionWeights: AttentionGPUBuffers,
   inputQ: MatrixBuffer,
@@ -31,6 +31,7 @@ export const runSelfAttentionMechanismOnGPU = (
     inputK,
     inputV,
     headsCount,
+    contextLength,
     headDimensionsCount,
     attentionRelevancyOutput,
     matchingKeyProducts,
@@ -45,6 +46,7 @@ export const runSelfAttentionHeadsOnGPU = (
   inputK: MatrixBuffer,
   inputV: MatrixBuffer,
   headCount: number,
+  contextLength: TgpuBuffer<d.U32> & UniformFlag,
   headDimensionsCount: TgpuBuffer<d.U32> & UniformFlag,
   attentionRelevancyOutput: MatrixBuffer,
   matchingKeyProducts: MatrixBuffer,
@@ -58,24 +60,12 @@ export const runSelfAttentionHeadsOnGPU = (
     attentionRelevancyOutput,
   );
 
-  for (let h = 0; h < headCount; h++) {
-    for (let i = 0; i < inputQ.vectors; i++) {
-      const startIndexToSet = getFlatIndex(
-        i,
-        h * inputQ.vectors,
-        attentionRelevancyOutput.dimensions,
-      );
-
-      const relevancy = softmax(
-        attentionRelevancyOutput.values.slice(
-          startIndexToSet,
-          startIndexToSet + i + 1,
-        ),
-      );
-
-      matchingKeyProducts.values.set(relevancy, startIndexToSet);
-    }
-  }
+  softmaxAttentionHeadsOnGPU(
+    headCount,
+    contextLength,
+    attentionRelevancyOutput,
+    matchingKeyProducts,
+  );
 
   applyAttentionValuesOnGPU(
     headDimensionsCount,
