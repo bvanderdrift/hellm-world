@@ -156,7 +156,7 @@ export const llmForwardPassByTokensOnGPU = async (
   normalizeOnGpu(hiddenState);
 
   const unembeddedStateBuffer = createMatrixBuffer(
-    createMatrix(contextSize, hiddenDimensionsSize),
+    createMatrix(contextSize, model.vocabulary.length),
   );
 
   multiplyMatricesOnGPU(
@@ -190,6 +190,7 @@ export const llmForwardPassByTokensOnGPU = async (
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
   headDimensionsCountBuffer.buffer.destroy();
   contextLengthBuffer.buffer.destroy();
+  unembeddedStateBuffer.buffer.destroy();
 
   return {
     embeddings,
