@@ -1,9 +1,10 @@
 #!/bin/sh
 set -e
 
-HOST="${1:?Usage: ./setup.sh <ip-or-host>}"
+DEST="${1:?Usage: ./setup.sh <user@host> [ssh-args...]}"
+shift
 
-ssh -t "root@$HOST" '
+ssh -t "$@" "$DEST" '
 set -e
 
 # Node.js latest LTS via NodeSource
@@ -24,4 +25,4 @@ pnpm i
 
 '
 
-ssh -t "root@$HOST" "cd hellm-world && exec \$SHELL -l"
+ssh -t "$@" "$DEST" "cd hellm-world && exec \$SHELL -l"
