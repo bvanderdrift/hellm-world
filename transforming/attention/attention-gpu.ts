@@ -7,6 +7,7 @@ import {
 import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
 import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
+import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
 
 export const runSelfAttentionMechanismOnGPU = (
   input: MatrixBuffer,
@@ -24,6 +25,7 @@ export const runSelfAttentionMechanismOnGPU = (
   multiplyMatricesOnGPU(input, attentionWeights.Q, inputQ);
   multiplyMatricesOnGPU(input, attentionWeights.K, inputK);
   multiplyMatricesOnGPU(input, attentionWeights.V, inputV);
+
   runSelfAttentionHeadsOnGPU(
     inputQ,
     inputK,
@@ -48,28 +50,21 @@ export const runSelfAttentionHeadsOnGPU = (
   matchingKeyProducts: MatrixBuffer,
   output: MatrixBuffer,
 ) => {
-  for (let h = 0; h < headCount; h++) {
-    const offset = h * headDimensionsCount;
+  calculateRelevancyOnGPU(
+    headCount,
+    headDimensionsCount,
+    inputK,
+    inputQ,
+    attentionRelevancyOutput,
+  );
 
+  for (let h = 0; h < headCount; h++) {
     for (let i = 0; i < inputQ.vectors; i++) {
       const startIndexToSet = getFlatIndex(
         i,
         h * inputQ.vectors,
         attentionRelevancyOutput.dimensions,
       );
-
-      for (let l = 0; l < i + 1; l++) {
-        let summed = 0;
-
-        for (let k = 0; k < headDimensionsCount; k++) {
-          summed +=
-            inputQ.values[getFlatIndex(i, k + offset, inputQ.dimensions)]! *
-            inputK.values[getFlatIndex(l, k + offset, inputK.dimensions)]!;
-        }
-
-        attentionRelevancyOutput.values[startIndexToSet + l] =
-          summed / Math.sqrt(headDimensionsCount);
-      }
 
       const relevancy = softmax(
         attentionRelevancyOutput.values.slice(

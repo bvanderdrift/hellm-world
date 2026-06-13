@@ -1,7 +1,6 @@
 import { divideToWhole } from "../../shared/math.ts";
 import {
   multiplyMatrices,
-  sliceRows,
   createMatrix,
   type Matrix,
   getFlatIndex,
