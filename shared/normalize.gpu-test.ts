@@ -7,6 +7,7 @@ import {
 } from "./matrices-gpu.ts";
 import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
+import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
 // normalizeOnGpu mutates the buffer in place; the CPU `normalize` returns a new
 // matrix. We use the CPU version as the oracle and compare the used region.
@@ -15,13 +16,6 @@ const runGpu = async (matrix: Matrix): Promise<Matrix> => {
   normalizeOnGpu(buffer);
   await gpuContext.device.queue.onSubmittedWorkDone();
   return extractMatrixBuffer(buffer);
-};
-
-const expectMatchesCpu = (gpu: Matrix, expected: Matrix) => {
-  const used = expected.vectors * expected.dimensions;
-  for (let i = 0; i < used; i++) {
-    expect(gpu.values[i]!).toBeCloseTo(expected.values[i]!, 4);
-  }
 };
 
 describe("normalizeOnGpu", () => {
@@ -33,7 +27,7 @@ describe("normalizeOnGpu", () => {
     };
 
     const gpu = await runGpu(matrix);
-    expectMatchesCpu(gpu, normalize(matrix));
+    expectMatrixCloseTo(gpu, normalize(matrix), 4);
   });
 
   it("normalizes each row independently", async () => {
@@ -51,7 +45,7 @@ describe("normalizeOnGpu", () => {
     };
 
     const gpu = await runGpu(matrix);
-    expectMatchesCpu(gpu, normalize(matrix));
+    expectMatrixCloseTo(gpu, normalize(matrix), 4);
   });
 
   it("produces a zero-mean, unit-variance row (standard normal)", async () => {
@@ -93,6 +87,6 @@ describe("normalizeOnGpu", () => {
     const matrix = createMatrix(6, 16, rand);
 
     const gpu = await runGpu(matrix);
-    expectMatchesCpu(gpu, normalize(matrix));
+    expectMatrixCloseTo(gpu, normalize(matrix), 4);
   });
 });

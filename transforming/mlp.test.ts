@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
-import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
-import type { Matrix } from "../shared/matrices.ts";
-
-const vectorFrom = (values: number[]): Matrix => matrixFrom([values]);
+import {
+  matrixFrom,
+  vectorFrom,
+  expectMatrixCloseTo,
+} from "../testing/testing-utils.ts";
 
 const twoDimPerceptron: MultilayerPerceptronWeights = {
   wUp: {

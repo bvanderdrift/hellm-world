@@ -11,6 +11,7 @@ import {
   extractMatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
+import { expectMatrixCloseTo } from "../../testing/testing-utils.ts";
 import { getPositionEncoding } from "../position-encoding.ts";
 import { prepareHiddenState } from "./prepareHiddenStateGPU.ts";
 
@@ -59,14 +60,6 @@ const runGpu = async (
   return extractMatrixBuffer(hiddenState);
 };
 
-const expectMatricesClose = (actual: Matrix, expected: Matrix) => {
-  expect(actual.vectors).toBe(expected.vectors);
-  expect(actual.dimensions).toBe(expected.dimensions);
-  for (let i = 0; i < expected.values.length; i++) {
-    expect(actual.values[i]!).toBeCloseTo(expected.values[i]!, 4);
-  }
-};
-
 describe("prepareHiddenState (GPU)", () => {
   it("scales the embedding by sqrt(dim) and adds positional encoding", async () => {
     // 3 vocab entries, 4 hidden dimensions
@@ -87,7 +80,7 @@ describe("prepareHiddenState (GPU)", () => {
     const actual = await runGpu(embeddings, vocabIndices);
     const expected = cpuPrepareHiddenState(embeddings, vocabIndices);
 
-    expectMatricesClose(actual, expected);
+    expectMatrixCloseTo(actual, expected, 4);
   });
 
   it("matches the CPU reference for a larger random case", async () => {
@@ -100,7 +93,7 @@ describe("prepareHiddenState (GPU)", () => {
     const actual = await runGpu(embeddings, vocabIndices);
     const expected = cpuPrepareHiddenState(embeddings, vocabIndices);
 
-    expectMatricesClose(actual, expected);
+    expectMatrixCloseTo(actual, expected, 4);
   });
 
   it("writes position 0 with zero positional offset (sin0/cos0 => +0/+1 baseline)", async () => {

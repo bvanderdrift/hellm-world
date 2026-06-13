@@ -14,6 +14,8 @@ export const matrixFrom = (rows: number[][]): Matrix => {
   return m;
 };
 
+export const vectorFrom = (values: number[]): Matrix => matrixFrom([values]);
+
 export const expectMatrixCloseTo = (
   actual: Matrix,
   expected: Matrix,
