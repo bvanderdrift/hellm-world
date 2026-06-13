@@ -12,7 +12,7 @@ import { llmForwardPassByTokensOnGPU } from "./llm-gpu.ts";
 import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
 
 const MODEL_NAME = "addy";
-const TOKEN_COUNTS = [1, 3, 5, 10];
+const TOKEN_COUNTS = [1, 3, 5, 10, 30, 50, 100, 300, 500, 1000];
 
 const main = async () => {
   const model = getLatestCheckpointModel(MODEL_NAME);
@@ -23,8 +23,11 @@ const main = async () => {
   console.log(`  warmup=${WARMUP_ITERS}, measure=${MEASURE_ITERS} iters\n`);
 
   for (const tokenCount of TOKEN_COUNTS) {
-    const inputTokens = model.vocabulary.slice(0, tokenCount);
-    const label = `tokens=${tokenCount}  [${inputTokens.join(", ")}]`;
+    const inputTokens = Array.from(
+      { length: tokenCount },
+      () => model.vocabulary[0]!,
+    );
+    const label = `tokens=${tokenCount}  [${model.vocabulary[0]} x${tokenCount}]`;
 
     const cpuStats = await benchmark(() => {
       llmForwardPassByTokens(inputTokens, model, false);
