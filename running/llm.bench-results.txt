@@ -1,55 +1,56 @@
-inference CPU vs GPU benchmark
+inference GPU-only benchmark
   model=addy
   warmup=3, measure=10 iters
+  reusing cached CPU speeds where available
 
 
   tokens=1  [1 x1]
-    CPU        mean=4.509ms median=4.393ms min=4.214ms stddev=0.344ms
-    GPU        mean=11.555ms median=11.561ms min=11.159ms stddev=0.271ms
-    -> GPU is 2.63x slower (median)
+    CPU(cache) mean=4.509ms median=4.393ms min=4.214ms stddev=0.344ms
+    GPU        mean=15.333ms median=15.370ms min=13.167ms stddev=1.622ms
+    -> GPU is 3.50x slower (median)
 
   tokens=3  [1 x3]
-    CPU        mean=12.861ms median=12.857ms min=12.730ms stddev=0.114ms
-    GPU        mean=11.415ms median=11.433ms min=11.192ms stddev=0.176ms
-    -> GPU is 1.12x faster (median)
+    CPU(cache) mean=12.861ms median=12.857ms min=12.730ms stddev=0.114ms
+    GPU        mean=13.453ms median=13.791ms min=11.870ms stddev=0.977ms
+    -> GPU is 1.07x slower (median)
 
   tokens=5  [1 x5]
-    CPU        mean=21.245ms median=21.267ms min=20.927ms stddev=0.236ms
-    GPU        mean=11.340ms median=11.301ms min=10.994ms stddev=0.305ms
-    -> GPU is 1.88x faster (median)
+    CPU(cache) mean=21.245ms median=21.267ms min=20.927ms stddev=0.236ms
+    GPU        mean=13.145ms median=12.996ms min=11.533ms stddev=1.486ms
+    -> GPU is 1.64x faster (median)
 
   tokens=10  [1 x10]
-    CPU        mean=42.560ms median=42.688ms min=41.977ms stddev=0.271ms
-    GPU        mean=11.645ms median=11.383ms min=10.997ms stddev=0.724ms
-    -> GPU is 3.75x faster (median)
+    CPU(cache) mean=42.560ms median=42.688ms min=41.977ms stddev=0.271ms
+    GPU        mean=13.532ms median=13.448ms min=11.067ms stddev=1.532ms
+    -> GPU is 3.17x faster (median)
 
   tokens=30  [1 x30]
-    CPU        mean=133.681ms median=132.142ms min=130.517ms stddev=5.320ms
-    GPU        mean=13.289ms median=13.247ms min=12.605ms stddev=0.540ms
-    -> GPU is 9.98x faster (median)
+    CPU(cache) mean=133.681ms median=132.142ms min=130.517ms stddev=5.320ms
+    GPU        mean=13.837ms median=13.210ms min=11.790ms stddev=1.772ms
+    -> GPU is 10.00x faster (median)
 
   tokens=50  [1 x50]
-    CPU        mean=226.800ms median=224.954ms min=224.140ms stddev=6.173ms
-    GPU        mean=19.251ms median=19.074ms min=18.645ms stddev=0.437ms
-    -> GPU is 11.79x faster (median)
+    CPU(cache) mean=226.800ms median=224.954ms min=224.140ms stddev=6.173ms
+    GPU        mean=13.409ms median=13.785ms min=11.928ms stddev=1.035ms
+    -> GPU is 16.32x faster (median)
 
   tokens=100  [1 x100]
-    CPU        mean=500.733ms median=481.788ms min=478.210ms stddev=41.378ms
-    GPU        mean=29.422ms median=29.472ms min=28.886ms stddev=0.378ms
-    -> GPU is 16.35x faster (median)
+    CPU(cache) mean=500.733ms median=481.788ms min=478.210ms stddev=41.378ms
+    GPU        mean=14.402ms median=14.384ms min=13.519ms stddev=0.700ms
+    -> GPU is 33.49x faster (median)
 
   tokens=300  [1 x300]
-    CPU        mean=1849.504ms median=1843.224ms min=1818.640ms stddev=31.493ms
-    GPU        mean=81.586ms median=81.493ms min=80.813ms stddev=0.802ms
-    -> GPU is 22.62x faster (median)
+    CPU(cache) mean=1849.504ms median=1843.224ms min=1818.640ms stddev=31.493ms
+    GPU        mean=27.099ms median=26.906ms min=26.695ms stddev=0.385ms
+    -> GPU is 68.51x faster (median)
 
   tokens=500  [1 x500]
-    CPU        mean=3719.675ms median=3701.757ms min=3682.927ms stddev=58.425ms
-    GPU        mean=148.598ms median=148.436ms min=147.678ms stddev=0.486ms
-    -> GPU is 24.94x faster (median)
+    CPU(cache) mean=3719.675ms median=3701.757ms min=3682.927ms stddev=58.425ms
+    GPU        mean=54.230ms median=54.469ms min=53.549ms stddev=0.370ms
+    -> GPU is 67.96x faster (median)
 
   tokens=1000  [1 x1000]
-    CPU        mean=10592.421ms median=10586.031ms min=10527.466ms stddev=47.726ms
-    GPU        mean=371.431ms median=372.279ms min=369.487ms stddev=1.438ms
-    -> GPU is 28.44x faster (median)
+    CPU(cache) mean=10592.421ms median=10586.031ms min=10527.466ms stddev=47.726ms
+    GPU        mean=186.009ms median=185.674ms min=185.011ms stddev=0.843ms
+    -> GPU is 57.01x faster (median)
 

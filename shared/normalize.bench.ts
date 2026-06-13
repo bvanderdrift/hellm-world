@@ -1,5 +1,6 @@
 import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
+import { gpuContext } from "./gpu-context.ts";
 import { compareAcrossSizes } from "../bench-harness.ts";
 
 if (import.meta.main) {
@@ -8,7 +9,9 @@ if (import.meta.main) {
     tolerance: 1e-4,
     cpu: ({ matrix }) => normalize(matrix),
     gpu: ({ buffer }) => {
-      normalizeOnGpu(buffer);
+      const encoder = gpuContext.device.createCommandEncoder();
+      normalizeOnGpu(buffer, encoder);
+      gpuContext.device.queue.submit([encoder.finish()]);
       return buffer;
     },
   });

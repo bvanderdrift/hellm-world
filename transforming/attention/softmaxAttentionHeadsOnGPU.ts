@@ -93,6 +93,7 @@ export const softmaxAttentionHeadsOnGPU = (
   contextLength: TgpuBuffer<d.U32> & UniformFlag,
   attentionRelevancyOutput: MatrixBuffer,
   matchingKeyProducts: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(softmaxAttentionHeadsParams, {
     contextLength,
@@ -101,6 +102,7 @@ export const softmaxAttentionHeadsOnGPU = (
   });
 
   softmaxAttentionHeadsPipeline
+    .with(encoder)
     .with(params)
     .dispatchWorkgroups(headsCount, attentionRelevancyOutput.vectors);
 };

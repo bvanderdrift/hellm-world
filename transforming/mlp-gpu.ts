@@ -13,17 +13,18 @@ export const getMultilayerPerceptronActivationsOnGPU = (
   /** Pre-initialize buffer to work with, so that each MLP call doesn't have to allocate and remove GPU memory */
   out: MatrixBuffer,
   perceptron: MultilayerPerceptronGPUBuffers,
+  encoder: GPUCommandEncoder,
 ) => {
-  multiplyMatricesOnGPU(encoding, perceptron.wUp.weightsMatrix, upped);
+  multiplyMatricesOnGPU(encoding, perceptron.wUp.weightsMatrix, upped, encoder);
 
-  addVectorAcrossMatrixOnGPU(upped, perceptron.wUp.biasVector);
+  addVectorAcrossMatrixOnGPU(upped, perceptron.wUp.biasVector, encoder);
 
   // We activate neurons
-  reluOnGpu(upped);
+  reluOnGpu(upped, encoder);
 
   // We select new knowledge to enrich
-  multiplyMatricesOnGPU(upped, perceptron.wDown.weightsMatrix, out);
+  multiplyMatricesOnGPU(upped, perceptron.wDown.weightsMatrix, out, encoder);
 
   // Not sure what this bias does
-  addVectorAcrossMatrixOnGPU(out, perceptron.wDown.biasVector);
+  addVectorAcrossMatrixOnGPU(out, perceptron.wDown.biasVector, encoder);
 };

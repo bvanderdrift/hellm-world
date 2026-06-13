@@ -45,12 +45,15 @@ const runGpu = async (
     dimensions: outDim,
   });
 
+  const encoder = gpuContext.device.createCommandEncoder();
   getMultilayerPerceptronActivationsOnGPU(
     encoding,
     upped,
     out,
     loadPerceptron(perceptron),
+    encoder,
   );
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(out);

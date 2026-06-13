@@ -37,6 +37,8 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
+  const encoder = gpuContext.device.createCommandEncoder();
+
   const hiddenState = createMatrixBuffer({
     vectors: inputPositionToVocabPosition.length,
     dimensions: model.counts.hiddenDimensions,
@@ -93,6 +95,7 @@ export const llmForwardPassByTokensOnGPU = async (
     inputPositionToVocabPositionGPUBuffer,
     hiddenState,
     weightBuffers.embeddings,
+    encoder,
   );
 
   const transformerActivations: TransformerActivations[] = [];
@@ -113,7 +116,7 @@ export const llmForwardPassByTokensOnGPU = async (
   for (const transformerIndex in model.transformers) {
     const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
 
-    normalizeOnGpu(hiddenState);
+    normalizeOnGpu(hiddenState, encoder);
 
     runSelfAttentionMechanismOnGPU(
       hiddenState,
@@ -128,11 +131,12 @@ export const llmForwardPassByTokensOnGPU = async (
       matchingKeyProducts,
       attentionOutBuffer,
       attentionUpdateBuffer,
+      encoder,
     );
 
-    addMatricesOnGPU(hiddenState, attentionUpdateBuffer);
+    addMatricesOnGPU(hiddenState, attentionUpdateBuffer, encoder);
 
-    normalizeOnGpu(hiddenState);
+    normalizeOnGpu(hiddenState, encoder);
 
     getMultilayerPerceptronActivationsOnGPU(
       // Normalize input only, don't normalize the intermediateState iself
@@ -141,10 +145,11 @@ export const llmForwardPassByTokensOnGPU = async (
       uppedMlpBuffer,
       outMlpBuffer,
       transformerBuffers.multilayerPerceptron,
+      encoder,
     );
 
     // Apply updated knowledge
-    addMatricesOnGPU(hiddenState, outMlpBuffer);
+    addMatricesOnGPU(hiddenState, outMlpBuffer, encoder);
 
     transformerActivations.push({
       attention: null as unknown,
@@ -153,7 +158,7 @@ export const llmForwardPassByTokensOnGPU = async (
     } as any);
   }
 
-  normalizeOnGpu(hiddenState);
+  normalizeOnGpu(hiddenState, encoder);
 
   const unembeddedStateBuffer = createMatrixBuffer(
     createMatrix(contextSize, model.vocabulary.length),
@@ -163,6 +168,7 @@ export const llmForwardPassByTokensOnGPU = async (
     hiddenState,
     weightBuffers.unembeddings,
     unembeddedStateBuffer,
+    encoder,
   );
 
   const missingTransformerActivationsCount =
@@ -174,6 +180,8 @@ export const llmForwardPassByTokensOnGPU = async (
       `Missing ${missingTransformerActivationsCount} transformer activations`,
     );
   }
+
+  gpuContext.device.queue.submit([encoder.finish()]);
 
   const embeddings = await extractMatrixBuffer(unembeddedStateBuffer);
 

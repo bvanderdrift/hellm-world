@@ -10,7 +10,9 @@ import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 // matrix. We use the CPU version as the oracle and compare the used region.
 const runGpu = async (matrix: Matrix): Promise<Matrix> => {
   const buffer = createMatrixBuffer(matrix);
-  normalizeOnGpu(buffer);
+  const encoder = gpuContext.device.createCommandEncoder();
+  normalizeOnGpu(buffer, encoder);
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
   return extractMatrixBuffer(buffer);
 };

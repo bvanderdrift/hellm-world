@@ -66,6 +66,7 @@ export const prepareHiddenState = (
   inputTokenIndices: TgpuBuffer<WgslArray<F32>> & StorageFlag,
   hiddenState: MatrixBuffer,
   embeddings: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const bindGroup = gpuContext.createBindGroup(prepareHiddenStateParamsLayout, {
     inputTokenIndices: inputTokenIndices.buffer,
@@ -74,6 +75,7 @@ export const prepareHiddenState = (
   });
 
   prepareHiddenStateRunner
+    .with(encoder)
     .with(bindGroup)
     .dispatchThreads(hiddenState.vectors, hiddenState.dimensions);
 };

@@ -14,7 +14,9 @@ describe("reluOnGpu", () => {
     };
     const buffer = createMatrixBuffer(matrix);
 
-    reluOnGpu(buffer);
+    const encoder = gpuContext.device.createCommandEncoder();
+    reluOnGpu(buffer, encoder);
+    gpuContext.device.queue.submit([encoder.finish()]);
     await gpuContext.device.queue.onSubmittedWorkDone();
 
     const result = await extractMatrixBuffer(buffer);

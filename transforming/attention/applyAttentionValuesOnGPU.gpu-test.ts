@@ -27,12 +27,15 @@ const runGpu = async (
     createMatrix(inputV.vectors, inputV.dimensions),
   );
 
+  const encoder = gpuContext.device.createCommandEncoder();
   applyAttentionValuesOnGPU(
     headDim,
     inputVBuffer,
     matchingKeyProductsBuffer,
     out,
+    encoder,
   );
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(out);

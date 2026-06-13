@@ -53,7 +53,9 @@ const runGpu = async (
   });
   const tokenIndices = makeTokenIndicesBuffer(vocabIndices);
 
-  prepareHiddenState(tokenIndices, hiddenState, embeddingsBuffer);
+  const encoder = gpuContext.device.createCommandEncoder();
+  prepareHiddenState(tokenIndices, hiddenState, embeddingsBuffer, encoder);
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(hiddenState);

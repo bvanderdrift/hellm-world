@@ -5,7 +5,7 @@ import tgpu, {
   type UniformFlag,
 } from "typegpu";
 import { gpuContext } from "./gpu-context.ts";
-import { createMatrix, type Matrix } from "./matrices.ts";
+import { type Matrix } from "./matrices.ts";
 
 const createMatrixBufferDefintionInstance = (
   vectors: number,
@@ -71,6 +71,7 @@ export const multiplyMatricesOnGPU = (
   m1: MatrixBuffer,
   m2: MatrixBuffer,
   mOut: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(multiplyMatrixParamsLayout, {
     m1: m1.buffer,
@@ -78,7 +79,10 @@ export const multiplyMatricesOnGPU = (
     mOut: mOut.buffer,
   });
 
-  dotProductRunner.with(params).dispatchThreads(m1.vectors, m2.dimensions);
+  dotProductRunner
+    .with(encoder)
+    .with(params)
+    .dispatchThreads(m1.vectors, m2.dimensions);
 };
 
 export const createMatrixBuffer = (
@@ -139,6 +143,7 @@ const applyScalarToMatrixKernel = gpuContext.createGuardedComputePipeline(
 export const applyScalarToMatrixOnGPU = (
   scalar: TgpuBuffer<d.F32> & UniformFlag,
   matrix: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(applyScalarParamsLayout, {
     scalar,
@@ -146,6 +151,7 @@ export const applyScalarToMatrixOnGPU = (
   });
 
   applyScalarToMatrixKernel
+    .with(encoder)
     .with(params)
     .dispatchThreads(matrix.vectors, matrix.dimensions);
 };
@@ -174,6 +180,7 @@ const addMatricesKernel = gpuContext.createGuardedComputePipeline(
 export const addMatricesOnGPU = (
   m1WillMutate: MatrixBuffer,
   m2: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(addMatricesParamsLayout, {
     m1WillMutate: m1WillMutate.buffer,
@@ -181,6 +188,7 @@ export const addMatricesOnGPU = (
   });
 
   addMatricesKernel
+    .with(encoder)
     .with(params)
     .dispatchThreads(m1WillMutate.vectors * m1WillMutate.dimensions);
 };
@@ -199,6 +207,7 @@ const addVectorAcrossMatrixKernel = gpuContext.createGuardedComputePipeline(
 export const addVectorAcrossMatrixOnGPU = (
   m1WillMutate: MatrixBuffer,
   vector: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(addMatricesParamsLayout, {
     m1WillMutate: m1WillMutate.buffer,
@@ -206,6 +215,7 @@ export const addVectorAcrossMatrixOnGPU = (
   });
 
   addVectorAcrossMatrixKernel
+    .with(encoder)
     .with(params)
     .dispatchThreads(m1WillMutate.vectors, m1WillMutate.dimensions);
 };

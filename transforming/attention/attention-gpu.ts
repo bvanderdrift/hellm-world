@@ -21,10 +21,11 @@ export const runSelfAttentionMechanismOnGPU = (
   matchingKeyProducts: MatrixBuffer,
   output: MatrixBuffer,
   attentionUpdate: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
-  multiplyMatricesOnGPU(input, attentionWeights.Q, inputQ);
-  multiplyMatricesOnGPU(input, attentionWeights.K, inputK);
-  multiplyMatricesOnGPU(input, attentionWeights.V, inputV);
+  multiplyMatricesOnGPU(input, attentionWeights.Q, inputQ, encoder);
+  multiplyMatricesOnGPU(input, attentionWeights.K, inputK, encoder);
+  multiplyMatricesOnGPU(input, attentionWeights.V, inputV, encoder);
 
   runSelfAttentionHeadsOnGPU(
     inputQ,
@@ -36,9 +37,10 @@ export const runSelfAttentionMechanismOnGPU = (
     attentionRelevancyOutput,
     matchingKeyProducts,
     output,
+    encoder,
   );
 
-  multiplyMatricesOnGPU(output, attentionWeights.out, attentionUpdate);
+  multiplyMatricesOnGPU(output, attentionWeights.out, attentionUpdate, encoder);
 };
 
 export const runSelfAttentionHeadsOnGPU = (
@@ -51,6 +53,7 @@ export const runSelfAttentionHeadsOnGPU = (
   attentionRelevancyOutput: MatrixBuffer,
   matchingKeyProducts: MatrixBuffer,
   output: MatrixBuffer,
+  encoder: GPUCommandEncoder,
 ) => {
   calculateRelevancyOnGPU(
     headCount,
@@ -58,6 +61,7 @@ export const runSelfAttentionHeadsOnGPU = (
     inputK,
     inputQ,
     attentionRelevancyOutput,
+    encoder,
   );
 
   softmaxAttentionHeadsOnGPU(
@@ -65,6 +69,7 @@ export const runSelfAttentionHeadsOnGPU = (
     contextLength,
     attentionRelevancyOutput,
     matchingKeyProducts,
+    encoder,
   );
 
   applyAttentionValuesOnGPU(
@@ -72,5 +77,6 @@ export const runSelfAttentionHeadsOnGPU = (
     inputV,
     matchingKeyProducts,
     output,
+    encoder,
   );
 };

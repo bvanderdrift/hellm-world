@@ -53,6 +53,7 @@ const runGpu = async (
     createMatrix(vectors, hiddenDimensions),
   );
 
+  const encoder = gpuContext.device.createCommandEncoder();
   runSelfAttentionMechanismOnGPU(
     inputBuffer,
     headsCount,
@@ -66,7 +67,9 @@ const runGpu = async (
     matchingKeyProducts,
     output,
     attentionUpdate,
+    encoder,
   );
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(attentionUpdate);

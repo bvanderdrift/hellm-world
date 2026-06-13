@@ -14,10 +14,13 @@ const reluKernel = gpuContext.createGuardedComputePipeline((i: number) => {
   }
 });
 
-export const reluOnGpu = (matrix: MatrixBuffer) => {
+export const reluOnGpu = (matrix: MatrixBuffer, encoder: GPUCommandEncoder) => {
   const params = gpuContext.createBindGroup(singleMatrixParamsLayout, {
     m: matrix.buffer,
   });
 
-  reluKernel.with(params).dispatchThreads(matrix.vectors * matrix.dimensions);
+  reluKernel
+    .with(encoder)
+    .with(params)
+    .dispatchThreads(matrix.vectors * matrix.dimensions);
 };

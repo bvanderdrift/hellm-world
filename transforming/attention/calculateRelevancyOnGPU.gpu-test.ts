@@ -28,7 +28,16 @@ const runRelevancyGpu = async (
     createMatrix(inputQ.vectors, inputQ.vectors * headsCount),
   );
 
-  calculateRelevancyOnGPU(headsCount, headDim, inputKBuffer, inputQBuffer, out);
+  const encoder = gpuContext.device.createCommandEncoder();
+  calculateRelevancyOnGPU(
+    headsCount,
+    headDim,
+    inputKBuffer,
+    inputQBuffer,
+    out,
+    encoder,
+  );
+  gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(out);

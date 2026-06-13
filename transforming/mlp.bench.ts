@@ -1,5 +1,6 @@
 import { createMatrix } from "../shared/matrices.ts";
 import { createMatrixBuffer } from "../shared/matrices-gpu.ts";
+import { gpuContext } from "../shared/gpu-context.ts";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "./mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
@@ -59,7 +60,9 @@ if (import.meta.main) {
     cpu: ({ matrix }, { weights }) =>
       getMultilayerPerceptronActivations(matrix, weights).downingOutput,
     gpu: ({ buffer }, { gpu, upped, out }) => {
-      getMultilayerPerceptronActivationsOnGPU(buffer, upped, out, gpu);
+      const encoder = gpuContext.device.createCommandEncoder();
+      getMultilayerPerceptronActivationsOnGPU(buffer, upped, out, gpu, encoder);
+      gpuContext.device.queue.submit([encoder.finish()]);
       return out;
     },
   });
