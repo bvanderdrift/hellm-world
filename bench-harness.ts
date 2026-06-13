@@ -83,6 +83,13 @@ export const printRow = (
   console.log(`    -> ${candidateLabel} is ${speedupStr} (median)`);
 };
 
+export const printGpuRow = (label: string, stats: Stats) => {
+  console.log(`\n  ${label}`);
+  console.log(
+    `    ${"GPU".padEnd(10)} mean=${fmtMs(stats.mean)} median=${fmtMs(stats.median)} min=${fmtMs(stats.min)} stddev=${fmtMs(stats.stddev)}`,
+  );
+};
+
 export const matricesMatch = (
   m1: Matrix,
   m2: Matrix,
