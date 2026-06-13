@@ -1,6 +1,6 @@
-import { normalize } from "../shared/normalize.ts";
-import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
-import { compareAcrossSizes } from "./bench-harness.ts";
+import { normalize } from "./normalize.ts";
+import { normalizeOnGpu } from "./normalize-gpu.ts";
+import { compareAcrossSizes } from "../bench-harness.ts";
 
 if (import.meta.main) {
   await compareAcrossSizes({

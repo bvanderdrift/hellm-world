@@ -1,10 +1,10 @@
-import { createMatrix, type Matrix } from "../shared/matrices.ts";
+import { createMatrix, type Matrix } from "./shared/matrices.ts";
 import {
   createMatrixBufferAndCopy,
   extractMatrixBuffer,
   type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import { gpuContext } from "../shared/gpu-context.ts";
+} from "./shared/matrices-gpu.ts";
+import { gpuContext } from "./shared/gpu-context.ts";
 
 export const WARMUP_ITERS = 3;
 export const MEASURE_ITERS = 10;

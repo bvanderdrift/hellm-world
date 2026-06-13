@@ -1,4 +1,4 @@
-import { llmForwardPassByTokens } from "../running/llm.ts";
+import { llmForwardPassByTokens } from "./llm.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { validateModel } from "../model/model-validation.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
@@ -7,8 +7,8 @@ import {
   printRow,
   WARMUP_ITERS,
   MEASURE_ITERS,
-} from "./bench-harness.ts";
-import { llmForwardPassByTokensOnGPU } from "../running/llm-gpu.ts";
+} from "../bench-harness.ts";
+import { llmForwardPassByTokensOnGPU } from "./llm-gpu.ts";
 
 const MODEL_NAME = "addy";
 const TOKEN_COUNTS = [1, 3, 5, 10];

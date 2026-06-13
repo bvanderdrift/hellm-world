@@ -2,19 +2,19 @@ import {
   createMatrixBufferAndCopy,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
+} from "./matrices-gpu.ts";
 import {
   createMatrix,
   multiplyMatrices,
   type Matrix,
-} from "../shared/matrices.ts";
-import { gpuContext } from "../shared/gpu-context.ts";
+} from "./matrices.ts";
+import { gpuContext } from "./gpu-context.ts";
 import {
   benchmark,
   compareAcrossSizes,
   fmtMs,
   rand,
-} from "./bench-harness.ts";
+} from "../bench-harness.ts";
 
 type Operands = { b: Matrix; bBuf: MatrixBuffer; out: MatrixBuffer };
 

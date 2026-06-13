@@ -1,10 +1,10 @@
 import { createMatrix } from "../shared/matrices.ts";
 import { createMatrixBufferAndCopy } from "../shared/matrices-gpu.ts";
-import { getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
-import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
+import { getMultilayerPerceptronActivations } from "./mlp.ts";
+import { getMultilayerPerceptronActivationsOnGPU } from "./mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
-import { compareAcrossSizes, rand } from "./bench-harness.ts";
+import { compareAcrossSizes, rand } from "../bench-harness.ts";
 
 const MLP_MULTIPLE = 4;
 

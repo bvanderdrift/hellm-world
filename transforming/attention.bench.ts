@@ -1,11 +1,11 @@
 import { createMatrix, multiplyMatrices } from "../shared/matrices.ts";
 import { createMatrixBufferAndCopy } from "../shared/matrices-gpu.ts";
 import { divideToWhole } from "../shared/math.ts";
-import { runSelfAttentionHead } from "../transforming/attention.ts";
-import { runSelfAttentionMechanismOnGPU } from "../transforming/attention-gpu.ts";
+import { runSelfAttentionHead } from "./attention.ts";
+import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
 import type { AttentionWeights } from "../model/model-types.ts";
 import type { AttentionGPUBuffers } from "../model/model-gpu-helpers.ts";
-import { compareAcrossSizes, rand } from "./bench-harness.ts";
+import { compareAcrossSizes, rand } from "../bench-harness.ts";
 
 const HEAD_DIM = 32;
 
