@@ -27,9 +27,9 @@ export const runSelfAttentionMechanismOnGPU = (
   inputQ: MatrixBuffer,
   inputK: MatrixBuffer,
   inputV: MatrixBuffer,
+  out: MatrixBuffer,
   attentionUpdate: MatrixBuffer,
-  headsOut: MatrixBuffer,
-): AttentionActivations => {
+) => {
   const hiddenDimensionsCount = input.dimensions;
 
   multiplyMatricesOnGPU(input, attentionWeights.Q, inputQ);
@@ -44,46 +44,12 @@ export const runSelfAttentionMechanismOnGPU = (
     inputV,
     headsCount,
     headDimensionsCount,
-    headsOut,
+    out,
   );
 
-  multiplyMatricesOnGPU(headOut, attentionWeights.out, attentionUpdate);
-
-  return {
-    normalizedInput: input,
-    heads: new Array(headsCount)
-      .fill(0)
-      .map((_, h): AttentionHeadActivations => {
-        return {
-          attentionRelevancyOutput:
-            headActivations.attentionRelevancyOutput[h]!,
-          inputK: sliceRows(
-            headActivations.inputK,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          inputQ: sliceRows(
-            headActivations.inputQ,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          inputV: sliceRows(
-            headActivations.inputV,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          output: sliceRows(
-            headActivations.output,
-            h * headDimensionsCount,
-            (h + 1) * headDimensionsCount,
-          ),
-          softmaxOutput: headActivations.softmaxOutput[h]!,
-        };
-      }),
-    outMatrixInputActivations: headActivations.output,
-    output: attentionUpdate,
-  };
+  multiplyMatricesOnGPU(out, attentionWeights.out, attentionUpdate);
 };
+
 export const runSelfAttentionHeadOnGPU = (
   inputQ: MatrixBuffer,
   inputK: MatrixBuffer,
@@ -139,20 +105,3 @@ export const runSelfAttentionHeadOnGPU = (
     }
   }
 };
-
-const maskedDotProductParams = tgpu.bindGroupLayout({
-  m1: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  m2: {
-    storage: matrixBufferDefinition,
-    access: "readonly",
-  },
-  mOut: {
-    storage: matrixBufferDefinition,
-    access: "mutable",
-  },
-});
-
-const maskedDotProduct = () => {};
