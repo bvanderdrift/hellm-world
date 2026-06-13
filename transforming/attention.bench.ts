@@ -65,7 +65,7 @@ if (import.meta.main) {
       );
       return multiplyMatrices(head.output, weights.out);
     },
-    gpu: ({ buffer }, { headsCount, gpuWeights, scratch }) =>
+    gpu: ({ buffer }, { headsCount, gpuWeights, scratch }) => {
       runSelfAttentionMechanismOnGPU(
         buffer,
         headsCount,
@@ -73,8 +73,11 @@ if (import.meta.main) {
         scratch.inputQ,
         scratch.inputK,
         scratch.inputV,
-        scratch.attentionUpdate,
         scratch.headsOut,
-      ).output,
+        scratch.attentionUpdate,
+      );
+
+      return scratch.attentionUpdate;
+    },
   });
 }
