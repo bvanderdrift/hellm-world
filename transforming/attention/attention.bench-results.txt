@@ -1,0 +1,28 @@
+Attention mechanism CPU vs GPU benchmark
+  warmup=3, measure=10 iters
+
+  tiny   8x32
+    CPU        mean=0.166ms median=0.157ms min=0.137ms stddev=0.029ms
+    GPU        mean=0.716ms median=0.699ms min=0.622ms stddev=0.096ms
+    -> GPU is 4.44x slower (median)
+
+  small  32x128
+    CPU        mean=2.519ms median=2.474ms min=2.414ms stddev=0.123ms
+    GPU        mean=0.950ms median=0.951ms min=0.899ms stddev=0.031ms
+    -> GPU is 2.60x faster (median)
+
+  med    128x256
+    CPU        mean=47.042ms median=47.060ms min=46.234ms stddev=0.490ms
+    GPU        mean=2.492ms median=2.525ms min=1.794ms stddev=0.523ms
+    -> GPU is 18.64x faster (median)
+
+  large  256x512
+    CPU        mean=387.063ms median=379.744ms min=370.020ms stddev=31.360ms
+    GPU        mean=12.828ms median=12.850ms min=12.471ms stddev=0.244ms
+    -> GPU is 29.55x faster (median)
+
+  xlarge 512x512
+    CPU        mean=1018.035ms median=1011.980ms min=1005.606ms stddev=19.637ms
+    GPU        mean=31.543ms median=31.545ms min=31.090ms stddev=0.190ms
+    -> GPU is 32.08x faster (median)
+
