@@ -11,7 +11,8 @@
     "describe": "bun index.ts describe",
     "chart-loss": "bun index.ts chart-loss",
     "test": "vitest run",
-    "test:gpu": "bun test --preload ./bun-preload.ts $(find . -name '*.gpu-test.ts' -not -path './node_modules/*')",
+    "test:gpu": "bun test --preload ./bun-preload.ts",
+    "test:gpu:all": "bun test --preload ./bun-preload.ts $(find . -name '*.gpu-test.ts' -not -path './node_modules/*')",
     "typecheck": "tsc"
   },
   "keywords": [],

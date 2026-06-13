@@ -19,6 +19,7 @@ import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
 import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention-gpu.ts";
+import { divideToWhole } from "../shared/math.ts";
 
 export const llmForwardPassByTokensOnGPU = async (
   input: string[],
@@ -82,6 +83,21 @@ export const llmForwardPassByTokensOnGPU = async (
   const attentionOutBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize),
   );
+  const attentionRelevancyOutput = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+  const matchingKeyProducts = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+
+  const headDimensionsCount = divideToWhole(
+    hiddenDimensionsSize,
+    model.counts.attentionHeads,
+  );
+
+  const headDimensionsCountBuffer = gpuContext
+    .createBuffer(d.u32, headDimensionsCount)
+    .$usage("uniform");
 
   for (const transformerIndex in model.transformers) {
     const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
@@ -91,10 +107,13 @@ export const llmForwardPassByTokensOnGPU = async (
     runSelfAttentionMechanismOnGPU(
       hiddenState,
       model.counts.attentionHeads,
+      headDimensionsCountBuffer,
       transformerBuffers.attention,
       attentionInputQBuffer,
       attentionInputKBuffer,
       attentionInputVBuffer,
+      attentionRelevancyOutput,
+      matchingKeyProducts,
       attentionOutBuffer,
       attentionUpdateBuffer,
     );
