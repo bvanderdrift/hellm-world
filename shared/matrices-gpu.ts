@@ -5,9 +5,7 @@ import tgpu, {
   type UniformFlag,
 } from "typegpu";
 import { gpuContext } from "./gpu-context.ts";
-import type { Matrix } from "./matrices.ts";
-
-const SINGLE_DIMENSION_SIZE = 4_000;
+import { createMatrix, type Matrix } from "./matrices.ts";
 
 const createMatrixBufferDefintionInstance = (
   vectors: number,
@@ -63,9 +61,6 @@ const dotProductOnGPU = (i: number, j: number) => {
       m2.values[getFlatIndexOnGPU(k, j, m2.dimensions)]!;
   }
 
-  mOut.vectors = m1.vectors;
-  mOut.dimensions = m2.dimensions;
-
   mOut.values[getFlatIndexOnGPU(i, j, mOut.dimensions)]! = summed;
 };
 
@@ -87,29 +82,22 @@ export const multiplyMatricesOnGPU = (
 };
 
 export const createMatrixBuffer = (
-  vectorCount: number,
-  dimensionsCount: number,
-) => {
-  const embeddingsBuffer = gpuContext
-    .createBuffer(
-      createMatrixBufferDefintionInstance(vectorCount, dimensionsCount),
-    )
-    .$usage("storage");
-
-  return {
-    buffer: embeddingsBuffer,
-    vectors: vectorCount,
-    dimensions: dimensionsCount,
-  };
-};
-
-export const createMatrixBufferAndCopy = (m: Matrix): MatrixBuffer => {
+  m: Matrix | Omit<Matrix, "values">,
+): MatrixBuffer => {
+  const init = "values" in m ? m : undefined;
   const embeddingsBuffer = gpuContext
     .createBuffer(
       createMatrixBufferDefintionInstance(m.vectors, m.dimensions),
-      m,
+      init,
     )
     .$usage("storage");
+
+  if (!("values" in m)) {
+    embeddingsBuffer.patch({
+      vectors: m.vectors,
+      dimensions: m.dimensions,
+    });
+  }
 
   return {
     buffer: embeddingsBuffer,

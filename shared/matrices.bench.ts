@@ -1,13 +1,9 @@
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
 } from "./matrices-gpu.ts";
-import {
-  createMatrix,
-  multiplyMatrices,
-  type Matrix,
-} from "./matrices.ts";
+import { createMatrix, multiplyMatrices, type Matrix } from "./matrices.ts";
 import { gpuContext } from "./gpu-context.ts";
 import {
   benchmark,
@@ -21,9 +17,9 @@ type Operands = { b: Matrix; bBuf: MatrixBuffer; out: MatrixBuffer };
 const timeMatmul = async (m: number, k: number, n: number) => {
   const a = createMatrix(m, k, rand);
   const b = createMatrix(k, n, rand);
-  const aBuf = createMatrixBufferAndCopy(a);
-  const bBuf = createMatrixBufferAndCopy(b);
-  const outBuf = createMatrixBufferAndCopy(createMatrix(m, n));
+  const aBuf = createMatrixBuffer(a);
+  const bBuf = createMatrixBuffer(b);
+  const outBuf = createMatrixBuffer(createMatrix(m, n));
 
   const cpu = await benchmark(() => {
     multiplyMatrices(a, b);
@@ -56,8 +52,8 @@ if (import.meta.main) {
       const b = createMatrix(dimensions, dimensions, rand);
       return {
         b,
-        bBuf: createMatrixBufferAndCopy(b),
-        out: createMatrixBufferAndCopy(createMatrix(vectors, dimensions)),
+        bBuf: createMatrixBuffer(b),
+        out: createMatrixBuffer(createMatrix(vectors, dimensions)),
       };
     },
     cpu: ({ matrix }, { b }) => multiplyMatrices(matrix, b),
@@ -82,8 +78,18 @@ if (import.meta.main) {
     { label: "4×K * K×4", m: 4, k: Math.round(targetParams / 8), n: 4 },
     { label: "16×K * K×16", m: 16, k: Math.round(targetParams / 32), n: 16 },
     { label: "64×K * K×64", m: 64, k: Math.round(targetParams / 128), n: 64 },
-    { label: `${crossoverN}² (square)`, m: crossoverN, k: crossoverN, n: crossoverN },
-    { label: "wide 1×K * K×256", m: 1, k: Math.round(targetParams / 257), n: 256 },
+    {
+      label: `${crossoverN}² (square)`,
+      m: crossoverN,
+      k: crossoverN,
+      n: crossoverN,
+    },
+    {
+      label: "wide 1×K * K×256",
+      m: 1,
+      k: Math.round(targetParams / 257),
+      n: 256,
+    },
   ];
 
   console.log(`  target param count ≈ ${targetParams}\n`);

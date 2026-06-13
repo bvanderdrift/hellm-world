@@ -1,5 +1,5 @@
 import { createMatrix } from "../shared/matrices.ts";
-import { createMatrixBufferAndCopy } from "../shared/matrices-gpu.ts";
+import { createMatrixBuffer } from "../shared/matrices-gpu.ts";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "./mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
@@ -11,8 +11,8 @@ const MLP_MULTIPLE = 4;
 type MlpCtx = {
   weights: MultilayerPerceptronWeights;
   gpu: MultilayerPerceptronGPUBuffers;
-  upped: ReturnType<typeof createMatrixBufferAndCopy>;
-  out: ReturnType<typeof createMatrixBufferAndCopy>;
+  upped: ReturnType<typeof createMatrixBuffer>;
+  out: ReturnType<typeof createMatrixBuffer>;
 };
 
 if (import.meta.main) {
@@ -22,11 +22,19 @@ if (import.meta.main) {
     setup: ({ vectors, dimensions }) => {
       const weights: MultilayerPerceptronWeights = {
         wUp: {
-          weightsMatrix: createMatrix(dimensions, dimensions * MLP_MULTIPLE, rand),
+          weightsMatrix: createMatrix(
+            dimensions,
+            dimensions * MLP_MULTIPLE,
+            rand,
+          ),
           biasVector: createMatrix(1, dimensions * MLP_MULTIPLE, rand),
         },
         wDown: {
-          weightsMatrix: createMatrix(dimensions * MLP_MULTIPLE, dimensions, rand),
+          weightsMatrix: createMatrix(
+            dimensions * MLP_MULTIPLE,
+            dimensions,
+            rand,
+          ),
           biasVector: createMatrix(1, dimensions, rand),
         },
       };
@@ -34,18 +42,18 @@ if (import.meta.main) {
         weights,
         gpu: {
           wUp: {
-            weightsMatrix: createMatrixBufferAndCopy(weights.wUp.weightsMatrix),
-            biasVector: createMatrixBufferAndCopy(weights.wUp.biasVector),
+            weightsMatrix: createMatrixBuffer(weights.wUp.weightsMatrix),
+            biasVector: createMatrixBuffer(weights.wUp.biasVector),
           },
           wDown: {
-            weightsMatrix: createMatrixBufferAndCopy(weights.wDown.weightsMatrix),
-            biasVector: createMatrixBufferAndCopy(weights.wDown.biasVector),
+            weightsMatrix: createMatrixBuffer(weights.wDown.weightsMatrix),
+            biasVector: createMatrixBuffer(weights.wDown.biasVector),
           },
         },
-        upped: createMatrixBufferAndCopy(
+        upped: createMatrixBuffer(
           createMatrix(vectors, dimensions * MLP_MULTIPLE),
         ),
-        out: createMatrixBufferAndCopy(createMatrix(vectors, dimensions)),
+        out: createMatrixBuffer(createMatrix(vectors, dimensions)),
       };
     },
     cpu: ({ matrix }, { weights }) =>

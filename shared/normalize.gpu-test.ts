@@ -1,10 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { gpuContext } from "./gpu-context.ts";
 import { createMatrix, type Matrix } from "./matrices.ts";
-import {
-  createMatrixBufferAndCopy,
-  extractMatrixBuffer,
-} from "./matrices-gpu.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
 import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
@@ -12,7 +9,7 @@ import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 // normalizeOnGpu mutates the buffer in place; the CPU `normalize` returns a new
 // matrix. We use the CPU version as the oracle and compare the used region.
 const runGpu = async (matrix: Matrix): Promise<Matrix> => {
-  const buffer = createMatrixBufferAndCopy(matrix);
+  const buffer = createMatrixBuffer(matrix);
   normalizeOnGpu(buffer);
   await gpuContext.device.queue.onSubmittedWorkDone();
   return extractMatrixBuffer(buffer);

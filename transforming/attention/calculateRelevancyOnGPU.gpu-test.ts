@@ -2,7 +2,7 @@ import { describe, it } from "bun:test";
 import { d } from "typegpu";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   extractMatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { createMatrix, type Matrix } from "../../shared/matrices.ts";
@@ -22,9 +22,9 @@ const runRelevancyGpu = async (
   const headDim = gpuContext
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
-  const inputQBuffer = createMatrixBufferAndCopy(inputQ);
-  const inputKBuffer = createMatrixBufferAndCopy(inputK);
-  const out = createMatrixBufferAndCopy(
+  const inputQBuffer = createMatrixBuffer(inputQ);
+  const inputKBuffer = createMatrixBuffer(inputK);
+  const out = createMatrixBuffer(
     createMatrix(inputQ.vectors, inputQ.vectors * headsCount),
   );
 

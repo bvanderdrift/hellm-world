@@ -2,7 +2,7 @@ import { describe, it } from "bun:test";
 import { d } from "typegpu";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   extractMatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { createMatrix, type Matrix } from "../../shared/matrices.ts";
@@ -31,25 +31,25 @@ const runGpu = async (
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
 
-  const inputBuffer = createMatrixBufferAndCopy(input);
+  const inputBuffer = createMatrixBuffer(input);
   const weights: AttentionGPUBuffers = {
-    Q: createMatrixBufferAndCopy(attentionWeights.Q),
-    K: createMatrixBufferAndCopy(attentionWeights.K),
-    V: createMatrixBufferAndCopy(attentionWeights.V),
-    out: createMatrixBufferAndCopy(attentionWeights.out),
+    Q: createMatrixBuffer(attentionWeights.Q),
+    K: createMatrixBuffer(attentionWeights.K),
+    V: createMatrixBuffer(attentionWeights.V),
+    out: createMatrixBuffer(attentionWeights.out),
   };
 
-  const inputQ = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
-  const inputK = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
-  const inputV = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
-  const attentionRelevancyOutput = createMatrixBufferAndCopy(
+  const inputQ = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
+  const inputK = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
+  const inputV = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
+  const attentionRelevancyOutput = createMatrixBuffer(
     createMatrix(vectors, vectors * headsCount),
   );
-  const matchingKeyProducts = createMatrixBufferAndCopy(
+  const matchingKeyProducts = createMatrixBuffer(
     createMatrix(vectors, vectors * headsCount),
   );
-  const output = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
-  const attentionUpdate = createMatrixBufferAndCopy(
+  const output = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
+  const attentionUpdate = createMatrixBuffer(
     createMatrix(vectors, hiddenDimensions),
   );
 

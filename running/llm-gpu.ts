@@ -3,18 +3,14 @@ import type {
   Activations,
   TransformerActivations,
 } from "../model/activations-types.ts";
-import {
-  loadWeightsIntoGpu,
-  type WeightGPUBuffers,
-} from "../model/model-gpu-helpers.ts";
+import { type WeightGPUBuffers } from "../model/model-gpu-helpers.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   addMatricesOnGPU,
   extractMatrixBuffer,
-  createMatrixBuffer,
   multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
 import { createMatrix, type Matrix } from "../shared/matrices.ts";
@@ -41,41 +37,50 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const hiddenState = createMatrixBuffer(
-    inputPositionToVocabPosition.length,
-    model.counts.hiddenDimensions,
-  );
+  const hiddenState = createMatrixBuffer({
+    vectors: inputPositionToVocabPosition.length,
+    dimensions: model.counts.hiddenDimensions,
+  });
 
-  const uppedMlpBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize * model.counts.mlpMultiple),
-  );
+  const uppedMlpBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize * model.counts.mlpMultiple,
+  });
 
-  const outMlpBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
+  const outMlpBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
 
-  const attentionUpdateBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
+  const attentionUpdateBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
 
-  const attentionInputKBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
-  const attentionInputVBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
-  const attentionInputQBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
-  const attentionOutBuffer = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
-  const attentionRelevancyOutput = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
-  const matchingKeyProducts = createMatrixBufferAndCopy(
-    createMatrix(contextSize, hiddenDimensionsSize),
-  );
+  const attentionInputKBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const attentionInputVBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const attentionInputQBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const attentionOutBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const attentionRelevancyOutput = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const matchingKeyProducts = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
 
   const inputPositionToVocabPositionGPUBuffer = gpuContext
     .createBuffer(
@@ -150,7 +155,7 @@ export const llmForwardPassByTokensOnGPU = async (
 
   normalizeOnGpu(hiddenState);
 
-  const unembeddedStateBuffer = createMatrixBufferAndCopy(
+  const unembeddedStateBuffer = createMatrixBuffer(
     createMatrix(contextSize, hiddenDimensionsSize),
   );
 

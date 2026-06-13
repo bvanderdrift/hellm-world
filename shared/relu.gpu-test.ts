@@ -1,9 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { gpuContext } from "./gpu-context.ts";
-import {
-  createMatrixBufferAndCopy,
-  extractMatrixBuffer,
-} from "./matrices-gpu.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
 import type { Matrix } from "./matrices.ts";
 import { reluOnGpu } from "./relu-gpu.ts";
 
@@ -15,7 +12,7 @@ describe("reluOnGpu", () => {
       dimensions: 3,
       values: new Float32Array([-1, 2, -3, 4, 0, -0.5]),
     };
-    const buffer = createMatrixBufferAndCopy(matrix);
+    const buffer = createMatrixBuffer(matrix);
 
     reluOnGpu(buffer);
     await gpuContext.device.queue.onSubmittedWorkDone();

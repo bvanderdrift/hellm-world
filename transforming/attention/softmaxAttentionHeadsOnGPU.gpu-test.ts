@@ -2,11 +2,14 @@ import { describe, it } from "bun:test";
 import { d } from "typegpu";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   extractMatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { createMatrix, type Matrix } from "../../shared/matrices.ts";
-import { matrixFrom, expectMatrixCloseTo } from "../../testing/testing-utils.ts";
+import {
+  matrixFrom,
+  expectMatrixCloseTo,
+} from "../../testing/testing-utils.ts";
 import { runSelfAttentionHead } from "./attention.ts";
 import { softmaxAttentionHeadsOnGPU } from "./softmaxAttentionHeadsOnGPU.ts";
 
@@ -17,8 +20,8 @@ const runGpu = async (
   const contextLength = gpuContext
     .createBuffer(d.u32, attentionRelevancyOutput.vectors)
     .$usage("uniform");
-  const relevancyBuffer = createMatrixBufferAndCopy(attentionRelevancyOutput);
-  const matchingKeyProducts = createMatrixBufferAndCopy(
+  const relevancyBuffer = createMatrixBuffer(attentionRelevancyOutput);
+  const matchingKeyProducts = createMatrixBuffer(
     createMatrix(
       attentionRelevancyOutput.vectors,
       attentionRelevancyOutput.dimensions,

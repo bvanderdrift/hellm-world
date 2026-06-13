@@ -1,6 +1,6 @@
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
 import { createMatrix, multiplyMatrices } from "../../shared/matrices.ts";
-import { createMatrixBufferAndCopy } from "../../shared/matrices-gpu.ts";
+import { createMatrixBuffer } from "../../shared/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import { divideToWhole } from "../../shared/math.ts";
 import { runSelfAttentionHead } from "./attention.ts";
@@ -19,13 +19,13 @@ type AttentionCtx = {
   weights: AttentionWeights;
   gpuWeights: AttentionGPUBuffers;
   scratch: {
-    inputQ: ReturnType<typeof createMatrixBufferAndCopy>;
-    inputK: ReturnType<typeof createMatrixBufferAndCopy>;
-    inputV: ReturnType<typeof createMatrixBufferAndCopy>;
-    attentionRelevancyOutput: ReturnType<typeof createMatrixBufferAndCopy>;
-    matchingKeyProducts: ReturnType<typeof createMatrixBufferAndCopy>;
-    attentionUpdate: ReturnType<typeof createMatrixBufferAndCopy>;
-    headsOut: ReturnType<typeof createMatrixBufferAndCopy>;
+    inputQ: ReturnType<typeof createMatrixBuffer>;
+    inputK: ReturnType<typeof createMatrixBuffer>;
+    inputV: ReturnType<typeof createMatrixBuffer>;
+    attentionRelevancyOutput: ReturnType<typeof createMatrixBuffer>;
+    matchingKeyProducts: ReturnType<typeof createMatrixBuffer>;
+    attentionUpdate: ReturnType<typeof createMatrixBuffer>;
+    headsOut: ReturnType<typeof createMatrixBuffer>;
   };
 };
 
@@ -42,9 +42,9 @@ if (import.meta.main) {
       };
       const headsCount = divideToWhole(dimensions, HEAD_DIM);
       const scratchBuf = () =>
-        createMatrixBufferAndCopy(createMatrix(vectors, dimensions));
+        createMatrixBuffer(createMatrix(vectors, dimensions));
       const relevancyBuf = () =>
-        createMatrixBufferAndCopy(createMatrix(vectors, vectors * headsCount));
+        createMatrixBuffer(createMatrix(vectors, vectors * headsCount));
       return {
         headsCount,
         headDimensionsCount: HEAD_DIM,
@@ -56,10 +56,10 @@ if (import.meta.main) {
           .$usage("uniform"),
         weights,
         gpuWeights: {
-          Q: createMatrixBufferAndCopy(weights.Q),
-          K: createMatrixBufferAndCopy(weights.K),
-          V: createMatrixBufferAndCopy(weights.V),
-          out: createMatrixBufferAndCopy(weights.out),
+          Q: createMatrixBuffer(weights.Q),
+          K: createMatrixBuffer(weights.K),
+          V: createMatrixBuffer(weights.V),
+          out: createMatrixBuffer(weights.out),
         },
         scratch: {
           inputQ: scratchBuf(),

@@ -1,6 +1,6 @@
 import { createMatrix, type Matrix } from "./shared/matrices.ts";
 import {
-  createMatrixBufferAndCopy,
+  createMatrixBuffer,
   extractMatrixBuffer,
   type MatrixBuffer,
 } from "./shared/matrices-gpu.ts";
@@ -169,7 +169,7 @@ export const compareAcrossSizes = async <Ctx>(
     const matrix = createMatrix(size.vectors, size.dimensions, rand);
     const input: BenchInput = {
       matrix,
-      buffer: createMatrixBufferAndCopy(matrix),
+      buffer: createMatrixBuffer(matrix),
     };
     const ctx = (cmp.setup ? cmp.setup(size) : undefined) as Ctx;
     const label = `${size.label.padEnd(6)} ${size.vectors}x${size.dimensions}`;

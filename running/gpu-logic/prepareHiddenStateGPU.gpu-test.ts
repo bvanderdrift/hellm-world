@@ -7,7 +7,6 @@ import {
 } from "../../shared/matrices.ts";
 import {
   createMatrixBuffer,
-  createMatrixBufferAndCopy,
   extractMatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
@@ -47,11 +46,11 @@ const runGpu = async (
   embeddings: Matrix,
   vocabIndices: number[],
 ): Promise<Matrix> => {
-  const embeddingsBuffer = createMatrixBufferAndCopy(embeddings);
-  const hiddenState = createMatrixBuffer(
-    vocabIndices.length,
-    embeddings.dimensions,
-  );
+  const embeddingsBuffer = createMatrixBuffer(embeddings);
+  const hiddenState = createMatrixBuffer({
+    vectors: vocabIndices.length,
+    dimensions: embeddings.dimensions,
+  });
   const tokenIndices = makeTokenIndicesBuffer(vocabIndices);
 
   prepareHiddenState(tokenIndices, hiddenState, embeddingsBuffer);

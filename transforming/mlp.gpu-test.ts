@@ -2,7 +2,6 @@ import { describe, it } from "bun:test";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   createMatrixBuffer,
-  createMatrixBufferAndCopy,
   extractMatrixBuffer,
 } from "../shared/matrices-gpu.ts";
 import type { Matrix } from "../shared/matrices.ts";
@@ -20,12 +19,12 @@ const loadPerceptron = (
   perceptron: MultilayerPerceptronWeights,
 ): MultilayerPerceptronGPUBuffers => ({
   wUp: {
-    weightsMatrix: createMatrixBufferAndCopy(perceptron.wUp.weightsMatrix),
-    biasVector: createMatrixBufferAndCopy(perceptron.wUp.biasVector),
+    weightsMatrix: createMatrixBuffer(perceptron.wUp.weightsMatrix),
+    biasVector: createMatrixBuffer(perceptron.wUp.biasVector),
   },
   wDown: {
-    weightsMatrix: createMatrixBufferAndCopy(perceptron.wDown.weightsMatrix),
-    biasVector: createMatrixBufferAndCopy(perceptron.wDown.biasVector),
+    weightsMatrix: createMatrixBuffer(perceptron.wDown.weightsMatrix),
+    biasVector: createMatrixBuffer(perceptron.wDown.biasVector),
   },
 });
 
@@ -36,9 +35,15 @@ const runGpu = async (
   const intermediateDim = perceptron.wUp.weightsMatrix.dimensions;
   const outDim = perceptron.wDown.weightsMatrix.dimensions;
 
-  const encoding = createMatrixBufferAndCopy(input);
-  const upped = createMatrixBuffer(input.vectors, intermediateDim);
-  const out = createMatrixBuffer(input.vectors, outDim);
+  const encoding = createMatrixBuffer(input);
+  const upped = createMatrixBuffer({
+    vectors: input.vectors,
+    dimensions: intermediateDim,
+  });
+  const out = createMatrixBuffer({
+    vectors: input.vectors,
+    dimensions: outDim,
+  });
 
   getMultilayerPerceptronActivationsOnGPU(
     encoding,
