@@ -9,7 +9,7 @@ import {
 import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
-import { runSelfAttentionMechanism } from "../transforming/attention.ts";
+import { runSelfAttentionMechanism } from "../transforming/attention/attention.ts";
 import type { Model } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";

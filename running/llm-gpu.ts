@@ -18,7 +18,7 @@ import { createMatrix, type Matrix } from "../shared/matrices.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
 import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
-import { runSelfAttentionMechanismOnGPU } from "../transforming/attention-gpu.ts";
+import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { divideToWhole } from "../shared/math.ts";
 
 export const llmForwardPassByTokensOnGPU = async (

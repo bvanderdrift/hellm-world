@@ -4,7 +4,7 @@ import type { AttentionHeadActivations } from "../../model/activations-types.ts"
 import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
-} from "../../transforming/attention.ts";
+} from "../../transforming/attention/attention.ts";
 import {
   attentionBackprop,
   attentionHeadsBackprop,
@@ -46,10 +46,23 @@ const finiteDifferenceMatrixEntry = (
   columnIndex: number,
   objective: (perturbedMatrix: Matrix) => number,
 ) => {
-  const increased = perturbMatrix(matrix, rowIndex, columnIndex, FINITE_DIFFERENCE_EPSILON);
-  const decreased = perturbMatrix(matrix, rowIndex, columnIndex, -FINITE_DIFFERENCE_EPSILON);
+  const increased = perturbMatrix(
+    matrix,
+    rowIndex,
+    columnIndex,
+    FINITE_DIFFERENCE_EPSILON,
+  );
+  const decreased = perturbMatrix(
+    matrix,
+    rowIndex,
+    columnIndex,
+    -FINITE_DIFFERENCE_EPSILON,
+  );
 
-  return (objective(increased) - objective(decreased)) / (2 * FINITE_DIFFERENCE_EPSILON);
+  return (
+    (objective(increased) - objective(decreased)) /
+    (2 * FINITE_DIFFERENCE_EPSILON)
+  );
 };
 
 const finiteDifferenceMatrix = (
@@ -135,7 +148,11 @@ describe("attentionHeadsBackprop", () => {
       attentionHeadObjective(inputQ, inputK, perturbedV, outputGradients),
     );
 
-    expectMatrixCloseTo(inputVGradients, numericalVGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(
+      inputVGradients,
+      numericalVGradients,
+      FINITE_DIFFERENCE_PRECISION,
+    );
   });
 
   it("matches finite differences for query and key gradients after value mixing", () => {
@@ -158,8 +175,16 @@ describe("attentionHeadsBackprop", () => {
       attentionHeadObjective(inputQ, perturbedK, inputV, outputGradients),
     );
 
-    expectMatrixCloseTo(inputQGradients, numericalQGradients, FINITE_DIFFERENCE_PRECISION);
-    expectMatrixCloseTo(inputKGradients, numericalKGradients, FINITE_DIFFERENCE_PRECISION);
+    expectMatrixCloseTo(
+      inputQGradients,
+      numericalQGradients,
+      FINITE_DIFFERENCE_PRECISION,
+    );
+    expectMatrixCloseTo(
+      inputKGradients,
+      numericalKGradients,
+      FINITE_DIFFERENCE_PRECISION,
+    );
   });
 });
 
@@ -257,11 +282,31 @@ describe("attentionBackprop", () => {
     );
 
     const multiHeadPrecision = FINITE_DIFFERENCE_PRECISION - 1;
-    expectMatrixCloseTo(inputGradients, numericalInputGradients, multiHeadPrecision);
-    expectMatrixCloseTo(weightGradients.out, numericalOutGradients, multiHeadPrecision);
-    expectMatrixCloseTo(weightGradients.V, numericalVGradients, multiHeadPrecision);
-    expectMatrixCloseTo(weightGradients.Q, numericalQGradients, multiHeadPrecision);
-    expectMatrixCloseTo(weightGradients.K, numericalKGradients, multiHeadPrecision);
+    expectMatrixCloseTo(
+      inputGradients,
+      numericalInputGradients,
+      multiHeadPrecision,
+    );
+    expectMatrixCloseTo(
+      weightGradients.out,
+      numericalOutGradients,
+      multiHeadPrecision,
+    );
+    expectMatrixCloseTo(
+      weightGradients.V,
+      numericalVGradients,
+      multiHeadPrecision,
+    );
+    expectMatrixCloseTo(
+      weightGradients.Q,
+      numericalQGradients,
+      multiHeadPrecision,
+    );
+    expectMatrixCloseTo(
+      weightGradients.K,
+      numericalKGradients,
+      multiHeadPrecision,
+    );
   });
 });
 

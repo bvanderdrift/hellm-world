@@ -1,17 +1,18 @@
 import { describe, it } from "bun:test";
 import { d } from "typegpu";
-import { gpuContext } from "../shared/gpu-context.ts";
+import { gpuContext } from "../../shared/gpu-context.ts";
 import {
   createMatrixBufferAndCopy,
   extractMatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import { createMatrix, type Matrix } from "../shared/matrices.ts";
-import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
-import { runSelfAttentionHead } from "./attention.ts";
+} from "../../shared/matrices-gpu.ts";
+import { createMatrix, type Matrix } from "../../shared/matrices.ts";
 import {
-  applyAttentionValuesOnGPU,
-  calculateRelevancyOnGPU,
-} from "./attention-gpu.ts";
+  matrixFrom,
+  expectMatrixCloseTo,
+} from "../../testing/testing-utils.ts";
+import { runSelfAttentionHead } from "./attention.ts";
+import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
+import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
 
 const runGpu = async (
   inputV: Matrix,
@@ -22,9 +23,8 @@ const runGpu = async (
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
   const inputVBuffer = createMatrixBufferAndCopy(inputV);
-  const matchingKeyProductsBuffer = createMatrixBufferAndCopy(
-    matchingKeyProducts,
-  );
+  const matchingKeyProductsBuffer =
+    createMatrixBufferAndCopy(matchingKeyProducts);
   const out = createMatrixBufferAndCopy(
     createMatrix(inputV.vectors, inputV.dimensions),
   );

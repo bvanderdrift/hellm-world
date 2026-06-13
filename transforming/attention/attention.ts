@@ -1,14 +1,14 @@
-import { divideToWhole } from "../shared/math.ts";
+import { divideToWhole } from "../../shared/math.ts";
 import {
   multiplyMatrices,
   sliceRows,
   createMatrix,
   type Matrix,
   getFlatIndex,
-} from "../shared/matrices.ts";
-import type { AttentionWeights } from "../model/model-types.ts";
-import type { AttentionActivations } from "../model/activations-types.ts";
-import { softmax } from "../shared/softmax.ts";
+} from "../../shared/matrices.ts";
+import type { AttentionWeights } from "../../model/model-types.ts";
+import type { AttentionActivations } from "../../model/activations-types.ts";
+import { softmax } from "../../shared/softmax.ts";
 
 export const runSelfAttentionMechanism = (
   input: Matrix,
