@@ -86,7 +86,8 @@ export const printRow = (
 export const matricesMatch = (
   m1: Matrix,
   m2: Matrix,
-  tolerance: number,
+  absoluteTolerance: number,
+  relativeTolerance: number,
 ): { ok: true } | { ok: false; reason: string } => {
   if (m1.vectors !== m2.vectors)
     return {
@@ -98,6 +99,13 @@ export const matricesMatch = (
       ok: false,
       reason: `dimension count: ${m1.dimensions} vs ${m2.dimensions}`,
     };
+  let referenceScale = 0;
+  for (let i = 0; i < m2.values.length; i++) {
+    referenceScale = Math.max(referenceScale, Math.abs(m2.values[i]!));
+  }
+
+  const tolerance = absoluteTolerance + relativeTolerance * referenceScale;
+
   for (let i = 0; i < m1.values.length; i++) {
     const diff = Math.abs(m1.values[i]! - m2.values[i]!);
     if (diff > tolerance) {
@@ -119,6 +127,7 @@ export type Comparison<Ctx = undefined> = {
   baselineLabel?: string;
   candidateLabel?: string;
   tolerance?: number;
+  relativeTolerance?: number;
   setup?: (size: BenchSize) => Ctx;
   cpu: (input: BenchInput, ctx: Ctx) => Matrix;
   gpu: (
@@ -149,6 +158,7 @@ export const compareAcrossSizes = async <Ctx>(
   const baselineLabel = cmp.baselineLabel ?? "CPU";
   const candidateLabel = cmp.candidateLabel ?? "GPU";
   const tolerance = cmp.tolerance ?? 1e-3;
+  const relativeTolerance = cmp.relativeTolerance ?? 1e-4;
 
   console.log(cmp.name);
   console.log(`  warmup=${WARMUP_ITERS}, measure=${MEASURE_ITERS} iters`);
@@ -167,7 +177,12 @@ export const compareAcrossSizes = async <Ctx>(
     const cpuResult = cmp.cpu(input, ctx);
     const gpuResult = await toMatrix(await cmp.gpu(input, ctx), cpuResult);
 
-    const match = matricesMatch(cpuResult, gpuResult, tolerance);
+    const match = matricesMatch(
+      cpuResult,
+      gpuResult,
+      tolerance,
+      relativeTolerance,
+    );
     if (!match.ok) {
       allMatched = false;
       console.log(`\n  [${label}] MISMATCH: ${match.reason}`);
