@@ -64,7 +64,7 @@ export const runSelfAttentionHead = (
     const offset = h * headDimensionsCount;
 
     for (let i = 0; i < inputQ.vectors; i++) {
-      const startIndexToSet = getFlatIndex(
+      const headRelevancyOffset = getFlatIndex(
         i,
         h * inputQ.vectors,
         attentionRelevancyOutput.dimensions,
@@ -75,22 +75,22 @@ export const runSelfAttentionHead = (
 
         for (let k = 0; k < headDimensionsCount; k++) {
           summed +=
-            inputQ.values[getFlatIndex(i, k + offset, inputQ.dimensions)]! *
-            inputK.values[getFlatIndex(l, k + offset, inputK.dimensions)]!;
+            inputQ.values[getFlatIndex(i, offset + k, inputQ.dimensions)]! *
+            inputK.values[getFlatIndex(l, offset + k, inputK.dimensions)]!;
         }
 
-        attentionRelevancyOutput.values[startIndexToSet + l] =
+        attentionRelevancyOutput.values[headRelevancyOffset + l] =
           summed / Math.sqrt(headDimensionsCount);
       }
 
       const relevancy = softmax(
         attentionRelevancyOutput.values.slice(
-          startIndexToSet,
-          startIndexToSet + i + 1,
+          headRelevancyOffset,
+          headRelevancyOffset + i + 1,
         ),
       );
 
-      matchingKeyProducts.values.set(relevancy, startIndexToSet);
+      matchingKeyProducts.values.set(relevancy, headRelevancyOffset);
     }
   }
 
