@@ -3,8 +3,11 @@ import {
   runSelfAttentionHead,
   runSelfAttentionMechanism,
 } from "./attention.ts";
-import type { AttentionWeights } from "../model/model-types.ts";
-import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
+import type { AttentionWeights } from "../../model/model-types.ts";
+import {
+  matrixFrom,
+  expectMatrixCloseTo,
+} from "../../testing/testing-utils.ts";
 
 const input = matrixFrom([
   [1, 0, 0, 0],
@@ -30,10 +33,13 @@ describe("runSelfAttentionHead", () => {
       4,
     );
 
-    expectMatrixCloseTo(output.output, matrixFrom([
-      [1, 10, 100, 1000],
-      [1.5, 15, 150, 1500],
-    ]));
+    expectMatrixCloseTo(
+      output.output,
+      matrixFrom([
+        [1, 10, 100, 1000],
+        [1.5, 15, 150, 1500],
+      ]),
+    );
   });
 
   it("uses query-key similarity to weight the visible values", () => {
@@ -66,10 +72,14 @@ describe("runSelfAttentionHead", () => {
       2,
     );
 
-    expectMatrixCloseTo(output.output, matrixFrom([
-      [1, 2, 3, 4],
-      [1, 2, 5, 6],
-    ]), 0);
+    expectMatrixCloseTo(
+      output.output,
+      matrixFrom([
+        [1, 2, 3, 4],
+        [1, 2, 5, 6],
+      ]),
+      0,
+    );
   });
 
   it("does not attend to future keys and values", () => {
@@ -181,9 +191,12 @@ describe("runSelfAttentionMechanism", () => {
 
     const output = runSelfAttentionMechanism(input, 2, twoHeadAttention);
 
-    expectMatrixCloseTo(output.output, matrixFrom([
-      [1, 10, 0, 0],
-      [2, 20, 0, 0],
-    ]));
+    expectMatrixCloseTo(
+      output.output,
+      matrixFrom([
+        [1, 10, 0, 0],
+        [2, 20, 0, 0],
+      ]),
+    );
   });
 });

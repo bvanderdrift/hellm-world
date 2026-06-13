@@ -1,15 +1,14 @@
-import { divideToWhole } from "../shared/math.ts";
-import { getFlatIndex } from "../shared/matrices.ts";
-import { softmax } from "../shared/softmax.ts";
+import { getFlatIndex } from "../../shared/matrices.ts";
+import { softmax } from "../../shared/softmax.ts";
 import {
   getFlatIndexOnGPU,
   matrixBufferDefinition,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import type { AttentionGPUBuffers } from "../model/model-gpu-helpers.ts";
+} from "../../shared/matrices-gpu.ts";
+import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import tgpu, { d, type TgpuBuffer, type UniformFlag } from "typegpu";
-import { gpuContext } from "../shared/gpu-context.ts";
+import { gpuContext } from "../../shared/gpu-context.ts";
 import { floor, sqrt } from "typegpu/std";
 
 export const runSelfAttentionMechanismOnGPU = (
