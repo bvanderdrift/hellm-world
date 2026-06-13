@@ -1,4 +1,4 @@
-import tgpu, { d, type StorageFlag, type TgpuBuffer } from "typegpu";
+import { d } from "typegpu";
 import type {
   Activations,
   TransformerActivations,
@@ -8,28 +8,17 @@ import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
-  type MatrixBuffer,
   createMatrixBufferAndCopy,
-  applyScalarToMatrixOnGPU,
   addMatricesOnGPU,
   extractMatrixBuffer,
   createMatrixBuffer,
-  matrixBufferDefinition,
-  getFlatIndexOnGPU,
+  multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
-import {
-  createMatrix,
-  getFlatIndex,
-  multiplyMatrices,
-  normalize,
-  type Matrix,
-} from "../shared/matrices.ts";
-import { runSelfAttentionMechanism } from "../transforming/attention.ts";
+import { createMatrix, type Matrix } from "../shared/matrices.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
-import { getPositionEncodingOnGPU } from "./position-encoding-gpu.ts";
-import type { F32, WgslArray } from "typegpu/data";
-import { sqrt } from "typegpu/std";
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
+import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
+import { runSelfAttentionMechanismOnGPU } from "../transforming/attention-gpu.ts";
 
 export const llmForwardPassByTokensOnGPU = async (
   input: string[],
@@ -77,47 +66,54 @@ export const llmForwardPassByTokensOnGPU = async (
     createMatrix(contextSize, hiddenDimensionsSize),
   );
 
+  const attentionUpdateBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+
+  const attentionInputKBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+  const attentionInputVBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+  const attentionInputQBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+  const attentionOutBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
+
   for (const transformerIndex in model.transformers) {
-    const transformer = model.transformers[transformerIndex]!;
     const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
 
-    const transformerInputState = await extractMatrixBuffer(hiddenState);
+    normalizeOnGpu(hiddenState);
 
-    const attentionInputEmbeddings = normalize(transformerInputState);
-
-    const attentionActivations = runSelfAttentionMechanism(
-      // Normalize input only, don't normalize the intermediateState iself
-      // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      attentionInputEmbeddings,
+    runSelfAttentionMechanismOnGPU(
+      hiddenState,
       model.counts.attentionHeads,
-      transformer.attention,
+      transformerBuffers.attention,
+      attentionInputQBuffer,
+      attentionInputKBuffer,
+      attentionInputVBuffer,
+      attentionOutBuffer,
+      attentionUpdateBuffer,
     );
 
-    await addMatricesOnGPU(
-      intermediateState,
-      createMatrixBufferAndCopy(attentionActivations.output),
-    );
+    addMatricesOnGPU(hiddenState, attentionUpdateBuffer);
 
-    const embeddingsWithAttentionUpdates =
-      await extractMatrixBuffer(intermediateState);
-
-    const mlpInputEmbeddings = normalize(embeddingsWithAttentionUpdates);
-
-    intermediateState.buffer.patch({
-      values: mlpInputEmbeddings.values,
-    });
+    normalizeOnGpu(hiddenState);
 
     getMultilayerPerceptronActivationsOnGPU(
       // Normalize input only, don't normalize the intermediateState iself
       // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      intermediateState,
+      hiddenState,
       uppedMlpBuffer,
       outMlpBuffer,
       transformerBuffers.multilayerPerceptron,
     );
 
     // Apply updated knowledge
-    addMatricesOnGPU(intermediateState, outMlpBuffer);
+    addMatricesOnGPU(hiddenState, outMlpBuffer);
 
     transformerActivations.push({
       attention: null as unknown,
@@ -126,13 +122,16 @@ export const llmForwardPassByTokensOnGPU = async (
     } as any);
   }
 
-  const postTransformerState = await extractMatrixBuffer(intermediateState);
+  normalizeOnGpu(hiddenState);
 
-  const normalizedTransformersOutput = normalize(postTransformerState);
+  const unembeddedStateBuffer = createMatrixBufferAndCopy(
+    createMatrix(contextSize, hiddenDimensionsSize),
+  );
 
-  const unembeddedState = multiplyMatrices(
-    normalizedTransformersOutput,
-    model.unembeddings,
+  multiplyMatricesOnGPU(
+    hiddenState,
+    weightBuffers.unembeddings,
+    unembeddedStateBuffer,
   );
 
   const missingTransformerActivationsCount =
@@ -146,17 +145,7 @@ export const llmForwardPassByTokensOnGPU = async (
   }
 
   return {
-    embeddings: unembeddedState,
-    activations: withActivations
-      ? ({
-          inputPositionToVocabPosition,
-          tokensToPosition: null as any,
-          positionToTransformers: positionalEncoding,
-          transformerActivations,
-          transformersToNormalizer: null as any,
-          normalizerToUnembeddings: normalizedTransformersOutput,
-          unembeddingsOutputLogits: unembeddedState,
-        } as any)
-      : null,
+    embeddings: await extractMatrixBuffer(unembeddedStateBuffer),
+    activations: null,
   };
 };
