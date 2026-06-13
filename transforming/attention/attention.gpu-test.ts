@@ -10,255 +10,100 @@ import {
   matrixFrom,
   expectMatrixCloseTo,
 } from "../../testing/testing-utils.ts";
-import { runSelfAttentionHead } from "./attention.ts";
-import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
-import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
+import type { AttentionWeights } from "../../model/model-types.ts";
+import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
+import { runSelfAttentionMechanism } from "./attention.ts";
+import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
 
 const runGpu = async (
-  inputV: Matrix,
-  matchingKeyProducts: Matrix,
-  headDimensionsCount: number,
-): Promise<Matrix> => {
-  const headDim = gpuContext
-    .createBuffer(d.u32, headDimensionsCount)
-    .$usage("uniform");
-  const inputVBuffer = createMatrixBufferAndCopy(inputV);
-  const matchingKeyProductsBuffer =
-    createMatrixBufferAndCopy(matchingKeyProducts);
-  const out = createMatrixBufferAndCopy(
-    createMatrix(inputV.vectors, inputV.dimensions),
-  );
-
-  applyAttentionValuesOnGPU(
-    headDim,
-    inputVBuffer,
-    matchingKeyProductsBuffer,
-    out,
-  );
-  await gpuContext.device.queue.onSubmittedWorkDone();
-
-  return extractMatrixBuffer(out);
-};
-
-describe("applyAttentionValuesOnGPU", () => {
-  it("mixes a single head's values by the softmax weights", async () => {
-    const inputQ = matrixFrom([
-      [1, 0],
-      [0, 1],
-    ]);
-    const inputK = matrixFrom([
-      [1, 0],
-      [0, 1],
-    ]);
-    const inputV = matrixFrom([
-      [1, 10],
-      [2, 20],
-    ]);
-    const headDimensionsCount = 2;
-
-    const { softmaxOutput, output } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
-      1,
-      headDimensionsCount,
-    );
-
-    const actual = await runGpu(inputV, softmaxOutput, headDimensionsCount);
-
-    expectMatrixCloseTo(actual, output, 4);
-  });
-
-  it("reads each head's own softmax block by offsetting on vectors", async () => {
-    const inputQ = matrixFrom([
-      [0, 0],
-      [0, 1],
-    ]);
-    const inputK = matrixFrom([
-      [0, 0],
-      [0, Math.log(2)],
-    ]);
-    const inputV = matrixFrom([
-      [1, 10],
-      [2, 20],
-    ]);
-    const headDimensionsCount = 1;
-
-    const { softmaxOutput, output } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
-      2,
-      headDimensionsCount,
-    );
-
-    const actual = await runGpu(inputV, softmaxOutput, headDimensionsCount);
-
-    expectMatrixCloseTo(actual, output, 4);
-  });
-
-  it("matches the CPU reference for a larger random multi-head case", async () => {
-    const vectors = 7;
-    const dimensions = 8;
-    const headsCount = 2;
-    const headDimensionsCount = dimensions / headsCount;
-    const rand = () => Math.random() * 2 - 1;
-    const randomMatrix = (rows: number, cols: number): Matrix => ({
-      vectors: rows,
-      dimensions: cols,
-      values: new Float32Array(Array.from({ length: rows * cols }, rand)),
-    });
-
-    const inputQ = randomMatrix(vectors, dimensions);
-    const inputK = randomMatrix(vectors, dimensions);
-    const inputV = randomMatrix(vectors, dimensions);
-
-    const { softmaxOutput, output } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    const actual = await runGpu(inputV, softmaxOutput, headDimensionsCount);
-
-    expectMatrixCloseTo(actual, output, 4);
-  });
-});
-
-const runRelevancyGpu = async (
-  inputQ: Matrix,
-  inputK: Matrix,
+  input: Matrix,
   headsCount: number,
-  headDimensionsCount: number,
+  attentionWeights: AttentionWeights,
 ): Promise<Matrix> => {
-  const headDim = gpuContext
+  const vectors = input.vectors;
+  const hiddenDimensions = input.dimensions;
+  const headDimensionsCount = hiddenDimensions / headsCount;
+
+  const contextLength = gpuContext
+    .createBuffer(d.u32, vectors)
+    .$usage("uniform");
+  const headDimensions = gpuContext
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
-  const inputQBuffer = createMatrixBufferAndCopy(inputQ);
-  const inputKBuffer = createMatrixBufferAndCopy(inputK);
-  const out = createMatrixBufferAndCopy(
-    createMatrix(inputQ.vectors, inputQ.vectors * headsCount),
+
+  const inputBuffer = createMatrixBufferAndCopy(input);
+  const weights: AttentionGPUBuffers = {
+    Q: createMatrixBufferAndCopy(attentionWeights.Q),
+    K: createMatrixBufferAndCopy(attentionWeights.K),
+    V: createMatrixBufferAndCopy(attentionWeights.V),
+    out: createMatrixBufferAndCopy(attentionWeights.out),
+  };
+
+  const inputQ = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
+  const inputK = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
+  const inputV = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
+  const attentionRelevancyOutput = createMatrixBufferAndCopy(
+    createMatrix(vectors, vectors * headsCount),
+  );
+  const matchingKeyProducts = createMatrixBufferAndCopy(
+    createMatrix(vectors, vectors * headsCount),
+  );
+  const output = createMatrixBufferAndCopy(createMatrix(vectors, hiddenDimensions));
+  const attentionUpdate = createMatrixBufferAndCopy(
+    createMatrix(vectors, hiddenDimensions),
   );
 
-  calculateRelevancyOnGPU(headsCount, headDim, inputKBuffer, inputQBuffer, out);
+  runSelfAttentionMechanismOnGPU(
+    inputBuffer,
+    headsCount,
+    contextLength,
+    headDimensions,
+    weights,
+    inputQ,
+    inputK,
+    inputV,
+    attentionRelevancyOutput,
+    matchingKeyProducts,
+    output,
+    attentionUpdate,
+  );
   await gpuContext.device.queue.onSubmittedWorkDone();
 
-  return extractMatrixBuffer(out);
+  return extractMatrixBuffer(attentionUpdate);
 };
 
-describe("calculateRelevancyOnGPU", () => {
-  it("scores a single head's query/key dot products", async () => {
-    const inputQ = matrixFrom([
-      [1, 0],
-      [0, 1],
-    ]);
-    const inputK = matrixFrom([
-      [1, 0],
-      [0, 1],
-    ]);
-    const inputV = matrixFrom([
+describe("runSelfAttentionMechanismOnGPU", () => {
+  it("matches the CPU mechanism for a single head with identity projections", async () => {
+    const input = matrixFrom([
       [1, 10],
       [2, 20],
     ]);
+    const identity = matrixFrom([
+      [1, 0],
+      [0, 1],
+    ]);
+    const attentionWeights: AttentionWeights = {
+      Q: identity,
+      K: identity,
+      V: identity,
+      out: identity,
+    };
     const headsCount = 1;
-    const headDimensionsCount = 2;
 
-    const { attentionRelevancyOutput } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
+    const expected = runSelfAttentionMechanism(
+      input,
       headsCount,
-      headDimensionsCount,
+      attentionWeights,
     );
+    const actual = await runGpu(input, headsCount, attentionWeights);
 
-    const actual = await runRelevancyGpu(
-      inputQ,
-      inputK,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(actual, expected.output, 4);
   });
 
-  it("writes each head's scores into its own column block", async () => {
-    const inputQ = matrixFrom([
-      [0, 0],
-      [0, 1],
-    ]);
-    const inputK = matrixFrom([
-      [0, 0],
-      [0, Math.log(2)],
-    ]);
-    const inputV = matrixFrom([
-      [1, 10],
-      [2, 20],
-    ]);
-    const headsCount = 2;
-    const headDimensionsCount = 1;
-
-    const { attentionRelevancyOutput } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    const actual = await runRelevancyGpu(
-      inputQ,
-      inputK,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
-  });
-
-  it("leaves future (masked) positions untouched", async () => {
-    const inputQ = matrixFrom([
-      [1, 2],
-      [3, 4],
-      [5, 6],
-    ]);
-    const inputK = matrixFrom([
-      [1, 0],
-      [0, 1],
-      [1, 1],
-    ]);
-    const inputV = matrixFrom([
-      [1, 10],
-      [2, 20],
-      [3, 30],
-    ]);
-    const headsCount = 1;
-    const headDimensionsCount = 2;
-
-    const { attentionRelevancyOutput } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    const actual = await runRelevancyGpu(
-      inputQ,
-      inputK,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
-  });
-
-  it("matches the CPU reference for a larger random multi-head case", async () => {
+  it("matches the CPU mechanism across the full pipeline for a random multi-head case", async () => {
     const vectors = 7;
-    const dimensions = 8;
+    const hiddenDimensions = 8;
     const headsCount = 2;
-    const headDimensionsCount = dimensions / headsCount;
     const rand = () => Math.random() * 2 - 1;
     const randomMatrix = (rows: number, cols: number): Matrix => ({
       vectors: rows,
@@ -266,25 +111,21 @@ describe("calculateRelevancyOnGPU", () => {
       values: new Float32Array(Array.from({ length: rows * cols }, rand)),
     });
 
-    const inputQ = randomMatrix(vectors, dimensions);
-    const inputK = randomMatrix(vectors, dimensions);
-    const inputV = randomMatrix(vectors, dimensions);
+    const input = randomMatrix(vectors, hiddenDimensions);
+    const attentionWeights: AttentionWeights = {
+      Q: randomMatrix(hiddenDimensions, hiddenDimensions),
+      K: randomMatrix(hiddenDimensions, hiddenDimensions),
+      V: randomMatrix(hiddenDimensions, hiddenDimensions),
+      out: randomMatrix(hiddenDimensions, hiddenDimensions),
+    };
 
-    const { attentionRelevancyOutput } = runSelfAttentionHead(
-      inputQ,
-      inputK,
-      inputV,
+    const expected = runSelfAttentionMechanism(
+      input,
       headsCount,
-      headDimensionsCount,
+      attentionWeights,
     );
+    const actual = await runGpu(input, headsCount, attentionWeights);
 
-    const actual = await runRelevancyGpu(
-      inputQ,
-      inputK,
-      headsCount,
-      headDimensionsCount,
-    );
-
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(actual, expected.output, 4);
   });
 });
