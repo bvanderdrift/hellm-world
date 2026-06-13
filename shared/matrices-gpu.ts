@@ -9,11 +9,18 @@ import type { Matrix } from "./matrices.ts";
 
 const SINGLE_DIMENSION_SIZE = 4_000;
 
-export const matrixBufferDefinition = d.struct({
-  values: d.arrayOf(d.f32, SINGLE_DIMENSION_SIZE ** 2),
-  vectors: d.u32,
-  dimensions: d.u32,
-});
+const createMatrixBufferDefintionInstance = (
+  vectors: number,
+  dimensions: number,
+) =>
+  d.struct({
+    vectors: d.u32,
+    dimensions: d.u32,
+    values: d.arrayOf(d.f32, vectors * dimensions),
+  });
+
+/** 0-size is special marker meaning 'dynamically set on creation' */
+export const matrixBufferDefinition = createMatrixBufferDefintionInstance(0, 0);
 
 export type MatrixBuffer = {
   buffer: TgpuBuffer<typeof matrixBufferDefinition> & StorageFlag;
@@ -84,7 +91,9 @@ export const createMatrixBuffer = (
   dimensionsCount: number,
 ) => {
   const embeddingsBuffer = gpuContext
-    .createBuffer(matrixBufferDefinition)
+    .createBuffer(
+      createMatrixBufferDefintionInstance(vectorCount, dimensionsCount),
+    )
     .$usage("storage");
 
   return {
@@ -96,7 +105,10 @@ export const createMatrixBuffer = (
 
 export const createMatrixBufferAndCopy = (m: Matrix): MatrixBuffer => {
   const embeddingsBuffer = gpuContext
-    .createBuffer(matrixBufferDefinition, m)
+    .createBuffer(
+      createMatrixBufferDefintionInstance(m.vectors, m.dimensions),
+      m,
+    )
     .$usage("storage");
 
   return {
