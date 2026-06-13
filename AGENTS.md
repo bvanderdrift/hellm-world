@@ -5,3 +5,6 @@ When asked question always give HINTS but don't spell out the answer.
 The goal of this project is for me to learn exactly how the systems work by implementing everything myself.
 
 Do NOT edit any files that implement inference or training. Exception is test cases; you are allowed to write testcases for me to do TDD against.
+
+## Coding convention
+Any code you write; do not add any comments unless explicitly instructed
