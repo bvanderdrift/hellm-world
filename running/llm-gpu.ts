@@ -3,7 +3,10 @@ import type {
   Activations,
   TransformerActivations,
 } from "../model/activations-types.ts";
-import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
+import {
+  loadWeightsIntoGpu,
+  type WeightGPUBuffers,
+} from "../model/model-gpu-helpers.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
@@ -24,6 +27,7 @@ import { divideToWhole } from "../shared/math.ts";
 export const llmForwardPassByTokensOnGPU = async (
   input: string[],
   model: Model,
+  weightBuffers: WeightGPUBuffers,
   withActivations: boolean,
 ): Promise<{
   embeddings: Matrix;
@@ -31,8 +35,6 @@ export const llmForwardPassByTokensOnGPU = async (
 }> => {
   const hiddenDimensionsSize = model.counts.hiddenDimensions;
   const contextSize = input.length;
-
-  const weightBuffers = loadWeightsIntoGpu(model);
 
   /** middle-state needed for backprop */
   const inputPositionToVocabPosition = input.map((token) => {
@@ -43,21 +45,6 @@ export const llmForwardPassByTokensOnGPU = async (
     inputPositionToVocabPosition.length,
     model.counts.hiddenDimensions,
   );
-
-  const inputPositionToVocabPositionGPUBuffer = gpuContext
-    .createBuffer(
-      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
-      inputPositionToVocabPosition,
-    )
-    .$usage("storage");
-
-  prepareHiddenState(
-    inputPositionToVocabPositionGPUBuffer,
-    hiddenState,
-    weightBuffers.embeddings,
-  );
-
-  const transformerActivations: TransformerActivations[] = [];
 
   const uppedMlpBuffer = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize * model.counts.mlpMultiple),
@@ -89,6 +76,21 @@ export const llmForwardPassByTokensOnGPU = async (
   const matchingKeyProducts = createMatrixBufferAndCopy(
     createMatrix(contextSize, hiddenDimensionsSize),
   );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  prepareHiddenState(
+    inputPositionToVocabPositionGPUBuffer,
+    hiddenState,
+    weightBuffers.embeddings,
+  );
+
+  const transformerActivations: TransformerActivations[] = [];
 
   const headDimensionsCount = divideToWhole(
     hiddenDimensionsSize,
@@ -168,8 +170,24 @@ export const llmForwardPassByTokensOnGPU = async (
     );
   }
 
+  const embeddings = await extractMatrixBuffer(unembeddedStateBuffer);
+
+  hiddenState.buffer.destroy();
+  uppedMlpBuffer.buffer.destroy();
+  outMlpBuffer.buffer.destroy();
+  attentionUpdateBuffer.buffer.destroy();
+  attentionInputKBuffer.buffer.destroy();
+  attentionInputVBuffer.buffer.destroy();
+  attentionInputQBuffer.buffer.destroy();
+  attentionOutBuffer.buffer.destroy();
+  attentionRelevancyOutput.buffer.destroy();
+  matchingKeyProducts.buffer.destroy();
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+  headDimensionsCountBuffer.buffer.destroy();
+  contextLengthBuffer.buffer.destroy();
+
   return {
-    embeddings: await extractMatrixBuffer(unembeddedStateBuffer),
+    embeddings,
     activations: null,
   };
 };

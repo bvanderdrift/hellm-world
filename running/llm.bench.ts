@@ -9,6 +9,7 @@ import {
   MEASURE_ITERS,
 } from "../bench-harness.ts";
 import { llmForwardPassByTokensOnGPU } from "./llm-gpu.ts";
+import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
 
 const MODEL_NAME = "addy";
 const TOKEN_COUNTS = [1, 3, 5, 10];
@@ -29,8 +30,15 @@ const main = async () => {
       llmForwardPassByTokens(inputTokens, model, false);
     });
 
+    const weightsBuffer = loadWeightsIntoGpu(model);
+
     const gpuStats = await benchmark(async () => {
-      await llmForwardPassByTokensOnGPU(inputTokens, model, false);
+      await llmForwardPassByTokensOnGPU(
+        inputTokens,
+        model,
+        weightsBuffer,
+        false,
+      );
       await gpuContext.device.queue.onSubmittedWorkDone();
     });
 
