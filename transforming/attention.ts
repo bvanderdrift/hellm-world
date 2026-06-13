@@ -64,9 +64,13 @@ export const runSelfAttentionHead = (
     const offset = h * headDimensionsCount;
 
     for (let i = 0; i < inputQ.vectors; i++) {
-      const relevancyLogits = new Float32Array(i + 1).fill(0);
+      const startIndexToSet = getFlatIndex(
+        i,
+        h * inputQ.vectors,
+        attentionRelevancyOutput.dimensions,
+      );
 
-      for (let l = 0; l < relevancyLogits.length; l++) {
+      for (let l = 0; l < i + 1; l++) {
         let summed = 0;
 
         for (let k = 0; k < headDimensionsCount; k++) {
@@ -75,17 +79,17 @@ export const runSelfAttentionHead = (
             inputK.values[getFlatIndex(l, k + offset, inputK.dimensions)]!;
         }
 
-        relevancyLogits[l]! = summed / Math.sqrt(headDimensionsCount);
+        attentionRelevancyOutput.values[startIndexToSet + l] =
+          summed / Math.sqrt(headDimensionsCount);
       }
 
-      const relevancy = softmax(relevancyLogits);
-
-      const startIndexToSet = getFlatIndex(
-        i,
-        h * inputQ.vectors,
-        attentionRelevancyOutput.dimensions,
+      const relevancy = softmax(
+        attentionRelevancyOutput.values.slice(
+          startIndexToSet,
+          startIndexToSet + i + 1,
+        ),
       );
-      attentionRelevancyOutput.values.set(relevancyLogits, startIndexToSet);
+
       matchingKeyProducts.values.set(relevancy, startIndexToSet);
     }
   }
