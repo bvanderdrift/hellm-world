@@ -1,35 +1,28 @@
 normalize CPU vs GPU benchmark
-  baseline = normalize, candidate = normalizeOnGpu
   warmup=3, measure=10 iters
 
+  tiny   8x32
+    CPU        mean=0.015ms median=0.015ms min=0.013ms stddev=0.002ms
+    GPU        mean=0.298ms median=0.300ms min=0.249ms stddev=0.018ms
+    -> GPU is 20.65x slower (median)
 
-  tiny    16x64
-    CPU        mean=0.043ms median=0.047ms min=0.012ms stddev=0.014ms
-    GPU        mean=0.305ms median=0.302ms min=0.289ms stddev=0.018ms
-    -> GPU is 6.40x slower (median)
+  small  32x128
+    CPU        mean=0.049ms median=0.048ms min=0.045ms stddev=0.004ms
+    GPU        mean=0.293ms median=0.295ms min=0.253ms stddev=0.016ms
+    -> GPU is 6.10x slower (median)
 
-  small   64x256
-    CPU        mean=0.195ms median=0.189ms min=0.185ms stddev=0.013ms
-    GPU        mean=0.286ms median=0.286ms min=0.280ms stddev=0.004ms
-    -> GPU is 1.51x slower (median)
+  med    128x256
+    CPU        mean=0.208ms median=0.196ms min=0.191ms stddev=0.027ms
+    GPU        mean=0.337ms median=0.336ms min=0.281ms stddev=0.072ms
+    -> GPU is 1.71x slower (median)
 
-  med    256x512
-    CPU        mean=0.436ms median=0.434ms min=0.420ms stddev=0.014ms
-    GPU        mean=0.291ms median=0.289ms min=0.263ms stddev=0.020ms
-    -> GPU is 1.50x faster (median)
+  large  256x512
+    CPU        mean=0.425ms median=0.422ms min=0.414ms stddev=0.008ms
+    GPU        mean=0.295ms median=0.291ms min=0.281ms stddev=0.016ms
+    -> GPU is 1.45x faster (median)
 
-  large  512x1024
-    CPU        mean=1.660ms median=1.653ms min=1.625ms stddev=0.041ms
-    GPU        mean=0.337ms median=0.335ms min=0.328ms stddev=0.010ms
-    -> GPU is 4.93x faster (median)
-
-  tall  2048x128
-    CPU        mean=0.998ms median=1.019ms min=0.931ms stddev=0.057ms
-    GPU        mean=0.385ms median=0.393ms min=0.339ms stddev=0.017ms
-    -> GPU is 2.60x faster (median)
-
-  wide    16x2048
-    CPU        mean=0.263ms median=0.108ms min=0.103ms stddev=0.465ms
-    GPU        mean=0.430ms median=0.334ms min=0.280ms stddev=0.284ms
-    -> GPU is 3.09x slower (median)
+  xlarge 512x512
+    CPU        mean=0.834ms median=0.855ms min=0.751ms stddev=0.043ms
+    GPU        mean=0.338ms median=0.334ms min=0.305ms stddev=0.019ms
+    -> GPU is 2.56x faster (median)
 

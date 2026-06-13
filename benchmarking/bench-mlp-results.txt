@@ -1,25 +1,29 @@
-MLP CPU vs GPU benchmark
   mlpMultiple=4
+MLP CPU vs GPU benchmark
   warmup=3, measure=10 iters
 
+  tiny   8x32
+    CPU        mean=0.287ms median=0.272ms min=0.262ms stddev=0.028ms
+    GPU        mean=2.098ms median=1.892ms min=1.655ms stddev=0.565ms
+    -> GPU is 6.96x slower (median)
 
-  small  C=5  D=64
-    CPU        mean=0.418ms median=0.657ms min=0.157ms stddev=0.252ms
-    GPU        mean=2.141ms median=1.765ms min=1.637ms stddev=0.681ms
-    -> GPU is 2.69x slower (median)
+  small  32x128
+    CPU        mean=3.787ms median=3.763ms min=3.749ms stddev=0.054ms
+    GPU        mean=1.768ms median=1.659ms min=1.359ms stddev=0.498ms
+    -> GPU is 2.27x faster (median)
 
-  med    C=5  D=128
-    CPU        mean=0.621ms median=0.605ms min=0.597ms stddev=0.036ms
-    GPU        mean=1.975ms median=1.889ms min=1.394ms stddev=0.582ms
-    -> GPU is 3.12x slower (median)
+  med    128x256
+    CPU        mean=58.172ms median=58.011ms min=57.688ms stddev=0.402ms
+    GPU        mean=2.691ms median=2.592ms min=2.427ms stddev=0.335ms
+    -> GPU is 22.38x faster (median)
 
-  large  C=5  D=256
-    CPU        mean=2.292ms median=2.281ms min=2.252ms stddev=0.034ms
-    GPU        mean=1.928ms median=1.820ms min=1.781ms stddev=0.238ms
-    -> GPU is 1.25x faster (median)
+  large  256x512
+    CPU        mean=461.440ms median=459.665ms min=457.115ms stddev=5.473ms
+    GPU        mean=23.374ms median=23.447ms min=22.747ms stddev=0.415ms
+    -> GPU is 19.60x faster (median)
 
-  large  C=10 D=256
-    CPU        mean=4.563ms median=4.557ms min=4.520ms stddev=0.040ms
-    GPU        mean=2.925ms median=2.320ms min=1.849ms stddev=1.580ms
-    -> GPU is 1.96x faster (median)
+  xlarge 512x512
+    CPU        mean=930.420ms median=924.461ms min=918.031ms stddev=14.849ms
+    GPU        mean=49.807ms median=49.640ms min=48.989ms stddev=0.577ms
+    -> GPU is 18.62x faster (median)
 

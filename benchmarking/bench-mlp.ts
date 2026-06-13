@@ -1,133 +1,58 @@
 import { createMatrix } from "../shared/matrices.ts";
-import {
-  createMatrixBufferAndCopy,
-  extractMatrixBuffer,
-  type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import { gpuContext } from "../shared/gpu-context.ts";
+import { createMatrixBufferAndCopy } from "../shared/matrices-gpu.ts";
 import { getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
-import {
-  benchmark,
-  matricesMatch,
-  printRow,
-  WARMUP_ITERS,
-  MEASURE_ITERS,
-} from "./bench-harness.ts";
+import { compareAcrossSizes, rand } from "./bench-harness.ts";
 
 const MLP_MULTIPLE = 4;
 
-const rand = () => Math.random() * 2 - 1;
-
-const SIZES: Array<{
-  label: string;
-  contextLength: number;
-  dimensions: number;
-}> = [
-  { label: "small  C=5  D=64", contextLength: 5, dimensions: 64 },
-  { label: "med    C=5  D=128", contextLength: 5, dimensions: 128 },
-  { label: "large  C=5  D=256", contextLength: 5, dimensions: 256 },
-  { label: "large  C=10 D=256", contextLength: 10, dimensions: 256 },
-];
-
-const createTestWeights = (
-  dimensions: number,
-): MultilayerPerceptronWeights => ({
-  wUp: {
-    weightsMatrix: createMatrix(dimensions, dimensions * MLP_MULTIPLE, rand),
-    biasVector: createMatrix(1, dimensions * MLP_MULTIPLE, rand),
-  },
-  wDown: {
-    weightsMatrix: createMatrix(dimensions * MLP_MULTIPLE, dimensions, rand),
-    biasVector: createMatrix(1, dimensions, rand),
-  },
-});
-
-const weightsToGPU = (
-  weights: MultilayerPerceptronWeights,
-): MultilayerPerceptronGPUBuffers => ({
-  wUp: {
-    weightsMatrix: createMatrixBufferAndCopy(weights.wUp.weightsMatrix),
-    biasVector: createMatrixBufferAndCopy(weights.wUp.biasVector),
-  },
-  wDown: {
-    weightsMatrix: createMatrixBufferAndCopy(weights.wDown.weightsMatrix),
-    biasVector: createMatrixBufferAndCopy(weights.wDown.biasVector),
-  },
-});
-
-const main = async () => {
-  console.log("MLP CPU vs GPU benchmark");
-  console.log(`  mlpMultiple=${MLP_MULTIPLE}`);
-  console.log(`  warmup=${WARMUP_ITERS}, measure=${MEASURE_ITERS} iters\n`);
-
-  let anyMismatch = false;
-
-  for (const { label, contextLength, dimensions } of SIZES) {
-    const encoding = createMatrix(contextLength, dimensions, rand);
-    const weights = createTestWeights(dimensions);
-
-    const encodingBuf = createMatrixBufferAndCopy(encoding);
-    const perceptronBuf = weightsToGPU(weights);
-    const uppedBuf = createMatrixBufferAndCopy(
-      createMatrix(contextLength, dimensions * MLP_MULTIPLE),
-    );
-    const outBuf = createMatrixBufferAndCopy(
-      createMatrix(contextLength, dimensions),
-    );
-
-    // Correctness check
-    const cpuResult = getMultilayerPerceptronActivations(encoding, weights);
-    getMultilayerPerceptronActivationsOnGPU(
-      encodingBuf,
-      uppedBuf,
-      outBuf,
-      perceptronBuf,
-    );
-    const gpuOutput = await extractMatrixBuffer(outBuf);
-
-    const match = matricesMatch(cpuResult.downingOutput, gpuOutput, 1e-3);
-    if (!match.ok) {
-      anyMismatch = true;
-      console.log(`  [${label}] MISMATCH: ${match.reason}`);
-    }
-
-    // Fresh buffers for benchmark runs
-    const freshEncodingBuf = createMatrixBufferAndCopy(encoding);
-    const freshUppedBuf = createMatrixBufferAndCopy(
-      createMatrix(contextLength, dimensions * MLP_MULTIPLE),
-    );
-    const freshOutBuf = createMatrixBufferAndCopy(
-      createMatrix(contextLength, dimensions),
-    );
-
-    const cpuStats = await benchmark(() => {
-      getMultilayerPerceptronActivations(encoding, weights);
-    });
-    const gpuStats = await benchmark(async () => {
-      getMultilayerPerceptronActivationsOnGPU(
-        freshEncodingBuf,
-        freshUppedBuf,
-        freshOutBuf,
-        perceptronBuf,
-      );
-      await gpuContext.device.queue.onSubmittedWorkDone();
-    });
-
-    const speedup = cpuStats.median / gpuStats.median;
-    printRow(label, "CPU", cpuStats, "GPU", gpuStats, speedup);
-  }
-
-  console.log("");
-  if (anyMismatch) {
-    console.log(
-      "  WARNING: at least one size produced mismatched outputs — check your GPU implementation",
-    );
-  }
+type MlpCtx = {
+  weights: MultilayerPerceptronWeights;
+  gpu: MultilayerPerceptronGPUBuffers;
+  upped: ReturnType<typeof createMatrixBufferAndCopy>;
+  out: ReturnType<typeof createMatrixBufferAndCopy>;
 };
 
 if (import.meta.main) {
-  await main();
+  console.log(`  mlpMultiple=${MLP_MULTIPLE}`);
+  await compareAcrossSizes<MlpCtx>({
+    name: "MLP CPU vs GPU benchmark",
+    setup: ({ vectors, dimensions }) => {
+      const weights: MultilayerPerceptronWeights = {
+        wUp: {
+          weightsMatrix: createMatrix(dimensions, dimensions * MLP_MULTIPLE, rand),
+          biasVector: createMatrix(1, dimensions * MLP_MULTIPLE, rand),
+        },
+        wDown: {
+          weightsMatrix: createMatrix(dimensions * MLP_MULTIPLE, dimensions, rand),
+          biasVector: createMatrix(1, dimensions, rand),
+        },
+      };
+      return {
+        weights,
+        gpu: {
+          wUp: {
+            weightsMatrix: createMatrixBufferAndCopy(weights.wUp.weightsMatrix),
+            biasVector: createMatrixBufferAndCopy(weights.wUp.biasVector),
+          },
+          wDown: {
+            weightsMatrix: createMatrixBufferAndCopy(weights.wDown.weightsMatrix),
+            biasVector: createMatrixBufferAndCopy(weights.wDown.biasVector),
+          },
+        },
+        upped: createMatrixBufferAndCopy(
+          createMatrix(vectors, dimensions * MLP_MULTIPLE),
+        ),
+        out: createMatrixBufferAndCopy(createMatrix(vectors, dimensions)),
+      };
+    },
+    cpu: ({ matrix }, { weights }) =>
+      getMultilayerPerceptronActivations(matrix, weights).downingOutput,
+    gpu: ({ buffer }, { gpu, upped, out }) => {
+      getMultilayerPerceptronActivationsOnGPU(buffer, upped, out, gpu);
+      return out;
+    },
+  });
 }

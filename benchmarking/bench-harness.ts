@@ -1,5 +1,29 @@
+import { createMatrix, type Matrix } from "../shared/matrices.ts";
+import {
+  createMatrixBufferAndCopy,
+  extractMatrixBuffer,
+  type MatrixBuffer,
+} from "../shared/matrices-gpu.ts";
+import { gpuContext } from "../shared/gpu-context.ts";
+
 export const WARMUP_ITERS = 3;
 export const MEASURE_ITERS = 10;
+
+export const rand = () => Math.random() * 2 - 1;
+
+export type BenchSize = {
+  label: string;
+  vectors: number;
+  dimensions: number;
+};
+
+export const BENCH_SIZES: BenchSize[] = [
+  { label: "tiny", vectors: 8, dimensions: 32 },
+  { label: "small", vectors: 32, dimensions: 128 },
+  { label: "med", vectors: 128, dimensions: 256 },
+  { label: "large", vectors: 256, dimensions: 512 },
+  { label: "xlarge", vectors: 512, dimensions: 512 },
+];
 
 export type Stats = {
   mean: number;
@@ -59,8 +83,6 @@ export const printRow = (
   console.log(`    -> ${candidateLabel} is ${speedupStr} (median)`);
 };
 
-import type { Matrix } from "../shared/matrices.ts";
-
 export const matricesMatch = (
   m1: Matrix,
   m2: Matrix,
@@ -88,4 +110,91 @@ export const matricesMatch = (
     }
   }
   return { ok: true };
+};
+
+export type BenchInput = { matrix: Matrix; buffer: MatrixBuffer };
+
+export type Comparison<Ctx = undefined> = {
+  name: string;
+  baselineLabel?: string;
+  candidateLabel?: string;
+  tolerance?: number;
+  setup?: (size: BenchSize) => Ctx;
+  cpu: (input: BenchInput, ctx: Ctx) => Matrix;
+  gpu: (
+    input: BenchInput,
+    ctx: Ctx,
+  ) => Matrix | MatrixBuffer | Promise<Matrix | MatrixBuffer>;
+};
+
+const isMatrix = (out: Matrix | MatrixBuffer): out is Matrix => "values" in out;
+
+const toMatrix = async (
+  out: Matrix | MatrixBuffer,
+  shape: Matrix,
+): Promise<Matrix> => {
+  if (isMatrix(out)) return out;
+  await gpuContext.device.queue.onSubmittedWorkDone();
+  const full = await extractMatrixBuffer(out);
+  return {
+    vectors: shape.vectors,
+    dimensions: shape.dimensions,
+    values: full.values.slice(0, shape.vectors * shape.dimensions),
+  };
+};
+
+export const compareAcrossSizes = async <Ctx>(
+  cmp: Comparison<Ctx>,
+): Promise<boolean> => {
+  const baselineLabel = cmp.baselineLabel ?? "CPU";
+  const candidateLabel = cmp.candidateLabel ?? "GPU";
+  const tolerance = cmp.tolerance ?? 1e-3;
+
+  console.log(cmp.name);
+  console.log(`  warmup=${WARMUP_ITERS}, measure=${MEASURE_ITERS} iters`);
+
+  let allMatched = true;
+
+  for (const size of BENCH_SIZES) {
+    const matrix = createMatrix(size.vectors, size.dimensions, rand);
+    const input: BenchInput = {
+      matrix,
+      buffer: createMatrixBufferAndCopy(matrix),
+    };
+    const ctx = (cmp.setup ? cmp.setup(size) : undefined) as Ctx;
+    const label = `${size.label.padEnd(6)} ${size.vectors}x${size.dimensions}`;
+
+    const cpuResult = cmp.cpu(input, ctx);
+    const gpuResult = await toMatrix(await cmp.gpu(input, ctx), cpuResult);
+
+    const match = matricesMatch(cpuResult, gpuResult, tolerance);
+    if (!match.ok) {
+      allMatched = false;
+      console.log(`\n  [${label}] MISMATCH: ${match.reason}`);
+      continue;
+    }
+
+    const cpuStats = await benchmark(() => {
+      cmp.cpu(input, ctx);
+    });
+    const gpuStats = await benchmark(async () => {
+      await cmp.gpu(input, ctx);
+      await gpuContext.device.queue.onSubmittedWorkDone();
+    });
+
+    printRow(
+      label,
+      baselineLabel,
+      cpuStats,
+      candidateLabel,
+      gpuStats,
+      cpuStats.median / gpuStats.median,
+    );
+  }
+
+  console.log("");
+  if (!allMatched) {
+    console.log("  WARNING: at least one size produced mismatched outputs");
+  }
+  return allMatched;
 };
