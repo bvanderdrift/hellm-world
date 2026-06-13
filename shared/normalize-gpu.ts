@@ -12,8 +12,8 @@ const normalizeParamsLayout = tgpu.bindGroupLayout({
 });
 
 const WORKGROUP_SIZE = 64;
-const sharedSummedValues = tgpu.workgroupVar(d.arrayOf(d.f32, WORKGROUP_SIZE));
-const sharedSummedSquares = tgpu.workgroupVar(d.arrayOf(d.f32, WORKGROUP_SIZE));
+const sharedSummedValues = tgpu.workgroupVar(d.arrayOf(d.f16, WORKGROUP_SIZE));
+const sharedSummedSquares = tgpu.workgroupVar(d.arrayOf(d.f16, WORKGROUP_SIZE));
 
 const normalizeKernel = tgpu.computeFn({
   in: {
@@ -32,8 +32,8 @@ const normalizeKernel = tgpu.computeFn({
 
   // standard deviation logic inline in kernel so we don't mess with the shifting window of the hidden state too much
 
-  let partialSummedValues = d.f32(0);
-  let partialSummedSquares = d.f32(0);
+  let partialSummedValues = d.f16(0);
+  let partialSummedSquares = d.f16(0);
 
   for (
     let index = offset + t;
@@ -72,7 +72,7 @@ const normalizeKernel = tgpu.computeFn({
   const summedValues = sharedSummedValues.$[0]!;
   const summedSquares = sharedSummedSquares.$[0]!;
 
-  const average = summedValues / d.f32(length);
+  const average = summedValues / d.f16(length);
   /**
    * summedSquareDeltas = sum((x_i - avg)^2)
    * = sum(x_i^2 - 2*x_i*avg + avg^2)
@@ -83,7 +83,7 @@ const normalizeKernel = tgpu.computeFn({
   const summedSquareDeltas =
     summedSquares - 2 * average * summedValues + length * average ** 2;
 
-  const averageSquareDeltas = summedSquareDeltas / d.f32(length);
+  const averageSquareDeltas = summedSquareDeltas / d.f16(length);
 
   const standardDeviation = sqrt(averageSquareDeltas);
 

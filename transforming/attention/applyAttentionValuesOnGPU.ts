@@ -31,7 +31,7 @@ const applyValuesKernel = gpuContext.createGuardedComputePipeline(
       output.dimensions,
     );
 
-    let sum = d.f32(0);
+    let sum = d.f16(0);
 
     for (let lookback = d.u32(0); lookback < vectorIndex + 1; lookback++) {
       const lookbackTokenWeight =

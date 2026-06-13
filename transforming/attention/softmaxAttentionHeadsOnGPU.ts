@@ -54,7 +54,7 @@ const softmaxAttentionHeadsKernel = tgpu.computeFn({
     biggest = max(biggest, logit);
   }
 
-  let summed = d.f32(0);
+  let summed = d.f16(0);
 
   for (
     let lookbackIndex = 0;

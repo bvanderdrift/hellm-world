@@ -1,5 +1,5 @@
 import tgpu, { d, type TgpuBuffer, type StorageFlag } from "typegpu";
-import type { WgslArray, F32 } from "typegpu/data";
+import type { WgslArray, F32, U32 } from "typegpu/data";
 import { sqrt } from "typegpu/std";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
@@ -11,7 +11,7 @@ import { getPositionEncodingOnGPU } from "../position-encoding-gpu.ts";
 
 const prepareHiddenStateParamsLayout = tgpu.bindGroupLayout({
   inputTokenIndices: {
-    storage: d.arrayOf(d.f32),
+    storage: d.arrayOf(d.u32),
     access: "readonly",
   },
   embeddings: {
@@ -63,7 +63,7 @@ const prepareHiddenStateRunner = gpuContext.createGuardedComputePipeline(
 );
 
 export const prepareHiddenState = (
-  inputTokenIndices: TgpuBuffer<WgslArray<F32>> & StorageFlag,
+  inputTokenIndices: TgpuBuffer<WgslArray<U32>> & StorageFlag,
   hiddenState: MatrixBuffer,
   embeddings: MatrixBuffer,
 ) => {

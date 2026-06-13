@@ -84,7 +84,7 @@ export const llmForwardPassByTokensOnGPU = async (
 
   const inputPositionToVocabPositionGPUBuffer = gpuContext
     .createBuffer(
-      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
+      d.arrayOf(d.u32, inputPositionToVocabPosition.length),
       inputPositionToVocabPosition,
     )
     .$usage("storage");

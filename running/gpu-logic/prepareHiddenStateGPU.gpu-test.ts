@@ -39,7 +39,7 @@ const cpuPrepareHiddenState = (
 
 const makeTokenIndicesBuffer = (vocabIndices: number[]) =>
   gpuContext
-    .createBuffer(d.arrayOf(d.f32, vocabIndices.length), vocabIndices)
+    .createBuffer(d.arrayOf(d.u32, vocabIndices.length), vocabIndices)
     .$usage("storage");
 
 const runGpu = async (

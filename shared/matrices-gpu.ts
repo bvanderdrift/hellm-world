@@ -14,7 +14,7 @@ const createMatrixBufferDefintionInstance = (
   d.struct({
     vectors: d.u32,
     dimensions: d.u32,
-    values: d.arrayOf(d.f32, vectors * dimensions),
+    values: d.arrayOf(d.f16, vectors * dimensions),
   });
 
 /** 0-size is special marker meaning 'dynamically set on creation' */
@@ -53,7 +53,7 @@ const dotProductOnGPU = (i: number, j: number) => {
   const m2 = multiplyMatrixParamsLayout.$.m2;
   const mOut = multiplyMatrixParamsLayout.$.mOut;
 
-  let summed = d.f32(0);
+  let summed = d.f16(0);
 
   for (let k = 0; k < m1.dimensions; k++) {
     summed +=
@@ -117,7 +117,7 @@ export const extractMatrixBuffer = async (m: MatrixBuffer): Promise<Matrix> => {
 
 const applyScalarParamsLayout = tgpu.bindGroupLayout({
   scalar: {
-    uniform: d.f32,
+    uniform: d.f16,
   },
   matrix: {
     storage: matrixBufferDefinition,
@@ -137,7 +137,7 @@ const applyScalarToMatrixKernel = gpuContext.createGuardedComputePipeline(
 );
 
 export const applyScalarToMatrixOnGPU = (
-  scalar: TgpuBuffer<d.F32> & UniformFlag,
+  scalar: TgpuBuffer<d.F16> & UniformFlag,
   matrix: MatrixBuffer,
 ) => {
   const params = gpuContext.createBindGroup(applyScalarParamsLayout, {

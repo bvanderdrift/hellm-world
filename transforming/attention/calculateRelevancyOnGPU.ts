@@ -33,7 +33,7 @@ const calculateRelevancyKernel = gpuContext.createGuardedComputePipeline(
     const attentionRelevancyOutput =
       calculateRelevancyParams.$.attentionRelevancyOutput;
 
-    let summed = d.f32(0);
+    let summed = d.f16(0);
 
     for (let k = d.u32(0); k < headDimensionsCount; k++) {
       summed +=
