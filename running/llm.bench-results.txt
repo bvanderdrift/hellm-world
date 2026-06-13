@@ -4,16 +4,22 @@ inference CPU vs GPU benchmark
 
 
   tokens=1  [1]
-    CPU        mean=16.040ms median=15.430ms min=14.981ms stddev=1.714ms
-    GPU        mean=2181.476ms median=2203.561ms min=2078.959ms stddev=74.254ms
-    -> GPU is 142.81x slower (median)
+    CPU        mean=4.312ms median=4.307ms min=4.237ms stddev=0.040ms
+    GPU        mean=225.548ms median=227.538ms min=218.780ms stddev=4.945ms
+    -> GPU is 52.82x slower (median)
 
   tokens=3  [1, 2, 3]
-    CPU        mean=52.560ms median=50.028ms min=46.650ms stddev=5.554ms
-    GPU        mean=2220.915ms median=2154.430ms min=2112.009ms stddev=136.969ms
-    -> GPU is 43.06x slower (median)
+    CPU        mean=13.064ms median=13.045ms min=12.845ms stddev=0.169ms
+    GPU        mean=230.649ms median=225.976ms min=209.932ms stddev=23.050ms
+    -> GPU is 17.32x slower (median)
 
   tokens=5  [1, 2, 3, 4, 5]
-    CPU        mean=85.230ms median=85.267ms min=81.515ms stddev=2.374ms
-    GPU        mean=2325.412ms median=2300.004ms min=2165.395ms stddev=102.941ms
-    -> GPU is 26.97x slower (median)
+    CPU        mean=21.617ms median=21.414ms min=21.307ms stddev=0.356ms
+    GPU        mean=214.170ms median=213.953ms min=209.693ms stddev=2.584ms
+    -> GPU is 9.99x slower (median)
+
+  tokens=10  [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
+    CPU        mean=43.875ms median=44.116ms min=42.827ms stddev=0.727ms
+    GPU        mean=244.537ms median=253.371ms min=225.125ms stddev=11.828ms
+    -> GPU is 5.74x slower (median)
+
