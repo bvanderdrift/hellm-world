@@ -9,7 +9,7 @@ set -e
 
 # Node.js latest LTS via NodeSource
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs unzip tmux fontconfig fonts-dejavu-core
+sudo apt-get install -y nodejs unzip tmux fontconfig fonts-dejavu-core libvulkan1 vulkan-tools
 
 # pnpm
 corepack enable
@@ -18,6 +18,10 @@ corepack prepare pnpm@latest --activate
 # Bun
 curl -fsSL https://bun.sh/install | bash
 source ~/.bashrc
+
+# Vulkan required cache folder
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR"
 
 git clone https://github.com/bvanderdrift/hellm-world.git
 cd hellm-world
