@@ -9,7 +9,7 @@ set -e
 
 # Node.js latest LTS via NodeSource
 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs unzip tmux fontconfig fonts-dejavu-core libvulkan1 vulkan-tools
+sudo apt-get install -y nodejs unzip tmux fontconfig fonts-dejavu-core libvulkan1 vulkan-tools libegl1 libopengl0 libglx0 libgles2
 
 # pnpm
 corepack enable
