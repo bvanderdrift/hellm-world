@@ -1,6 +1,8 @@
-import { llmForwardPassByTokens } from "./llm.ts";
+import { getHighestValueIndex, llmForwardPassByTokens } from "./llm.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { validateModel } from "../model/model-validation.ts";
+import type { Model } from "../model/model-types.ts";
+import { getRawVector, type Matrix } from "../shared/matrices.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   benchmark,
@@ -33,6 +35,51 @@ const saveCpuCache = (cache: Record<string, Stats>) => {
   writeFileSync(CPU_CACHE_PATH, JSON.stringify(cache, null, 2));
 };
 
+const assertSensibleOutput = (
+  source: string,
+  tokenCount: number,
+  output: { embeddings: Matrix },
+  model: Model,
+) => {
+  const { embeddings } = output;
+  const logitWidth = model.unembeddings.dimensions;
+
+  const fail = (reason: string) => {
+    throw new Error(
+      `[${source}] tokens=${tokenCount} produced nonsense output: ${reason}`,
+    );
+  };
+
+  if (embeddings.vectors !== tokenCount) {
+    fail(`expected ${tokenCount} vectors but got ${embeddings.vectors}`);
+  }
+  if (embeddings.dimensions < logitWidth) {
+    fail(
+      `expected at least ${logitWidth} logit dimensions but got ${embeddings.dimensions}`,
+    );
+  }
+
+  for (let i = 0; i < embeddings.values.length; i++) {
+    const value = embeddings.values[i]!;
+    if (!Number.isFinite(value)) {
+      fail(`value at index ${i} is ${value}`);
+    }
+  }
+
+  const lastVector = getRawVector(embeddings, embeddings.vectors - 1);
+  if (!lastVector) fail("could not read final logit vector");
+  const logits = lastVector.slice(0, logitWidth);
+
+  if (logits.every((value) => value === 0)) {
+    fail("all final logits are zero");
+  }
+
+  const predictedIndex = getHighestValueIndex(logits);
+  if (model.vocabulary[predictedIndex] === undefined) {
+    fail(`argmax index ${predictedIndex} is outside the vocabulary`);
+  }
+};
+
 const main = async () => {
   const model = getLatestCheckpointModel(MODEL_NAME);
   validateModel(model);
@@ -60,6 +107,12 @@ const main = async () => {
     if (gpuOnly) {
       cpuStats = cpuCache[String(tokenCount)];
     } else {
+      assertSensibleOutput(
+        "CPU",
+        tokenCount,
+        llmForwardPassByTokens(inputTokens, model, false),
+        model,
+      );
       cpuStats = await benchmark(() => {
         llmForwardPassByTokens(inputTokens, model, false);
       });
@@ -67,6 +120,13 @@ const main = async () => {
     }
 
     const weightsBuffer = loadWeightsIntoGpu(model);
+
+    assertSensibleOutput(
+      "GPU",
+      tokenCount,
+      await llmForwardPassByTokensOnGPU(inputTokens, model, weightsBuffer, false),
+      model,
+    );
 
     const gpuStats = await benchmark(async () => {
       await llmForwardPassByTokensOnGPU(
