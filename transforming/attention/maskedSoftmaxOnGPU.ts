@@ -6,6 +6,8 @@ import {
   type MatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
+import { mod } from "typegpu/std";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const WORKGROUP_SIZE = 1;
 
@@ -19,16 +21,17 @@ const maskedSoftmaxOnGpuKernel = tgpu.computeFn({
   const headIndex = input.groupId.x;
   const vectorIndex = input.groupId.y;
 
+  const batchVectorIndex = mod(vectorIndex, MAX_CONTEXT);
+
   const logits = softmaxParamsLayout.$.logits;
-  const contextLength = logits.vectors;
 
   const startIndexToSet = getFlatIndexOnGPU(
     vectorIndex,
-    headIndex * contextLength,
+    headIndex * MAX_CONTEXT,
     logits.dimensions,
   );
 
-  softmaxGpuFn(startIndexToSet, vectorIndex + 1);
+  softmaxGpuFn(startIndexToSet, batchVectorIndex + 1);
 });
 
 const maskedSoftmaxOnGpuPipeline = gpuContext.createComputePipeline({

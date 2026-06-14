@@ -9,9 +9,11 @@ import { createMatrix, type Matrix } from "../../shared/matrices.ts";
 import {
   matrixFrom,
   expectMatrixCloseTo,
+  restripeHeadBlocks,
 } from "../../testing/testing-utils.ts";
 import { runSelfAttentionHead } from "./attention.ts";
 import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const runRelevancyGpu = async (
   inputQ: Matrix,
@@ -25,7 +27,7 @@ const runRelevancyGpu = async (
   const inputQBuffer = createMatrixBuffer(inputQ);
   const inputKBuffer = createMatrixBuffer(inputK);
   const out = createMatrixBuffer(
-    createMatrix(inputQ.vectors, inputQ.vectors * headsCount),
+    createMatrix(inputQ.vectors, MAX_CONTEXT * headsCount),
   );
 
   calculateRelevancyOnGPU(headsCount, headDim, inputKBuffer, inputQBuffer, out);
@@ -66,7 +68,16 @@ describe("calculateRelevancyOnGPU", () => {
       headDimensionsCount,
     );
 
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(
+      actual,
+      restripeHeadBlocks(
+        attentionRelevancyOutput,
+        headsCount,
+        inputQ.vectors,
+        MAX_CONTEXT,
+      ),
+      4,
+    );
   });
 
   it("writes each head's scores into its own column block", async () => {
@@ -100,7 +111,16 @@ describe("calculateRelevancyOnGPU", () => {
       headDimensionsCount,
     );
 
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(
+      actual,
+      restripeHeadBlocks(
+        attentionRelevancyOutput,
+        headsCount,
+        inputQ.vectors,
+        MAX_CONTEXT,
+      ),
+      4,
+    );
   });
 
   it("leaves future (masked) positions untouched", async () => {
@@ -137,7 +157,16 @@ describe("calculateRelevancyOnGPU", () => {
       headDimensionsCount,
     );
 
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(
+      actual,
+      restripeHeadBlocks(
+        attentionRelevancyOutput,
+        headsCount,
+        inputQ.vectors,
+        MAX_CONTEXT,
+      ),
+      4,
+    );
   });
 
   it("matches the CPU reference for a larger random multi-head case", async () => {
@@ -171,6 +200,15 @@ describe("calculateRelevancyOnGPU", () => {
       headDimensionsCount,
     );
 
-    expectMatrixCloseTo(actual, attentionRelevancyOutput, 4);
+    expectMatrixCloseTo(
+      actual,
+      restripeHeadBlocks(
+        attentionRelevancyOutput,
+        headsCount,
+        inputQ.vectors,
+        MAX_CONTEXT,
+      ),
+      4,
+    );
   });
 });

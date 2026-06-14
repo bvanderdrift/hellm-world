@@ -58,10 +58,12 @@ program
       const inputTokens = tokenize(input, model.vocabulary);
 
       const tokenGenerator = gpu
-        ? runLlmOnGPU(inputTokens, model)
+        ? runLlmOnGPU([inputTokens], model)
         : runLlm(inputTokens, model);
 
-      for await (const token of tokenGenerator) {
+      for await (const tokenOrTokens of tokenGenerator) {
+        const token =
+          typeof tokenOrTokens === "string" ? tokenOrTokens : tokenOrTokens[0]!;
         process.stdout.write(token);
       }
       process.stdout.write("\n");

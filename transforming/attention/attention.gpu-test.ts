@@ -14,6 +14,7 @@ import type { AttentionWeights } from "../../model/model-types.ts";
 import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import { runSelfAttentionMechanism } from "./attention.ts";
 import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const runGpu = async (
   input: Matrix,
@@ -40,10 +41,10 @@ const runGpu = async (
   const inputK = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
   const inputV = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
   const attentionRelevancyOutput = createMatrixBuffer(
-    createMatrix(vectors, vectors * headsCount),
+    createMatrix(vectors, MAX_CONTEXT * headsCount),
   );
   const matchingKeyProducts = createMatrixBuffer(
-    createMatrix(vectors, vectors * headsCount),
+    createMatrix(vectors, MAX_CONTEXT * headsCount),
   );
   const output = createMatrixBuffer(createMatrix(vectors, hiddenDimensions));
   const attentionUpdate = createMatrixBuffer(

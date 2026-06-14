@@ -37,7 +37,7 @@ const llmForwardPassByTokensOnGPU = async (
   weightBuffers: WeightGPUBuffers,
   withActivations: boolean,
 ): Promise<Matrix> => {
-  const inferenceBuffers = allocateInferenceBuffers(input.length, model);
+  const inferenceBuffers = allocateInferenceBuffers(input.length, 1, model);
 
   const inputPositionToVocabPosition = input.map((token) =>
     findTokenIndex(model.vocabulary, token),
@@ -175,7 +175,12 @@ const main = async () => {
     assertSensibleOutput(
       "GPU",
       tokenCount,
-      await llmForwardPassByTokensOnGPU(inputTokens, model, weightsBuffer, false),
+      await llmForwardPassByTokensOnGPU(
+        inputTokens,
+        model,
+        weightsBuffer,
+        false,
+      ),
       model,
     );
 

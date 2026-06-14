@@ -9,9 +9,11 @@ import { createMatrix, type Matrix } from "../../shared/matrices.ts";
 import {
   matrixFrom,
   expectMatrixCloseTo,
+  restripeHeadBlocks,
 } from "../../testing/testing-utils.ts";
 import { runSelfAttentionHead } from "./attention.ts";
 import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const runGpu = async (
   inputV: Matrix,
@@ -21,8 +23,16 @@ const runGpu = async (
   const headDim = gpuContext
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
+  const headsCount = inputV.dimensions / headDimensionsCount;
   const inputVBuffer = createMatrixBuffer(inputV);
-  const matchingKeyProductsBuffer = createMatrixBuffer(matchingKeyProducts);
+  const matchingKeyProductsBuffer = createMatrixBuffer(
+    restripeHeadBlocks(
+      matchingKeyProducts,
+      headsCount,
+      inputV.vectors,
+      MAX_CONTEXT,
+    ),
+  );
   const out = createMatrixBuffer(
     createMatrix(inputV.vectors, inputV.dimensions),
   );
