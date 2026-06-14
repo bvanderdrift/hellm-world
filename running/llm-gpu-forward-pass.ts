@@ -1,38 +1,42 @@
-import { d, type StorageFlag, type TgpuBuffer } from "typegpu";
 import {
   addMatricesOnGPU,
   multiplyMatricesOnGPU,
-  type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
-import type { WgslArray } from "typegpu/data";
 import type { TransformerActivations } from "../model/activations-types.ts";
 import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
 import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
-import type { WeightGPUBuffers } from "../model/model-gpu-helpers.ts";
+import type {
+  InferenceBuffers,
+  WeightGPUBuffers,
+} from "../model/model-gpu-helpers.ts";
 import type { Model } from "../model/model-types.ts";
+import type { StorageFlag, TgpuBuffer } from "typegpu";
+import type { F32, WgslArray } from "typegpu/data";
 
 export const forwardPassOnGPU = ({
   weightBuffers,
   model,
   withActivations,
-  hiddenState,
-  attentionInputBuffer,
-  attentionUpdateBuffer,
-  attentionInputKBuffer,
-  attentionInputVBuffer,
-  attentionInputQBuffer,
-  attentionOutBuffer,
-  attentionRelevancyOutput,
-  matchingKeyProducts,
-  unembeddedStateBuffer,
-  probabilitiesBuffer,
-  mlpInputBuffer,
-  uppedMlpBuffer,
-  outMlpBuffer,
-  postTransformersBuffer,
+  inferenceBuffers: {
+    hiddenState,
+    attentionInputBuffer,
+    attentionUpdateBuffer,
+    attentionInputKBuffer,
+    attentionInputVBuffer,
+    attentionInputQBuffer,
+    attentionOutBuffer,
+    attentionRelevancyOutput,
+    matchingKeyProducts,
+    unembeddedStateBuffer,
+    probabilitiesBuffer,
+    mlpInputBuffer,
+    uppedMlpBuffer,
+    outMlpBuffer,
+    postTransformersBuffer,
+  },
   inputPositionToVocabPositionGPUBuffer,
 }: ForwardPassInput) => {
   prepareHiddenState(
@@ -109,22 +113,7 @@ type ForwardPassInput = {
   model: Model;
   weightBuffers: WeightGPUBuffers;
   withActivations: boolean;
-
-  hiddenState: MatrixBuffer;
-  attentionInputBuffer: MatrixBuffer;
-  attentionUpdateBuffer: MatrixBuffer;
-  attentionInputKBuffer: MatrixBuffer;
-  attentionInputVBuffer: MatrixBuffer;
-  attentionInputQBuffer: MatrixBuffer;
-  attentionOutBuffer: MatrixBuffer;
-  attentionRelevancyOutput: MatrixBuffer;
-  matchingKeyProducts: MatrixBuffer;
-  unembeddedStateBuffer: MatrixBuffer;
-  probabilitiesBuffer: MatrixBuffer;
-  mlpInputBuffer: MatrixBuffer;
-  uppedMlpBuffer: MatrixBuffer;
-  outMlpBuffer: MatrixBuffer;
-  postTransformersBuffer: MatrixBuffer;
-  inputPositionToVocabPositionGPUBuffer: TgpuBuffer<WgslArray<d.F32>> &
+  inferenceBuffers: InferenceBuffers;
+  inputPositionToVocabPositionGPUBuffer: TgpuBuffer<WgslArray<F32>> &
     StorageFlag;
 };

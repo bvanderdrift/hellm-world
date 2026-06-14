@@ -1,14 +1,66 @@
 import { describe, it, expect } from "bun:test";
+import { d } from "typegpu";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { llmForwardPassByTokens } from "./llm.ts";
-import { llmForwardPassByTokensOnGPU } from "./llm-gpu.ts";
-import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
+import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
+import {
+  allocateInferenceBuffers,
+  loadWeightsIntoGpu,
+  type InferenceBuffers,
+  type WeightGPUBuffers,
+} from "../model/model-gpu-helpers.ts";
+import { findTokenIndex } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
+import { gpuContext } from "../shared/gpu-context.ts";
+import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { createMatrix, getRawVector, type Matrix } from "../shared/matrices.ts";
 import { getHighestValueIndex } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
+
+const destroyInferenceBuffers = (buffers: InferenceBuffers) => {
+  for (const matrixBuffer of Object.values(buffers)) {
+    matrixBuffer.buffer.destroy();
+  }
+};
+
+const llmForwardPassByTokensOnGPU = async (
+  input: string[],
+  model: Model,
+  weightBuffers: WeightGPUBuffers,
+  withActivations: boolean,
+): Promise<Matrix> => {
+  const inferenceBuffers = allocateInferenceBuffers(input.length, model);
+
+  const inputPositionToVocabPosition = input.map((token) =>
+    findTokenIndex(model.vocabulary, token),
+  );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations,
+    inferenceBuffers,
+    inputPositionToVocabPositionGPUBuffer,
+  });
+
+  const probabilities = await extractMatrixBuffer(
+    inferenceBuffers.probabilitiesBuffer,
+  );
+
+  destroyInferenceBuffers(inferenceBuffers);
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+
+  return probabilities;
+};
 
 const emptyHistory: ModelTrainingState = {
   trainingLosses: [],
@@ -103,7 +155,7 @@ const argmaxLastRow = (probabilities: Matrix): number =>
     getRawVector(probabilities, probabilities.vectors - 1),
   );
 
-describe("llmForwardPassByTokensOnGPU matches the CPU forward pass", () => {
+describe("forwardPassOnGPU matches the CPU forward pass", () => {
   const configs: { name: string; config: ModelConfig }[] = [
     { name: "single head, single layer", config: { hidden: 4, heads: 1, layers: 1, mlpMultiple: 1, vocabSize: 5 } },
     { name: "multi-head, single layer", config: { hidden: 8, heads: 2, layers: 1, mlpMultiple: 1, vocabSize: 5 } },
@@ -127,7 +179,7 @@ describe("llmForwardPassByTokensOnGPU matches the CPU forward pass", () => {
   }
 });
 
-describe("llmForwardPassByTokensOnGPU across context lengths", () => {
+describe("forwardPassOnGPU across context lengths", () => {
   const config: ModelConfig = { hidden: 16, heads: 4, layers: 3, mlpMultiple: 4, vocabSize: 6 };
 
   for (let length = 1; length <= 6; length++) {
@@ -143,7 +195,7 @@ describe("llmForwardPassByTokensOnGPU across context lengths", () => {
   }
 });
 
-describe("llmForwardPassByTokensOnGPU keeps the residual un-normalized", () => {
+describe("forwardPassOnGPU keeps the residual un-normalized", () => {
   it("uses x + f(norm(x)) when x !== norm(x) (large embeddings)", async () => {
     const model = makeModel(303, { hidden: 8, heads: 2, layers: 2, mlpMultiple: 2, vocabSize: 5 });
     for (let i = 0; i < model.embeddings.values.length; i++) {

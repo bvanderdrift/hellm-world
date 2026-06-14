@@ -13,9 +13,60 @@ import {
   MEASURE_ITERS,
   type Stats,
 } from "../bench-harness.ts";
-import { llmForwardPassByTokensOnGPU } from "./llm-gpu.ts";
-import { loadWeightsIntoGpu } from "../model/model-gpu-helpers.ts";
+import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
+import {
+  allocateInferenceBuffers,
+  loadWeightsIntoGpu,
+  type InferenceBuffers,
+  type WeightGPUBuffers,
+} from "../model/model-gpu-helpers.ts";
+import { findTokenIndex } from "../model/model-helpers.ts";
+import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
+import { d } from "typegpu";
 import { readFileSync, writeFileSync } from "node:fs";
+
+const destroyInferenceBuffers = (buffers: InferenceBuffers) => {
+  for (const matrixBuffer of Object.values(buffers)) {
+    matrixBuffer.buffer.destroy();
+  }
+};
+
+const llmForwardPassByTokensOnGPU = async (
+  input: string[],
+  model: Model,
+  weightBuffers: WeightGPUBuffers,
+  withActivations: boolean,
+): Promise<Matrix> => {
+  const inferenceBuffers = allocateInferenceBuffers(input.length, model);
+
+  const inputPositionToVocabPosition = input.map((token) =>
+    findTokenIndex(model.vocabulary, token),
+  );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, inputPositionToVocabPosition.length),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations,
+    inferenceBuffers,
+    inputPositionToVocabPositionGPUBuffer,
+  });
+
+  const probabilities = await extractMatrixBuffer(
+    inferenceBuffers.probabilitiesBuffer,
+  );
+
+  destroyInferenceBuffers(inferenceBuffers);
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+
+  return probabilities;
+};
 
 const MODEL_NAME = "addy";
 const TOKEN_COUNTS = [1, 3, 5, 10, 30, 50, 100, 300, 500, 1000];
