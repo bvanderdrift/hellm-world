@@ -102,11 +102,11 @@ export const llmForwardPassByTokensOnGPU = async (
   });
   const attentionRelevancyOutput = createMatrixBuffer({
     vectors: contextSize,
-    dimensions: hiddenDimensionsSize,
+    dimensions: contextSize * model.counts.attentionHeads,
   });
   const matchingKeyProducts = createMatrixBuffer({
     vectors: contextSize,
-    dimensions: hiddenDimensionsSize,
+    dimensions: contextSize * model.counts.attentionHeads,
   });
   const unembeddedStateBuffer = createMatrixBuffer({
     vectors: contextSize,
