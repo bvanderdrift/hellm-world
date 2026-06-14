@@ -1,4 +1,4 @@
-import tgpu, { d, type TgpuBuffer, type UniformFlag } from "typegpu";
+import tgpu, { d } from "typegpu";
 import {
   getFlatIndexOnGPU,
   matrixBufferDefinition,
