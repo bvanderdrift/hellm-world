@@ -22,6 +22,7 @@ import { divideToWhole } from "../shared/math.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
+import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
 
 export const runLlmOnGPU = async function* (
   inputTokens: string[],
@@ -142,82 +143,27 @@ export const llmForwardPassByTokensOnGPU = async (
     )
     .$usage("storage");
 
-  prepareHiddenState(
-    inputPositionToVocabPositionGPUBuffer,
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations,
     hiddenState,
-    weightBuffers.embeddings,
-  );
-
-  const transformerActivations: TransformerActivations[] = [];
-
-  const headDimensionsCount = divideToWhole(
-    hiddenDimensionsSize,
-    model.counts.attentionHeads,
-  );
-
-  const headDimensionsCountBuffer = gpuContext
-    .createBuffer(d.u32, headDimensionsCount)
-    .$usage("uniform");
-
-  for (const transformerBuffers of weightBuffers.transformers) {
-    normalizeOnGpu(hiddenState, attentionInputBuffer);
-
-    runSelfAttentionMechanismOnGPU(
-      attentionInputBuffer,
-      model.counts.attentionHeads,
-      headDimensionsCountBuffer,
-      transformerBuffers.attention,
-      attentionInputQBuffer,
-      attentionInputKBuffer,
-      attentionInputVBuffer,
-      attentionRelevancyOutput,
-      matchingKeyProducts,
-      attentionOutBuffer,
-      attentionUpdateBuffer,
-    );
-
-    addMatricesOnGPU(hiddenState, attentionUpdateBuffer);
-
-    normalizeOnGpu(hiddenState, mlpInputBuffer);
-
-    getMultilayerPerceptronActivationsOnGPU(
-      // Normalize input only, don't normalize the intermediateState iself
-      // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      mlpInputBuffer,
-      uppedMlpBuffer,
-      outMlpBuffer,
-      transformerBuffers.multilayerPerceptron,
-    );
-
-    // Apply updated knowledge
-    addMatricesOnGPU(hiddenState, outMlpBuffer);
-
-    transformerActivations.push({
-      attention: null as unknown,
-      mlp: null as unknown,
-      transformerInput: null as unknown,
-    } as any);
-  }
-
-  normalizeOnGpu(hiddenState, postTransformersBuffer);
-
-  const missingTransformerActivationsCount =
-    model.transformers.length - transformerActivations.length;
-
-  if (withActivations && missingTransformerActivationsCount > 0) {
-    // One sanity check, the rest is available either way
-    throw new Error(
-      `Missing ${missingTransformerActivationsCount} transformer activations`,
-    );
-  }
-
-  multiplyMatricesOnGPU(
-    postTransformersBuffer,
-    weightBuffers.unembeddings,
+    attentionInputBuffer,
+    attentionUpdateBuffer,
+    attentionInputKBuffer,
+    attentionInputVBuffer,
+    attentionInputQBuffer,
+    attentionOutBuffer,
+    attentionRelevancyOutput,
+    matchingKeyProducts,
     unembeddedStateBuffer,
-  );
-
-  softmaxOnGpu(unembeddedStateBuffer, probabilitiesBuffer);
+    probabilitiesBuffer,
+    mlpInputBuffer,
+    uppedMlpBuffer,
+    outMlpBuffer,
+    postTransformersBuffer,
+    inputPositionToVocabPositionGPUBuffer,
+  });
 
   const probabilities = await extractMatrixBuffer(probabilitiesBuffer);
 
@@ -239,7 +185,6 @@ export const llmForwardPassByTokensOnGPU = async (
   postTransformersBuffer.buffer.destroy();
 
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
-  headDimensionsCountBuffer.buffer.destroy();
   unembeddedStateBuffer.buffer.destroy();
 
   return probabilities;

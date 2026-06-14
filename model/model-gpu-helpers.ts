@@ -1,8 +1,11 @@
+import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
+import { gpuContext } from "../shared/gpu-context.ts";
+import { divideToWhole } from "../shared/math.ts";
 import {
   createMatrixBuffer,
   type MatrixBuffer,
 } from "../shared/matrices-gpu.ts";
-import type { Weights } from "./model-types.ts";
+import type { Model, Weights } from "./model-types.ts";
 
 export interface AttentionGPUBuffers {
   Q: MatrixBuffer;
@@ -28,16 +31,27 @@ export interface TransformerGPUBuffers {
 }
 
 export type WeightGPUBuffers = {
+  headDimensionsCountBuffer: TgpuBuffer<d.U32> & UniformFlag;
   embeddings: MatrixBuffer; // T x D
   unembeddings: MatrixBuffer; // D x T
   transformers: TransformerGPUBuffers[];
 };
 
-export const loadWeightsIntoGpu = (weight: Weights): WeightGPUBuffers => {
+export const loadWeightsIntoGpu = (model: Model): WeightGPUBuffers => {
+  const headDimensionsCount = divideToWhole(
+    model.counts.hiddenDimensions,
+    model.counts.attentionHeads,
+  );
+
+  const headDimensionsCountBuffer = gpuContext
+    .createBuffer(d.u32, headDimensionsCount)
+    .$usage("uniform");
+
   return {
-    embeddings: createMatrixBuffer(weight.embeddings),
-    unembeddings: createMatrixBuffer(weight.unembeddings),
-    transformers: weight.transformers.map(
+    headDimensionsCountBuffer,
+    embeddings: createMatrixBuffer(model.embeddings),
+    unembeddings: createMatrixBuffer(model.unembeddings),
+    transformers: model.transformers.map(
       (t): TransformerGPUBuffers => ({
         attention: {
           K: createMatrixBuffer(t.attention.K),
