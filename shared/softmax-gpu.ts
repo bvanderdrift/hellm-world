@@ -83,7 +83,6 @@ const softmaxGpuPipeline = gpuContext.createComputePipeline({
 export const softmaxOnGpu = (
   logits: MatrixBuffer,
   output: MatrixBuffer,
-  encoder: GPUCommandEncoder,
   headsCount: number = 1,
 ) => {
   const params = gpuContext.createBindGroup(softmaxParamsLayout, {
@@ -92,7 +91,6 @@ export const softmaxOnGpu = (
   });
 
   softmaxGpuPipeline
-    .with(encoder)
     .with(params)
     .dispatchWorkgroups(headsCount, logits.vectors);
 };

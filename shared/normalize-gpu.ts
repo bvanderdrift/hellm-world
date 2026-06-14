@@ -103,16 +103,10 @@ const normalizeVectorRunner = gpuContext.createComputePipeline({
   compute: normalizeKernel,
 });
 
-export const normalizeOnGpu = (
-  hiddenState: MatrixBuffer,
-  encoder: GPUCommandEncoder,
-) => {
+export const normalizeOnGpu = (hiddenState: MatrixBuffer) => {
   const bindGroup = gpuContext.createBindGroup(normalizeParamsLayout, {
     hiddenState: hiddenState.buffer,
   });
 
-  normalizeVectorRunner
-    .with(encoder)
-    .with(bindGroup)
-    .dispatchWorkgroups(hiddenState.vectors);
+  normalizeVectorRunner.with(bindGroup).dispatchWorkgroups(hiddenState.vectors);
 };

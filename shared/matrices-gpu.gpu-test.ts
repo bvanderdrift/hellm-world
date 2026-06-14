@@ -8,7 +8,6 @@ import {
   applyScalarToMatrixOnGPU,
   addMatricesOnGPU,
   addVectorAcrossMatrixOnGPU,
-  type MatrixBuffer,
 } from "./matrices-gpu.ts";
 import {
   type Matrix,
@@ -27,12 +26,7 @@ const randomMatrix = (vectors: number, dimensions: number): Matrix => ({
   ),
 });
 
-const runEncoded = async (
-  record: (encoder: GPUCommandEncoder) => void,
-): Promise<void> => {
-  const encoder = gpuContext.device.createCommandEncoder();
-  record(encoder);
-  gpuContext.device.queue.submit([encoder.finish()]);
+const flush = async (): Promise<void> => {
   await gpuContext.device.queue.onSubmittedWorkDone();
 };
 
@@ -75,14 +69,8 @@ describe("multiplyMatricesOnGPU", () => {
     ]);
 
     const out = createMatrixBuffer({ vectors: 3, dimensions: 3 });
-    await runEncoded((encoder) =>
-      multiplyMatricesOnGPU(
-        createMatrixBuffer(m1),
-        createMatrixBuffer(m2),
-        out,
-        encoder,
-      ),
-    );
+    multiplyMatricesOnGPU(createMatrixBuffer(m1), createMatrixBuffer(m2), out);
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(out),
@@ -97,14 +85,8 @@ describe("multiplyMatricesOnGPU", () => {
     const m2 = randomMatrix(shared, 24);
 
     const out = createMatrixBuffer({ vectors: 20, dimensions: 24 });
-    await runEncoded((encoder) =>
-      multiplyMatricesOnGPU(
-        createMatrixBuffer(m1),
-        createMatrixBuffer(m2),
-        out,
-        encoder,
-      ),
-    );
+    multiplyMatricesOnGPU(createMatrixBuffer(m1), createMatrixBuffer(m2), out);
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(out),
@@ -119,14 +101,8 @@ describe("multiplyMatricesOnGPU", () => {
     const m2 = randomMatrix(shared, 19);
 
     const out = createMatrixBuffer({ vectors: 33, dimensions: 19 });
-    await runEncoded((encoder) =>
-      multiplyMatricesOnGPU(
-        createMatrixBuffer(m1),
-        createMatrixBuffer(m2),
-        out,
-        encoder,
-      ),
-    );
+    multiplyMatricesOnGPU(createMatrixBuffer(m1), createMatrixBuffer(m2), out);
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(out),
@@ -144,9 +120,8 @@ describe("applyScalarToMatrixOnGPU", () => {
     ]);
     const buffer = createMatrixBuffer(matrix);
 
-    await runEncoded((encoder) =>
-      applyScalarToMatrixOnGPU(scalarUniform(2.5), buffer, encoder),
-    );
+    applyScalarToMatrixOnGPU(scalarUniform(2.5), buffer);
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -159,9 +134,8 @@ describe("applyScalarToMatrixOnGPU", () => {
     const matrix = randomMatrix(19, 23);
     const buffer = createMatrixBuffer(matrix);
 
-    await runEncoded((encoder) =>
-      applyScalarToMatrixOnGPU(scalarUniform(-1.75), buffer, encoder),
-    );
+    applyScalarToMatrixOnGPU(scalarUniform(-1.75), buffer);
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -177,9 +151,8 @@ describe("addMatricesOnGPU", () => {
     const m2 = randomMatrix(5, 9);
     const buffer = createMatrixBuffer(m1);
 
-    await runEncoded((encoder) =>
-      addMatricesOnGPU(buffer, createMatrixBuffer(m2), encoder),
-    );
+    addMatricesOnGPU(buffer, createMatrixBuffer(m2));
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -193,9 +166,8 @@ describe("addMatricesOnGPU", () => {
     const m2 = randomMatrix(17, 35);
     const buffer = createMatrixBuffer(m1);
 
-    await runEncoded((encoder) =>
-      addMatricesOnGPU(buffer, createMatrixBuffer(m2), encoder),
-    );
+    addMatricesOnGPU(buffer, createMatrixBuffer(m2));
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -211,9 +183,8 @@ describe("addVectorAcrossMatrixOnGPU", () => {
     const vector = randomMatrix(1, 8);
     const buffer = createMatrixBuffer(matrix);
 
-    await runEncoded((encoder) =>
-      addVectorAcrossMatrixOnGPU(buffer, createMatrixBuffer(vector), encoder),
-    );
+    addVectorAcrossMatrixOnGPU(buffer, createMatrixBuffer(vector));
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -227,9 +198,8 @@ describe("addVectorAcrossMatrixOnGPU", () => {
     const vector = randomMatrix(1, 23);
     const buffer = createMatrixBuffer(matrix);
 
-    await runEncoded((encoder) =>
-      addVectorAcrossMatrixOnGPU(buffer, createMatrixBuffer(vector), encoder),
-    );
+    addVectorAcrossMatrixOnGPU(buffer, createMatrixBuffer(vector));
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(buffer),
@@ -239,8 +209,8 @@ describe("addVectorAcrossMatrixOnGPU", () => {
   });
 });
 
-describe("shared guarded pipeline across one encoder", () => {
-  it("keeps independent sizes when the same kernel runs twice before submit", async () => {
+describe("running the same kernel twice with different sizes", () => {
+  it("keeps independent sizes across consecutive dispatches", async () => {
     const big = randomMatrix(7, 32);
     const small = randomMatrix(3, 5);
     const bigVector = randomMatrix(1, 32);
@@ -249,18 +219,9 @@ describe("shared guarded pipeline across one encoder", () => {
     const bigBuffer = createMatrixBuffer(big);
     const smallBuffer = createMatrixBuffer(small);
 
-    await runEncoded((encoder) => {
-      addVectorAcrossMatrixOnGPU(
-        bigBuffer,
-        createMatrixBuffer(bigVector),
-        encoder,
-      );
-      addVectorAcrossMatrixOnGPU(
-        smallBuffer,
-        createMatrixBuffer(smallVector),
-        encoder,
-      );
-    });
+    addVectorAcrossMatrixOnGPU(bigBuffer, createMatrixBuffer(bigVector));
+    addVectorAcrossMatrixOnGPU(smallBuffer, createMatrixBuffer(smallVector));
+    await flush();
 
     expectMatrixCloseTo(
       await extractMatrixBuffer(bigBuffer),

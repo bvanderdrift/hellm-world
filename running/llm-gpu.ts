@@ -70,8 +70,6 @@ export const llmForwardPassByTokensOnGPU = async (
     return findTokenIndex(model.vocabulary, token);
   });
 
-  const encoder = gpuContext.device.createCommandEncoder();
-
   const hiddenState = createMatrixBuffer({
     vectors: inputPositionToVocabPosition.length,
     dimensions: model.counts.hiddenDimensions,
@@ -136,7 +134,6 @@ export const llmForwardPassByTokensOnGPU = async (
     inputPositionToVocabPositionGPUBuffer,
     hiddenState,
     weightBuffers.embeddings,
-    encoder,
   );
 
   const transformerActivations: TransformerActivations[] = [];
@@ -151,7 +148,7 @@ export const llmForwardPassByTokensOnGPU = async (
     .$usage("uniform");
 
   for (const transformerBuffers of weightBuffers.transformers) {
-    normalizeOnGpu(hiddenState, encoder);
+    normalizeOnGpu(hiddenState);
 
     runSelfAttentionMechanismOnGPU(
       hiddenState,
@@ -165,12 +162,11 @@ export const llmForwardPassByTokensOnGPU = async (
       matchingKeyProducts,
       attentionOutBuffer,
       attentionUpdateBuffer,
-      encoder,
     );
 
-    addMatricesOnGPU(hiddenState, attentionUpdateBuffer, encoder);
+    addMatricesOnGPU(hiddenState, attentionUpdateBuffer);
 
-    normalizeOnGpu(hiddenState, encoder);
+    normalizeOnGpu(hiddenState);
 
     getMultilayerPerceptronActivationsOnGPU(
       // Normalize input only, don't normalize the intermediateState iself
@@ -179,11 +175,10 @@ export const llmForwardPassByTokensOnGPU = async (
       uppedMlpBuffer,
       outMlpBuffer,
       transformerBuffers.multilayerPerceptron,
-      encoder,
     );
 
     // Apply updated knowledge
-    addMatricesOnGPU(hiddenState, outMlpBuffer, encoder);
+    addMatricesOnGPU(hiddenState, outMlpBuffer);
 
     transformerActivations.push({
       attention: null as unknown,
@@ -192,7 +187,7 @@ export const llmForwardPassByTokensOnGPU = async (
     } as any);
   }
 
-  normalizeOnGpu(hiddenState, encoder);
+  normalizeOnGpu(hiddenState);
 
   const missingTransformerActivationsCount =
     model.transformers.length - transformerActivations.length;
@@ -208,12 +203,9 @@ export const llmForwardPassByTokensOnGPU = async (
     hiddenState,
     weightBuffers.unembeddings,
     unembeddedStateBuffer,
-    encoder,
   );
 
-  softmaxOnGpu(unembeddedStateBuffer, probabilitiesBuffer, encoder);
-
-  gpuContext.device.queue.submit([encoder.finish()]);
+  softmaxOnGpu(unembeddedStateBuffer, probabilitiesBuffer);
 
   const probabilities = await extractMatrixBuffer(probabilitiesBuffer);
 

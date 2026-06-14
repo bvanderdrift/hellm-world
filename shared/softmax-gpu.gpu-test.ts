@@ -18,9 +18,7 @@ const runGpu = async (
     ),
   );
 
-  const encoder = gpuContext.device.createCommandEncoder();
-  softmaxOnGpu(relevancyBuffer, matchingKeyProducts, encoder, headsCount);
-  gpuContext.device.queue.submit([encoder.finish()]);
+  softmaxOnGpu(relevancyBuffer, matchingKeyProducts, headsCount);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(matchingKeyProducts);

@@ -62,7 +62,6 @@ export const calculateRelevancyOnGPU = (
   inputK: MatrixBuffer,
   inputQ: MatrixBuffer,
   attentionRelevancyOutput: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(calculateRelevancyParams, {
     headDimensionsCount,
@@ -72,7 +71,6 @@ export const calculateRelevancyOnGPU = (
   });
 
   calculateRelevancyKernel
-    .with(encoder)
     .with(params)
     .dispatchThreads(inputK.vectors, headCount, inputK.vectors);
 };

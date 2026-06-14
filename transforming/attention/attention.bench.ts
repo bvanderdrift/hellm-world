@@ -82,7 +82,6 @@ if (import.meta.main) {
       { buffer },
       { headsCount, headDimensions, gpuWeights, scratch },
     ) => {
-      const encoder = gpuContext.device.createCommandEncoder();
       runSelfAttentionMechanismOnGPU(
         buffer,
         headsCount,
@@ -95,9 +94,7 @@ if (import.meta.main) {
         scratch.matchingKeyProducts,
         scratch.headsOut,
         scratch.attentionUpdate,
-        encoder,
       );
-      gpuContext.device.queue.submit([encoder.finish()]);
 
       return scratch.attentionUpdate;
     },

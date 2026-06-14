@@ -86,7 +86,6 @@ export const multiplyMatricesOnGPU = (
   m1: MatrixBuffer,
   m2: MatrixBuffer,
   mOut: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(multiplyMatrixParamsLayout, {
     m1: m1.buffer,
@@ -95,7 +94,6 @@ export const multiplyMatricesOnGPU = (
   });
 
   dotProductRunner
-    .with(encoder)
     .with(params)
     .dispatchWorkgroups(
       Math.ceil(m1.vectors / 16),
@@ -161,7 +159,6 @@ const applyScalarToMatrixKernel = gpuContext.createGuardedComputePipeline(
 export const applyScalarToMatrixOnGPU = (
   scalar: TgpuBuffer<d.F32> & UniformFlag,
   matrix: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(applyScalarParamsLayout, {
     scalar,
@@ -169,7 +166,6 @@ export const applyScalarToMatrixOnGPU = (
   });
 
   applyScalarToMatrixKernel
-    .with(encoder)
     .with(params)
     .dispatchThreads(matrix.vectors, matrix.dimensions);
 };
@@ -211,7 +207,6 @@ const addMatricesRunner = gpuContext.createComputePipeline({
 export const addMatricesOnGPU = (
   m1WillMutate: MatrixBuffer,
   m2: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(addMatricesParamsLayout, {
     m1WillMutate: m1WillMutate.buffer,
@@ -219,7 +214,6 @@ export const addMatricesOnGPU = (
   });
 
   addMatricesRunner
-    .with(encoder)
     .with(params)
     .dispatchWorkgroups(
       Math.ceil((m1WillMutate.vectors * m1WillMutate.dimensions) / 256),
@@ -254,7 +248,6 @@ const addVectorAcrossMatrixRunner = gpuContext.createComputePipeline({
 export const addVectorAcrossMatrixOnGPU = (
   m1WillMutate: MatrixBuffer,
   vector: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(addMatricesParamsLayout, {
     m1WillMutate: m1WillMutate.buffer,
@@ -262,7 +255,6 @@ export const addVectorAcrossMatrixOnGPU = (
   });
 
   addVectorAcrossMatrixRunner
-    .with(encoder)
     .with(params)
     .dispatchWorkgroups(
       Math.ceil(m1WillMutate.vectors / 16),

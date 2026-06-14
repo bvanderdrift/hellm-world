@@ -60,7 +60,6 @@ export const applyAttentionValuesOnGPU = (
   inputV: MatrixBuffer,
   matchingKeyProducts: MatrixBuffer,
   output: MatrixBuffer,
-  encoder: GPUCommandEncoder,
 ) => {
   const params = gpuContext.createBindGroup(applyWeightedValuesParams, {
     headDimensionsCount,
@@ -70,7 +69,6 @@ export const applyAttentionValuesOnGPU = (
   });
 
   applyValuesKernel
-    .with(encoder)
     .with(params)
     .dispatchThreads(output.vectors, output.dimensions);
 };

@@ -25,9 +25,7 @@ const timeMatmul = async (m: number, k: number, n: number) => {
     multiplyMatrices(a, b);
   });
   const gpu = await benchmark(async () => {
-    const encoder = gpuContext.device.createCommandEncoder();
-    multiplyMatricesOnGPU(aBuf, bBuf, outBuf, encoder);
-    gpuContext.device.queue.submit([encoder.finish()]);
+    multiplyMatricesOnGPU(aBuf, bBuf, outBuf);
     await gpuContext.device.queue.onSubmittedWorkDone();
   });
   return { cpu: cpu.median, gpu: gpu.median };
@@ -60,9 +58,7 @@ if (import.meta.main) {
     },
     cpu: ({ matrix }, { b }) => multiplyMatrices(matrix, b),
     gpu: ({ buffer }, { bBuf, out }) => {
-      const encoder = gpuContext.device.createCommandEncoder();
-      multiplyMatricesOnGPU(buffer, bBuf, out, encoder);
-      gpuContext.device.queue.submit([encoder.finish()]);
+      multiplyMatricesOnGPU(buffer, bBuf, out);
       return out;
     },
   });
