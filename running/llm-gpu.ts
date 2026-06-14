@@ -19,21 +19,15 @@ import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
 import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { divideToWhole } from "../shared/math.ts";
-import { validateModel } from "../model/model-validation.ts";
-import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
-import { tokenize } from "../shared/tokenizer.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
 
-export const runLlmOnGPU = async function* (input: string, modelName: string) {
+export const runLlmOnGPU = async function* (
+  inputTokens: string[],
+  model: Model,
+) {
   let outputTokens: string[] = [];
-
-  const model = getLatestCheckpointModel(modelName);
-
-  validateModel(model);
-
-  const inputTokens = tokenize(input, model.vocabulary);
 
   const weightBuffers = loadWeightsIntoGpu(model);
 

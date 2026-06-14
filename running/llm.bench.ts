@@ -1,4 +1,5 @@
-import { getHighestValueIndex, llmForwardPassByTokens } from "./llm.ts";
+import { llmForwardPassByTokens } from "./llm.ts";
+import { getHighestValueIndex } from "./llm-shared.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { validateModel } from "../model/model-validation.ts";
 import type { Model } from "../model/model-types.ts";
@@ -38,11 +39,10 @@ const saveCpuCache = (cache: Record<string, Stats>) => {
 const assertSensibleOutput = (
   source: string,
   tokenCount: number,
-  output: { embeddings: Matrix },
+  output: Matrix,
   model: Model,
 ) => {
-  const { embeddings } = output;
-  const logitWidth = model.unembeddings.dimensions;
+  const vocabWidth = model.unembeddings.dimensions;
 
   const fail = (reason: string) => {
     throw new Error(
@@ -50,31 +50,31 @@ const assertSensibleOutput = (
     );
   };
 
-  if (embeddings.vectors !== tokenCount) {
-    fail(`expected ${tokenCount} vectors but got ${embeddings.vectors}`);
+  if (output.vectors !== tokenCount) {
+    fail(`expected ${tokenCount} vectors but got ${output.vectors}`);
   }
-  if (embeddings.dimensions < logitWidth) {
+  if (output.dimensions < vocabWidth) {
     fail(
-      `expected at least ${logitWidth} logit dimensions but got ${embeddings.dimensions}`,
+      `expected at least ${vocabWidth} vocab dimensions but got ${output.dimensions}`,
     );
   }
 
-  for (let i = 0; i < embeddings.values.length; i++) {
-    const value = embeddings.values[i]!;
+  for (let i = 0; i < output.values.length; i++) {
+    const value = output.values[i]!;
     if (!Number.isFinite(value)) {
       fail(`value at index ${i} is ${value}`);
     }
   }
 
-  const lastVector = getRawVector(embeddings, embeddings.vectors - 1);
-  if (!lastVector) fail("could not read final logit vector");
-  const logits = lastVector.slice(0, logitWidth);
+  const lastVector = getRawVector(output, output.vectors - 1);
+  if (!lastVector) fail("could not read final output vector");
+  const finalVector = lastVector.slice(0, vocabWidth);
 
-  if (logits.every((value) => value === 0)) {
-    fail("all final logits are zero");
+  if (finalVector.every((value) => value === 0)) {
+    fail("all final values are zero");
   }
 
-  const predictedIndex = getHighestValueIndex(logits);
+  const predictedIndex = getHighestValueIndex(finalVector);
   if (model.vocabulary[predictedIndex] === undefined) {
     fail(`argmax index ${predictedIndex} is outside the vocabulary`);
   }
@@ -110,7 +110,7 @@ const main = async () => {
       assertSensibleOutput(
         "CPU",
         tokenCount,
-        llmForwardPassByTokens(inputTokens, model, false),
+        llmForwardPassByTokens(inputTokens, model, false).embeddings,
         model,
       );
       cpuStats = await benchmark(() => {

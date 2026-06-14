@@ -6,31 +6,22 @@ import {
   multiplyMatrices,
   type Matrix,
 } from "../shared/matrices.ts";
-import { tokenize } from "../shared/tokenizer.ts";
 import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention/attention.ts";
 import type { Model } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { validateModel } from "../model/model-validation.ts";
 import type {
   Activations,
   TransformerActivations,
 } from "../model/activations-types.ts";
 import { softmax } from "../shared/softmax.ts";
-import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { normalize } from "../shared/normalize.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 
-export const runLlm = function* (input: string, modelName: string) {
+export const runLlm = function* (inputTokens: string[], model: Model) {
   let outputTokens: string[] = [];
-
-  const model = getLatestCheckpointModel(modelName);
-
-  validateModel(model);
-
-  const inputTokens = tokenize(input, model.vocabulary);
 
   for (let index = 0; index < MAX_CONTEXT; index++) {
     const nextInput = [...inputTokens, ...outputTokens];

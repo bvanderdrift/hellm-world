@@ -14,10 +14,8 @@ import { type Model } from "../../../model/model-types.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
 import { getRawVector } from "../../../shared/matrices.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
-import {
-  getHighestValueIndex,
-  llmForwardPassByTokens,
-} from "../../../running/llm.ts";
+import { llmForwardPassByTokens } from "../../../running/llm.ts";
+import { getHighestValueIndex } from "../../../running/llm-shared.ts";
 import { getCheckpointModel } from "../../../model/model-checkpoint-io.ts";
 
 import { GRID_SIZE, MODEL_NAME } from "./correctness-grid.ts";

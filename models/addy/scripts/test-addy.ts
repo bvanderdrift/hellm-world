@@ -6,6 +6,9 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import sharp from "sharp";
 import { runLlm } from "../../../running/llm.ts";
+import { getLatestCheckpointModel } from "../../../model/model-checkpoint-io.ts";
+import { tokenize } from "../../../shared/tokenizer.ts";
+import type { Model } from "../../../model/model-types.ts";
 
 const escapeXml = (value: string) =>
   value
@@ -37,12 +40,14 @@ const generatePairs = (max: number, count: number): [number, number][] => {
   return pairs;
 };
 
-const runTest = (a: number, b: number, modelName: string): TestResult => {
+const runTest = (a: number, b: number, model: Model): TestResult => {
   const input = `${a}+${b}=`;
   const expected = a + b;
 
+  const inputTokens = tokenize(input, model.vocabulary);
+
   const tokens: string[] = [];
-  for (const token of runLlm(input, modelName)) {
+  for (const token of runLlm(inputTokens, model)) {
     tokens.push(token);
   }
   const output = tokens.join("");
@@ -148,6 +153,8 @@ if (!modelName) {
 const samplesPerMagnitude = 20;
 const allResults: MagnitudeResult[] = [];
 
+const model = getLatestCheckpointModel(modelName);
+
 for (const mag of magnitudes) {
   const pairs = generatePairs(mag.maxDigit, samplesPerMagnitude);
   const results: TestResult[] = [];
@@ -155,7 +162,7 @@ for (const mag of magnitudes) {
   console.log(`\n--- ${mag.label} ---`);
 
   for (const [a, b] of pairs) {
-    const result = runTest(a, b, modelName);
+    const result = runTest(a, b, model);
     const mark = result.correct ? "OK" : "FAIL";
     console.log(
       `  ${result.input} expected ${result.expected}, got "${result.output}" [${mark}]`,

@@ -4,12 +4,11 @@ import { llmForwardPassByTokens, runLlm } from "./llm.ts";
 import { addMatrices, multiplyMatrices } from "../shared/matrices.ts";
 import { normalize } from "../shared/normalize.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import * as weightReading from "../model/model-checkpoint-io.ts";
+import { validateModel } from "../model/model-validation.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
-const MODEL_NAME = "timmy";
 const emptyHistory: ModelTrainingState = {
   trainingLosses: [],
   validationLosses: [],
@@ -237,11 +236,11 @@ describe("runLlm", () => {
       transformers: [],
     };
 
-    vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
-      eosStoppingModel,
-    );
-
-    expect(Array.from(runLlm("hello", MODEL_NAME))).toEqual([]);
+    expect(
+      Array.from(
+        runLlm(tokenize("hello", eosStoppingModel.vocabulary), eosStoppingModel),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -287,10 +286,6 @@ describe("weights validation contract", () => {
       transformers: testModel.transformers,
     };
 
-    vi.spyOn(weightReading, "getLatestCheckpointModel").mockReturnValue(
-      malformedModel,
-    );
-
-    expect(() => Array.from(runLlm("hello", MODEL_NAME))).toThrow();
+    expect(() => validateModel(malformedModel)).toThrow();
   });
 });

@@ -10,26 +10,56 @@ import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
 import { writeLossChart } from "./scripts/chart-loss.ts";
 import { inspectTopLosses } from "./scripts/inspect-top-losses.ts";
-import { getLatestCheckpointModel } from "./model/model-checkpoint-io.ts";
+import {
+  getCheckpointModel,
+  getLatestCheckpointModel,
+} from "./model/model-checkpoint-io.ts";
 import { runLlmOnGPU } from "./running/llm-gpu.ts";
+import { validateModel } from "./model/model-validation.ts";
+import { tokenize } from "./shared/tokenizer.ts";
 
 program
   .name("llm")
   .command("run")
   .option("-g, --gpu", "infer using GPU")
+  .option(
+    "-c, --checkpoint <number>",
+    "checkpoint version to infer from (defaults to latest)",
+  )
   .argument("<model>", "model to run")
   .argument("<input...>", "raw input to complete")
   .action(
     async (
       modelName: string,
       inputSeperated: string[],
-      { gpu }: { gpu: boolean },
+      { gpu, checkpoint }: { gpu: boolean; checkpoint?: string },
     ) => {
       const input = inputSeperated.join(" ");
 
+      const checkpointVersion =
+        checkpoint === undefined ? undefined : Number(checkpoint);
+
+      if (
+        checkpointVersion !== undefined &&
+        !Number.isInteger(checkpointVersion)
+      ) {
+        throw new Error(
+          `Invalid checkpoint "${checkpoint}", expected an integer version number`,
+        );
+      }
+
+      const model =
+        checkpointVersion === undefined
+          ? getLatestCheckpointModel(modelName)
+          : getCheckpointModel(modelName, checkpointVersion);
+
+      validateModel(model);
+
+      const inputTokens = tokenize(input, model.vocabulary);
+
       const tokenGenerator = gpu
-        ? runLlmOnGPU(input, modelName)
-        : runLlm(input, modelName);
+        ? runLlmOnGPU(inputTokens, model)
+        : runLlm(inputTokens, model);
 
       for await (const token of tokenGenerator) {
         process.stdout.write(token);

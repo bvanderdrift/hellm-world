@@ -14,7 +14,6 @@ const HEAD_DIM = 32;
 type AttentionCtx = {
   headsCount: number;
   headDimensionsCount: number;
-  contextLength: TgpuBuffer<d.U32> & UniformFlag;
   headDimensions: TgpuBuffer<d.U32> & UniformFlag;
   weights: AttentionWeights;
   gpuWeights: AttentionGPUBuffers;
@@ -48,9 +47,6 @@ if (import.meta.main) {
       return {
         headsCount,
         headDimensionsCount: HEAD_DIM,
-        contextLength: gpuContext
-          .createBuffer(d.u32, vectors)
-          .$usage("uniform"),
         headDimensions: gpuContext
           .createBuffer(d.u32, HEAD_DIM)
           .$usage("uniform"),
@@ -84,13 +80,12 @@ if (import.meta.main) {
     },
     gpu: (
       { buffer },
-      { headsCount, contextLength, headDimensions, gpuWeights, scratch },
+      { headsCount, headDimensions, gpuWeights, scratch },
     ) => {
       const encoder = gpuContext.device.createCommandEncoder();
       runSelfAttentionMechanismOnGPU(
         buffer,
         headsCount,
-        contextLength,
         headDimensions,
         gpuWeights,
         scratch.inputQ,
