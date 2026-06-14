@@ -1,9 +1,9 @@
 import { d } from "typegpu";
-import type {
-  Activations,
-  TransformerActivations,
-} from "../model/activations-types.ts";
-import { type WeightGPUBuffers } from "../model/model-gpu-helpers.ts";
+import type { TransformerActivations } from "../model/activations-types.ts";
+import {
+  loadWeightsIntoGpu,
+  type WeightGPUBuffers,
+} from "../model/model-gpu-helpers.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
@@ -13,22 +13,61 @@ import {
   extractMatrixBuffer,
   multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
-import { createMatrix, type Matrix } from "../shared/matrices.ts";
+import { getRawVector, type Matrix } from "../shared/matrices.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
 import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { divideToWhole } from "../shared/math.ts";
+import { validateModel } from "../model/model-validation.ts";
+import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
+import { tokenize } from "../shared/tokenizer.ts";
+import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
+import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
+import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
+
+export const runLlmOnGPU = async function* (input: string, modelName: string) {
+  let outputTokens: string[] = [];
+
+  const model = getLatestCheckpointModel(modelName);
+
+  validateModel(model);
+
+  const inputTokens = tokenize(input, model.vocabulary);
+
+  const weightBuffers = loadWeightsIntoGpu(model);
+
+  for (let index = 0; index < MAX_CONTEXT; index++) {
+    const nextInput = [...inputTokens, ...outputTokens];
+
+    const probabilities = await llmForwardPassByTokensOnGPU(
+      nextInput,
+      model,
+      weightBuffers,
+      false,
+    );
+
+    const nextToken = pickToken(
+      getRawVector(probabilities, probabilities.vectors - 1),
+      model.vocabulary,
+    );
+
+    if (nextToken === END_OF_SEQUENCE_TOKEN) {
+      break;
+    }
+
+    outputTokens.push(nextToken);
+
+    yield nextToken;
+  }
+};
 
 export const llmForwardPassByTokensOnGPU = async (
   input: string[],
   model: Model,
   weightBuffers: WeightGPUBuffers,
   withActivations: boolean,
-): Promise<{
-  embeddings: Matrix;
-  activations: Activations | null;
-}> => {
+): Promise<Matrix> => {
   const hiddenDimensionsSize = model.counts.hiddenDimensions;
   const contextSize = input.length;
 
@@ -83,6 +122,14 @@ export const llmForwardPassByTokensOnGPU = async (
     vectors: contextSize,
     dimensions: hiddenDimensionsSize,
   });
+  const unembeddedStateBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: model.vocabulary.length,
+  });
+  const probabilitiesBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: model.vocabulary.length,
+  });
 
   const inputPositionToVocabPositionGPUBuffer = gpuContext
     .createBuffer(
@@ -109,19 +156,12 @@ export const llmForwardPassByTokensOnGPU = async (
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
 
-  const contextLengthBuffer = gpuContext
-    .createBuffer(d.u32, contextSize)
-    .$usage("uniform");
-
-  for (const transformerIndex in model.transformers) {
-    const transformerBuffers = weightBuffers.transformers[transformerIndex]!;
-
+  for (const transformerBuffers of weightBuffers.transformers) {
     normalizeOnGpu(hiddenState, encoder);
 
     runSelfAttentionMechanismOnGPU(
       hiddenState,
       model.counts.attentionHeads,
-      contextLengthBuffer,
       headDimensionsCountBuffer,
       transformerBuffers.attention,
       attentionInputQBuffer,
@@ -160,17 +200,6 @@ export const llmForwardPassByTokensOnGPU = async (
 
   normalizeOnGpu(hiddenState, encoder);
 
-  const unembeddedStateBuffer = createMatrixBuffer(
-    createMatrix(contextSize, model.vocabulary.length),
-  );
-
-  multiplyMatricesOnGPU(
-    hiddenState,
-    weightBuffers.unembeddings,
-    unembeddedStateBuffer,
-    encoder,
-  );
-
   const missingTransformerActivationsCount =
     model.transformers.length - transformerActivations.length;
 
@@ -181,9 +210,18 @@ export const llmForwardPassByTokensOnGPU = async (
     );
   }
 
+  multiplyMatricesOnGPU(
+    hiddenState,
+    weightBuffers.unembeddings,
+    unembeddedStateBuffer,
+    encoder,
+  );
+
+  softmaxOnGpu(unembeddedStateBuffer, probabilitiesBuffer, encoder);
+
   gpuContext.device.queue.submit([encoder.finish()]);
 
-  const embeddings = await extractMatrixBuffer(unembeddedStateBuffer);
+  const probabilities = await extractMatrixBuffer(probabilitiesBuffer);
 
   hiddenState.buffer.destroy();
   uppedMlpBuffer.buffer.destroy();
@@ -197,11 +235,7 @@ export const llmForwardPassByTokensOnGPU = async (
   matchingKeyProducts.buffer.destroy();
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
   headDimensionsCountBuffer.buffer.destroy();
-  contextLengthBuffer.buffer.destroy();
   unembeddedStateBuffer.buffer.destroy();
 
-  return {
-    embeddings,
-    activations: null,
-  };
+  return probabilities;
 };

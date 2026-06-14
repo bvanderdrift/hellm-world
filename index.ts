@@ -11,20 +11,32 @@ import { describeModelToConsole } from "./model/model-helpers.ts";
 import { writeLossChart } from "./scripts/chart-loss.ts";
 import { inspectTopLosses } from "./scripts/inspect-top-losses.ts";
 import { getLatestCheckpointModel } from "./model/model-checkpoint-io.ts";
+import { runLlmOnGPU } from "./running/llm-gpu.ts";
 
 program
   .name("llm")
   .command("run")
+  .option("-g, --gpu", "infer using GPU")
   .argument("<model>", "model to run")
   .argument("<input...>", "raw input to complete")
-  .action((modelName: string, inputSeperated: string[]) => {
-    const tokenGenerator = runLlm(inputSeperated.join(" "), modelName);
+  .action(
+    async (
+      modelName: string,
+      inputSeperated: string[],
+      { gpu }: { gpu: boolean },
+    ) => {
+      const input = inputSeperated.join(" ");
 
-    for (const token of tokenGenerator) {
-      process.stdout.write(token);
-    }
-    process.stdout.write("\n");
-  });
+      const tokenGenerator = gpu
+        ? runLlmOnGPU(input, modelName)
+        : runLlm(input, modelName);
+
+      for await (const token of tokenGenerator) {
+        process.stdout.write(token);
+      }
+      process.stdout.write("\n");
+    },
+  );
 
 program
   .name("train")

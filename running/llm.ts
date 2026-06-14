@@ -21,8 +21,7 @@ import type {
 import { softmax } from "../shared/softmax.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { normalize } from "../shared/normalize.ts";
-
-const contextTimeout = 100;
+import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 
 export const runLlm = function* (input: string, modelName: string) {
   let outputTokens: string[] = [];
@@ -33,7 +32,7 @@ export const runLlm = function* (input: string, modelName: string) {
 
   const inputTokens = tokenize(input, model.vocabulary);
 
-  for (let index = 0; index < contextTimeout; index++) {
+  for (let index = 0; index < MAX_CONTEXT; index++) {
     const nextInput = [...inputTokens, ...outputTokens];
     const logits = generateLogits(nextInput, model);
 
@@ -66,25 +65,6 @@ const generateLogits = (input: string[], weights: Model) => {
   }
 
   return logits;
-};
-
-export const getHighestValueIndex = (values: Float32Array) => {
-  return values.reduce(
-    (tracker, value, index) => {
-      if (value > tracker.value) {
-        return {
-          index,
-          value,
-        };
-      }
-
-      return tracker;
-    },
-    {
-      index: 0,
-      value: -Infinity,
-    },
-  ).index;
 };
 
 export const llmForwardPassByTokens = (
@@ -205,19 +185,4 @@ export const llmForwardPassByTokens = (
         }
       : null,
   };
-};
-
-export const pickToken = (
-  probabilities: Float32Array,
-  vocabulary: string[],
-) => {
-  const nextTokenIndex = getHighestValueIndex(probabilities);
-
-  const nextToken = vocabulary[nextTokenIndex];
-
-  if (!nextToken) {
-    throw new Error(`Failed to find token at index ${nextTokenIndex}`);
-  }
-
-  return nextToken;
 };
