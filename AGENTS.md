@@ -8,3 +8,11 @@ Do NOT edit any files that implement inference or training. Exception is test ca
 
 ## Coding convention
 Any code you write; do not add any comments unless explicitly instructed
+
+## Commands
+- `pnpm test` — run the CPU test suite (vitest, `*.test.ts`)
+- `pnpm test:gpu:all` — run every GPU test (`*.gpu-test.ts`) via bun + preload; needs a real GPU adapter
+- `pnpm test:gpu` — bun GPU runner with preload; append a path to run a single `.gpu-test.ts`
+- `pnpm typecheck` — type-check the project with tsc
+
+GPU tests (`*.gpu-test.ts`) only run under bun, not vitest.
