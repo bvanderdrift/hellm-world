@@ -24,9 +24,6 @@ const runGpu = async (
   const hiddenDimensions = input.dimensions;
   const headDimensionsCount = hiddenDimensions / headsCount;
 
-  const contextLength = gpuContext
-    .createBuffer(d.u32, vectors)
-    .$usage("uniform");
   const headDimensions = gpuContext
     .createBuffer(d.u32, headDimensionsCount)
     .$usage("uniform");
@@ -57,7 +54,6 @@ const runGpu = async (
   runSelfAttentionMechanismOnGPU(
     inputBuffer,
     headsCount,
-    contextLength,
     headDimensions,
     weights,
     inputQ,

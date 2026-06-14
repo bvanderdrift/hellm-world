@@ -1,25 +1,15 @@
 import { describe, it } from "bun:test";
-import { d } from "typegpu";
-import { gpuContext } from "../../shared/gpu-context.ts";
-import {
-  createMatrixBuffer,
-  extractMatrixBuffer,
-} from "../../shared/matrices-gpu.ts";
-import { createMatrix, type Matrix } from "../../shared/matrices.ts";
-import {
-  matrixFrom,
-  expectMatrixCloseTo,
-} from "../../testing/testing-utils.ts";
-import { runSelfAttentionHead } from "./attention.ts";
-import { softmaxAttentionHeadsOnGPU } from "./softmaxAttentionHeadsOnGPU.ts";
+import { gpuContext } from "./gpu-context.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
+import { createMatrix, type Matrix } from "./matrices.ts";
+import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
+import { runSelfAttentionHead } from "../transforming/attention/attention.ts";
+import { softmaxOnGpu } from "./softmax-gpu.ts";
 
 const runGpu = async (
   attentionRelevancyOutput: Matrix,
   headsCount: number,
 ): Promise<Matrix> => {
-  const contextLength = gpuContext
-    .createBuffer(d.u32, attentionRelevancyOutput.vectors)
-    .$usage("uniform");
   const relevancyBuffer = createMatrixBuffer(attentionRelevancyOutput);
   const matchingKeyProducts = createMatrixBuffer(
     createMatrix(
@@ -29,20 +19,14 @@ const runGpu = async (
   );
 
   const encoder = gpuContext.device.createCommandEncoder();
-  softmaxAttentionHeadsOnGPU(
-    headsCount,
-    contextLength,
-    relevancyBuffer,
-    matchingKeyProducts,
-    encoder,
-  );
+  softmaxOnGpu(relevancyBuffer, matchingKeyProducts, encoder, headsCount);
   gpuContext.device.queue.submit([encoder.finish()]);
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(matchingKeyProducts);
 };
 
-describe("softmaxAttentionHeadsOnGPU", () => {
+describe("softmaxOnGpu", () => {
   it("softmaxes a single head's causal relevancy row", async () => {
     const inputQ = matrixFrom([
       [1, 0],
