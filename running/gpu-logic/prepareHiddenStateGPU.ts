@@ -1,6 +1,6 @@
 import tgpu, { d, type TgpuBuffer, type StorageFlag } from "typegpu";
 import type { WgslArray, F32 } from "typegpu/data";
-import { sqrt } from "typegpu/std";
+import { mod, sqrt } from "typegpu/std";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
   matrixBufferDefinition,
@@ -8,6 +8,7 @@ import {
   type MatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
 import { getPositionEncodingOnGPU } from "../position-encoding-gpu.ts";
+import { MAX_CONTEXT } from "../llm-shared.ts";
 
 const prepareHiddenStateParamsLayout = tgpu.bindGroupLayout({
   inputTokenIndices: {
@@ -30,6 +31,8 @@ const prepareHiddenStateKernel = (
 ) => {
   "use gpu";
 
+  const batchContextIndex = mod(contextIndex, MAX_CONTEXT);
+
   const vocabIndex =
     prepareHiddenStateParamsLayout.$.inputTokenIndices[contextIndex]!;
 
@@ -42,7 +45,7 @@ const prepareHiddenStateKernel = (
     prepareHiddenStateParamsLayout.$.inputTokenIndices.length;
 
   const positionalEncoding = getPositionEncodingOnGPU(
-    contextIndex,
+    batchContextIndex,
     dimensionsIndex,
     hiddenDimensionsSize,
   );
