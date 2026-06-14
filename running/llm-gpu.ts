@@ -2,14 +2,12 @@ import { d } from "typegpu";
 import {
   allocateInferenceBuffers,
   loadWeightsIntoGpu,
-  type InferenceBuffers,
-  type WeightGPUBuffers,
 } from "../model/model-gpu-helpers.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
-import { getRawVector, type Matrix } from "../shared/matrices.ts";
+import { getRawVector } from "../shared/matrices.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
