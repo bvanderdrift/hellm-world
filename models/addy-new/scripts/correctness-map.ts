@@ -43,7 +43,10 @@ import {
 import { findTokenIndex } from "../../../model/model-helpers.ts";
 import type { Model } from "../../../model/model-types.ts";
 import { forwardPassOnGPU } from "../../../running/llm-gpu-forward-pass.ts";
-import { MAX_CONTEXT, getHighestValueIndex } from "../../../running/llm-shared.ts";
+import {
+  MAX_CONTEXT,
+  getHighestValueIndex,
+} from "../../../running/llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
 import { gpuContext } from "../../../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../../../shared/matrices-gpu.ts";
@@ -114,7 +117,11 @@ const checkBatch = async (
       findTokenIndex(model.vocabulary, token),
     );
 
-    return { firstCheckPosition: promptTokens.length - 1, inputTokens, expected };
+    return {
+      firstCheckPosition: promptTokens.length - 1,
+      inputTokens,
+      expected,
+    };
   });
 
   const inputPositionToVocabPosition = checks.flatMap(({ inputTokens }) =>
@@ -183,7 +190,11 @@ const main = async () => {
 
   const model = getCheckpointModel(MODEL_NAME, checkpointId);
   const weightBuffers = loadWeightsIntoGpu(model);
-  const inferenceBuffers = allocateInferenceBuffers(MAX_CONTEXT, batchSize, model);
+  const inferenceBuffers = allocateInferenceBuffers(
+    MAX_CONTEXT,
+    batchSize,
+    model,
+  );
 
   const onResults = async (results: Result[]) => {
     for (const { a, b, correct } of results) {
@@ -232,7 +243,12 @@ const main = async () => {
       b: Math.floor(Math.random() * GRID_SIZE),
     }));
 
-    const results = await checkBatch(pairs, model, weightBuffers, inferenceBuffers);
+    const results = await checkBatch(
+      pairs,
+      model,
+      weightBuffers,
+      inferenceBuffers,
+    );
     await onResults(results);
   }
 };
