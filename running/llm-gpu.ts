@@ -71,8 +71,8 @@ export const llmForwardPassByTokensOnGPU = async (
   });
 
   const hiddenState = createMatrixBuffer({
-    vectors: inputPositionToVocabPosition.length,
-    dimensions: model.counts.hiddenDimensions,
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
   });
 
   const uppedMlpBuffer = createMatrixBuffer({
