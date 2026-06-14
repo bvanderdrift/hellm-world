@@ -29,6 +29,7 @@ const normalizeKernel = tgpu.computeFn({
 
   const offset = vectorIndex * hiddenState.dimensions;
   const length = hiddenState.dimensions;
+  const floatLength = d.f32(length);
 
   // standard deviation logic inline in kernel so we don't mess with the shifting window of the hidden state too much
 
@@ -72,7 +73,7 @@ const normalizeKernel = tgpu.computeFn({
   const summedValues = sharedSummedValues.$[0]!;
   const summedSquares = sharedSummedSquares.$[0]!;
 
-  const average = summedValues / d.f32(length);
+  const average = summedValues / floatLength;
   /**
    * summedSquareDeltas = sum((x_i - avg)^2)
    * = sum(x_i^2 - 2*x_i*avg + avg^2)
@@ -81,9 +82,9 @@ const normalizeKernel = tgpu.computeFn({
    * this allows us to do one loop instead of two
    */
   const summedSquareDeltas =
-    summedSquares - 2 * average * summedValues + length * average ** 2;
+    summedSquares - 2 * average * summedValues + floatLength * average ** 2;
 
-  const averageSquareDeltas = summedSquareDeltas / d.f32(length);
+  const averageSquareDeltas = summedSquareDeltas / floatLength;
 
   const standardDeviation = sqrt(averageSquareDeltas);
 
