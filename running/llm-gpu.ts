@@ -12,28 +12,38 @@ import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
 
-export const runLlmOnGPU = async function* (
-  inputTokens: string[],
-  model: Model,
-) {
-  let outputTokens: string[] = [];
-
+export const runLlmOnGPU = async function* (batches: string[][], model: Model) {
   const weightBuffers = loadWeightsIntoGpu(model);
 
-  const inferenceBuffers = allocateInferenceBuffers(MAX_CONTEXT, model);
+  const inferenceBuffers = allocateInferenceBuffers(
+    MAX_CONTEXT,
+    batches.length,
+    model,
+  );
+
+  const ended = batches.map(() => false);
 
   /** middle-state needed for backprop */
-  const inputPositionToVocabPosition = inputTokens.map((token) => {
-    return findTokenIndex(model.vocabulary, token);
-  });
+  const inputPositionToVocabPosition = batches.flatMap((inputTokens) =>
+    new Array(MAX_CONTEXT).fill(0).map((_, tokenIndex) => {
+      const token = inputTokens[tokenIndex];
+
+      if (!token) {
+        return 0;
+      }
+
+      return findTokenIndex(model.vocabulary, token);
+    }),
+  );
 
   const inputPositionToVocabPositionGPUBuffer = gpuContext
-    .createBuffer(d.arrayOf(d.f32, MAX_CONTEXT), inputPositionToVocabPosition)
+    .createBuffer(
+      d.arrayOf(d.f32, batches.length * MAX_CONTEXT),
+      inputPositionToVocabPosition,
+    )
     .$usage("storage");
 
   for (let index = 0; index < MAX_CONTEXT; index++) {
-    const nextInput = [...inputTokens, ...outputTokens];
-
     forwardPassOnGPU({
       weightBuffers,
       model,
@@ -46,22 +56,42 @@ export const runLlmOnGPU = async function* (
       inferenceBuffers.probabilitiesBuffer,
     );
 
-    const nextToken = pickToken(
-      getRawVector(probabilities, nextInput.length - 1),
-      model.vocabulary,
-    );
+    const nextTokens = batches.map((inputTokens, batchIndex) => {
+      const nextToken = pickToken(
+        getRawVector(
+          probabilities,
+          batchIndex * MAX_CONTEXT + inputTokens.length - 1,
+        ),
+        model.vocabulary,
+      );
 
-    if (nextToken === END_OF_SEQUENCE_TOKEN) {
+      if (nextToken === END_OF_SEQUENCE_TOKEN) {
+        ended[batchIndex] = true;
+      }
+
+      return nextToken;
+    });
+
+    if (ended.every((state) => state === true)) {
       break;
     }
 
-    inputPositionToVocabPositionGPUBuffer.patch({
-      [nextInput.length]: findTokenIndex(model.vocabulary, nextToken),
+    batches = batches.map((inputTokens, batchIndex) => {
+      inputTokens.push(nextTokens[batchIndex]!);
+
+      return inputTokens;
     });
 
-    outputTokens.push(nextToken);
+    inputPositionToVocabPositionGPUBuffer.patch(
+      Object.fromEntries(
+        batches.map((inputTokens, batchIndex) => [
+          batchIndex * MAX_CONTEXT + inputTokens.length - 1,
+          findTokenIndex(model.vocabulary, nextTokens[batchIndex]!),
+        ]),
+      ),
+    );
 
-    yield nextToken;
+    yield nextTokens;
   }
 
   inferenceBuffers.hiddenState.buffer.destroy();

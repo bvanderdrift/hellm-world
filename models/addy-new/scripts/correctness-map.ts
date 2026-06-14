@@ -1,13 +1,17 @@
 /**
  * Correctness testing for the `addy-new` addition model.
  *
- * Given a checkpoint version number it spins up `-m` worker processes (default
- * 1), each of which loads that exact checkpoint and forever samples random
- * pairs (a, b) with a, b < 10_000, running the model on "a+b=" and reporting
- * whether the fully-correct answer is produced. This root process owns the
- * single grid file (`correctness_grid.bin`): it folds every result in and, every
- * 1000 tests, saves the grid and dumps a heatmap PNG via the charting module so
- * accuracy can be inspected visually.
+ * Given a checkpoint version number it loads that exact checkpoint onto the GPU
+ * and forever samples random batches of pairs (a, b) with a, b < 10_000. Each
+ * batch is tested in a single batched GPU forward pass: rather than
+ * autoregressively generating, it teacher-forces the full sequence
+ * "a+b=<answer>" and checks, at every answer position, whether the model's
+ * argmax prediction equals the expected next token. That is equivalent to a
+ * fully-correct greedy decode but needs only one forward pass per batch.
+ *
+ * This root process owns the single grid file (`correctness_grid.bin`): it folds
+ * every result in and, every 1000 tests, saves the grid and dumps a heatmap PNG
+ * via the charting module so accuracy can be inspected visually.
  *
  * The charting half lives in `correctness-chart.ts` and can be run on its own
  * to (re)render an already-saved grid without retesting.
@@ -15,9 +19,10 @@
  * This is an independent script: it only imports already-exported inference
  * helpers, it does not modify any inference/training code.
  *
- * Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-m <cpus>]
+ * Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-b <batchSize>]
  */
 
+import { d } from "typegpu";
 import {
   GRID_SIZE,
   MODEL_NAME,
@@ -28,7 +33,27 @@ import {
   saveGrid,
 } from "./correctness-grid.ts";
 import { dumpImage } from "./correctness-chart.ts";
-import type { WorkerInput, WorkerOutput } from "./correctness-worker.ts";
+import { getCheckpointModel } from "../../../model/model-checkpoint-io.ts";
+import {
+  allocateInferenceBuffers,
+  loadWeightsIntoGpu,
+  type InferenceBuffers,
+  type WeightGPUBuffers,
+} from "../../../model/model-gpu-helpers.ts";
+import { findTokenIndex } from "../../../model/model-helpers.ts";
+import type { Model } from "../../../model/model-types.ts";
+import { forwardPassOnGPU } from "../../../running/llm-gpu-forward-pass.ts";
+import {
+  MAX_CONTEXT,
+  getHighestValueIndex,
+} from "../../../running/llm-shared.ts";
+import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
+import { gpuContext } from "../../../shared/gpu-context.ts";
+import { extractMatrixBuffer } from "../../../shared/matrices-gpu.ts";
+import { getRawVector } from "../../../shared/matrices.ts";
+import { tokenize } from "../../../shared/tokenizer.ts";
+
+type Result = { a: number; b: number; correct: boolean };
 
 const DUMP_EVERY = 1000;
 
@@ -44,15 +69,15 @@ const writeProgress = (fraction: number) => {
   process.stdout.write(`\r[${bar}] ${pct}%`);
 };
 
-/** Parse `<checkpointId> [-m <cpus>]` from argv; `-m` defaults to 1. */
-const parseArgs = (): { checkpointId: number; cpuCount: number } => {
+/** Parse `<checkpointId> [-b <batchSize>]` from argv; `-b` defaults to 256. */
+const parseArgs = (): { checkpointId: number; batchSize: number } => {
   const args = process.argv.slice(2);
   let checkpointArg: string | undefined;
-  let cpuCount = 1;
+  let batchSize = 256;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "-m") {
-      cpuCount = Number(args[++i]);
+    if (args[i] === "-b") {
+      batchSize = Number(args[++i]);
     } else {
       checkpointArg = args[i];
     }
@@ -61,20 +86,88 @@ const parseArgs = (): { checkpointId: number; cpuCount: number } => {
   if (
     checkpointArg === undefined ||
     Number.isNaN(Number(checkpointArg)) ||
-    !Number.isInteger(cpuCount) ||
-    cpuCount < 1
+    !Number.isInteger(batchSize) ||
+    batchSize < 1
   ) {
     console.error(
-      "Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-m <cpus>]",
+      "Usage: bun run models/addy-new/scripts/correctness-map.ts <checkpointId> [-b <batchSize>]",
     );
     process.exit(1);
   }
 
-  return { checkpointId: Number(checkpointArg), cpuCount };
+  return { checkpointId: Number(checkpointArg), batchSize };
+};
+
+/**
+ * Teacher-forces a whole batch of pairs in one GPU forward pass and returns,
+ * per pair, whether every answer-position prediction matched the expected token.
+ */
+const checkBatch = async (
+  pairs: { a: number; b: number }[],
+  model: Model,
+  weightBuffers: WeightGPUBuffers,
+  inferenceBuffers: InferenceBuffers,
+): Promise<Result[]> => {
+  const checks = pairs.map(({ a, b }) => {
+    const promptTokens = tokenize(`${a}+${b}=`, model.vocabulary);
+    const answerTokens = tokenize(String(a + b), model.vocabulary);
+    const inputTokens = [...promptTokens, ...answerTokens];
+
+    const expected = [...answerTokens, END_OF_SEQUENCE_TOKEN].map((token) =>
+      findTokenIndex(model.vocabulary, token),
+    );
+
+    return {
+      firstCheckPosition: promptTokens.length - 1,
+      inputTokens,
+      expected,
+    };
+  });
+
+  const inputPositionToVocabPosition = checks.flatMap(({ inputTokens }) =>
+    new Array(MAX_CONTEXT).fill(0).map((_, tokenIndex) => {
+      const token = inputTokens[tokenIndex];
+      if (!token) return 0;
+      return findTokenIndex(model.vocabulary, token);
+    }),
+  );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, pairs.length * MAX_CONTEXT),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations: false,
+    inferenceBuffers,
+    inputPositionToVocabPositionGPUBuffer,
+  });
+
+  const probabilities = await extractMatrixBuffer(
+    inferenceBuffers.probabilitiesBuffer,
+  );
+
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+
+  return pairs.map(({ a, b }, batchIndex) => {
+    const { firstCheckPosition, expected } = checks[batchIndex]!;
+
+    const correct = expected.every((expectedIndex, step) => {
+      const row = batchIndex * MAX_CONTEXT + firstCheckPosition + step;
+      const predicted = getHighestValueIndex(getRawVector(probabilities, row));
+      return predicted === expectedIndex;
+    });
+
+    return { a, b, correct };
+  });
 };
 
 const main = async () => {
-  const { checkpointId, cpuCount } = parseArgs();
+  const { checkpointId, batchSize } = parseArgs();
 
   const {
     grid,
@@ -91,16 +184,23 @@ const main = async () => {
   }
 
   console.log(
-    `Loading ${MODEL_NAME} checkpoint ${checkpointId} across ${cpuCount} worker(s)...`,
+    `Loading ${MODEL_NAME} checkpoint ${checkpointId} onto the GPU (batch size ${batchSize})...`,
   );
   console.log("Sampling forever — Ctrl-C to stop.\n");
 
-  // The root owns the grid and persistence; workers only stream results in.
-  const onResults = async (results: WorkerOutput["results"]) => {
+  const model = getCheckpointModel(MODEL_NAME, checkpointId);
+  const weightBuffers = loadWeightsIntoGpu(model);
+  const inferenceBuffers = allocateInferenceBuffers(
+    MAX_CONTEXT,
+    batchSize,
+    model,
+  );
+
+  const onResults = async (results: Result[]) => {
     for (const { a, b, correct } of results) {
-      // A cell may be re-sampled by another worker; only count genuinely new
-      // tests so testCount/correctCount stay in sync with the grid's non-null
-      // cells (matching how loadGrid derives them).
+      // A cell may be re-sampled; only count genuinely new tests so
+      // testCount/correctCount stay in sync with the grid's non-null cells
+      // (matching how loadGrid derives them).
       const previous = grid[a * GRID_SIZE + b]!;
       grid[a * GRID_SIZE + b] = correct ? TRUE : FALSE;
 
@@ -136,28 +236,21 @@ const main = async () => {
     }
   };
 
-  // Serialize the async result-folding so two batches never interleave their
-  // grid writes / chart dumps.
-  let queue: Promise<void> = Promise.resolve();
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const pairs = new Array(batchSize).fill(0).map(() => ({
+      a: Math.floor(Math.random() * GRID_SIZE),
+      b: Math.floor(Math.random() * GRID_SIZE),
+    }));
 
-  const workers = new Array(cpuCount).fill(0).map(() => {
-    const worker = new Worker(
-      "./models/addy-new/scripts/correctness-worker.ts",
+    const results = await checkBatch(
+      pairs,
+      model,
+      weightBuffers,
+      inferenceBuffers,
     );
-    worker.onerror = (event) => {
-      console.error("\nWorker error:", event.message ?? event);
-      process.exit(1);
-    };
-    worker.onmessage = (event: MessageEvent<WorkerOutput>) => {
-      queue = queue.then(() => onResults(event.data.results));
-    };
-    const input: WorkerInput = { checkpointId };
-    worker.postMessage(input);
-    return worker;
-  });
-
-  // Keep the process alive forever; workers drive all the work via messages.
-  void workers;
+    await onResults(results);
+  }
 };
 
 main();

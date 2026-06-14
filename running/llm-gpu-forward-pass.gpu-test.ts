@@ -15,7 +15,7 @@ import { gpuContext } from "../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { createMatrix, getRawVector, type Matrix } from "../shared/matrices.ts";
-import { getHighestValueIndex } from "./llm-shared.ts";
+import { getHighestValueIndex, MAX_CONTEXT } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
 
@@ -31,7 +31,7 @@ const llmForwardPassByTokensOnGPU = async (
   weightBuffers: WeightGPUBuffers,
   withActivations: boolean,
 ): Promise<Matrix> => {
-  const inferenceBuffers = allocateInferenceBuffers(input.length, model);
+  const inferenceBuffers = allocateInferenceBuffers(input.length, 1, model);
 
   const inputPositionToVocabPosition = input.map((token) =>
     findTokenIndex(model.vocabulary, token),
@@ -151,19 +151,44 @@ const cpuProbabilities = (input: string[], model: Model): Matrix =>
   softmaxRows(llmForwardPassByTokens(input, model, false).embeddings);
 
 const argmaxLastRow = (probabilities: Matrix): number =>
-  getHighestValueIndex(
-    getRawVector(probabilities, probabilities.vectors - 1),
-  );
+  getHighestValueIndex(getRawVector(probabilities, probabilities.vectors - 1));
 
 describe("forwardPassOnGPU matches the CPU forward pass", () => {
   const configs: { name: string; config: ModelConfig }[] = [
-    { name: "single head, single layer", config: { hidden: 4, heads: 1, layers: 1, mlpMultiple: 1, vocabSize: 5 } },
-    { name: "multi-head, single layer", config: { hidden: 8, heads: 2, layers: 1, mlpMultiple: 1, vocabSize: 5 } },
-    { name: "single head, deep stack", config: { hidden: 8, heads: 1, layers: 4, mlpMultiple: 1, vocabSize: 5 } },
-    { name: "multi-head, deep stack", config: { hidden: 8, heads: 2, layers: 4, mlpMultiple: 1, vocabSize: 5 } },
-    { name: "wide MLP (mlpMultiple=2)", config: { hidden: 8, heads: 2, layers: 2, mlpMultiple: 2, vocabSize: 5 } },
-    { name: "wide MLP (mlpMultiple=4)", config: { hidden: 16, heads: 4, layers: 2, mlpMultiple: 4, vocabSize: 6 } },
-    { name: "addy-shaped (8 heads, 6 layers, mlp 4)", config: { hidden: 32, heads: 8, layers: 6, mlpMultiple: 4, vocabSize: 13 } },
+    {
+      name: "single head, single layer",
+      config: { hidden: 4, heads: 1, layers: 1, mlpMultiple: 1, vocabSize: 5 },
+    },
+    {
+      name: "multi-head, single layer",
+      config: { hidden: 8, heads: 2, layers: 1, mlpMultiple: 1, vocabSize: 5 },
+    },
+    {
+      name: "single head, deep stack",
+      config: { hidden: 8, heads: 1, layers: 4, mlpMultiple: 1, vocabSize: 5 },
+    },
+    {
+      name: "multi-head, deep stack",
+      config: { hidden: 8, heads: 2, layers: 4, mlpMultiple: 1, vocabSize: 5 },
+    },
+    {
+      name: "wide MLP (mlpMultiple=2)",
+      config: { hidden: 8, heads: 2, layers: 2, mlpMultiple: 2, vocabSize: 5 },
+    },
+    {
+      name: "wide MLP (mlpMultiple=4)",
+      config: { hidden: 16, heads: 4, layers: 2, mlpMultiple: 4, vocabSize: 6 },
+    },
+    {
+      name: "addy-shaped (8 heads, 6 layers, mlp 4)",
+      config: {
+        hidden: 32,
+        heads: 8,
+        layers: 6,
+        mlpMultiple: 4,
+        vocabSize: 13,
+      },
+    },
   ];
 
   for (const { name, config } of configs) {
@@ -172,7 +197,12 @@ describe("forwardPassOnGPU matches the CPU forward pass", () => {
       const weightBuffers = loadWeightsIntoGpu(model);
       const input = ["t0", "t1", "t2", "t3"];
 
-      const gpu = await llmForwardPassByTokensOnGPU(input, model, weightBuffers, false);
+      const gpu = await llmForwardPassByTokensOnGPU(
+        input,
+        model,
+        weightBuffers,
+        false,
+      );
 
       expectMatrixCloseTo(gpu, cpuProbabilities(input, model), 4);
     });
@@ -180,15 +210,29 @@ describe("forwardPassOnGPU matches the CPU forward pass", () => {
 });
 
 describe("forwardPassOnGPU across context lengths", () => {
-  const config: ModelConfig = { hidden: 16, heads: 4, layers: 3, mlpMultiple: 4, vocabSize: 6 };
+  const config: ModelConfig = {
+    hidden: 16,
+    heads: 4,
+    layers: 3,
+    mlpMultiple: 4,
+    vocabSize: 6,
+  };
 
   for (let length = 1; length <= 6; length++) {
     it(`context length ${length}`, async () => {
       const model = makeModel(202, config);
       const weightBuffers = loadWeightsIntoGpu(model);
-      const input = Array.from({ length }, (_, i) => `t${i % (config.vocabSize - 1)}`);
+      const input = Array.from(
+        { length },
+        (_, i) => `t${i % (config.vocabSize - 1)}`,
+      );
 
-      const gpu = await llmForwardPassByTokensOnGPU(input, model, weightBuffers, false);
+      const gpu = await llmForwardPassByTokensOnGPU(
+        input,
+        model,
+        weightBuffers,
+        false,
+      );
 
       expectMatrixCloseTo(gpu, cpuProbabilities(input, model), 4);
     });
@@ -197,14 +241,25 @@ describe("forwardPassOnGPU across context lengths", () => {
 
 describe("forwardPassOnGPU keeps the residual un-normalized", () => {
   it("uses x + f(norm(x)) when x !== norm(x) (large embeddings)", async () => {
-    const model = makeModel(303, { hidden: 8, heads: 2, layers: 2, mlpMultiple: 2, vocabSize: 5 });
+    const model = makeModel(303, {
+      hidden: 8,
+      heads: 2,
+      layers: 2,
+      mlpMultiple: 2,
+      vocabSize: 5,
+    });
     for (let i = 0; i < model.embeddings.values.length; i++) {
       model.embeddings.values[i] = model.embeddings.values[i]! * 12 + 8;
     }
     const weightBuffers = loadWeightsIntoGpu(model);
     const input = ["t0", "t1", "t2", "t3"];
 
-    const gpu = await llmForwardPassByTokensOnGPU(input, model, weightBuffers, false);
+    const gpu = await llmForwardPassByTokensOnGPU(
+      input,
+      model,
+      weightBuffers,
+      false,
+    );
 
     expectMatrixCloseTo(gpu, cpuProbabilities(input, model), 4);
   });
@@ -212,7 +267,13 @@ describe("forwardPassOnGPU keeps the residual un-normalized", () => {
 
 describe("GPU and CPU greedy decoding agree token-for-token", () => {
   it("selects the same next token at every step of a multi-step rollout", async () => {
-    const model = makeModel(404, { hidden: 16, heads: 4, layers: 3, mlpMultiple: 4, vocabSize: 6 });
+    const model = makeModel(404, {
+      hidden: 16,
+      heads: 4,
+      layers: 3,
+      mlpMultiple: 4,
+      vocabSize: 6,
+    });
     const weightBuffers = loadWeightsIntoGpu(model);
 
     let context = ["t0", "t1"];
@@ -226,6 +287,89 @@ describe("GPU and CPU greedy decoding agree token-for-token", () => {
 
       context = [...context, model.vocabulary[cpuIndex]!];
     }
+  });
+});
+
+const runBatchedForwardPassOnGPU = async (
+  sequences: string[][],
+  model: Model,
+  weightBuffers: WeightGPUBuffers,
+): Promise<Matrix> => {
+  const inferenceBuffers = allocateInferenceBuffers(
+    MAX_CONTEXT,
+    sequences.length,
+    model,
+  );
+
+  const inputPositionToVocabPosition = sequences.flatMap((tokens) =>
+    new Array(MAX_CONTEXT).fill(0).map((_, tokenIndex) => {
+      const token = tokens[tokenIndex];
+      if (!token) return 0;
+      return findTokenIndex(model.vocabulary, token);
+    }),
+  );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, sequences.length * MAX_CONTEXT),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations: false,
+    inferenceBuffers,
+    inputPositionToVocabPositionGPUBuffer,
+  });
+
+  const probabilities = await extractMatrixBuffer(
+    inferenceBuffers.probabilitiesBuffer,
+  );
+
+  destroyInferenceBuffers(inferenceBuffers);
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+
+  return probabilities;
+};
+
+describe("forwardPassOnGPU — multi-batch", () => {
+  it("matches the CPU probabilities for every sequence packed in one batch", async () => {
+    const model = makeModel(505, {
+      hidden: 16,
+      heads: 4,
+      layers: 3,
+      mlpMultiple: 4,
+      vocabSize: 6,
+    });
+    const weightBuffers = loadWeightsIntoGpu(model);
+
+    const sequences = [
+      ["t0", "t1", "t2"],
+      ["t1", "t2", "t3", "t4"],
+      ["t0"],
+    ];
+
+    const batched = await runBatchedForwardPassOnGPU(
+      sequences,
+      model,
+      weightBuffers,
+    );
+
+    sequences.forEach((sequence, batchIndex) => {
+      const expected = cpuProbabilities(sequence, model);
+      for (let position = 0; position < sequence.length; position++) {
+        const actualRow = getRawVector(
+          batched,
+          batchIndex * MAX_CONTEXT + position,
+        );
+        const expectedRow = getRawVector(expected, position);
+        for (let token = 0; token < expectedRow.length; token++) {
+          expect(actualRow[token]).toBeCloseTo(expectedRow[token]!, 4);
+        }
+      }
+    });
   });
 });
 
@@ -246,11 +390,19 @@ describe("real addy model regression", () => {
       const gpuToken =
         model.vocabulary[
           argmaxLastRow(
-            await llmForwardPassByTokensOnGPU(gpuContext, model, weightBuffers, false),
+            await llmForwardPassByTokensOnGPU(
+              gpuContext,
+              model,
+              weightBuffers,
+              false,
+            ),
           )
         ]!;
 
-      if (cpuToken === END_OF_SEQUENCE_TOKEN && gpuToken === END_OF_SEQUENCE_TOKEN) {
+      if (
+        cpuToken === END_OF_SEQUENCE_TOKEN &&
+        gpuToken === END_OF_SEQUENCE_TOKEN
+      ) {
         break;
       }
 

@@ -13,6 +13,7 @@ import { gpuContext } from "../../shared/gpu-context.ts";
 import { expectMatrixCloseTo } from "../../testing/testing-utils.ts";
 import { getPositionEncoding } from "../position-encoding.ts";
 import { prepareHiddenState } from "./prepareHiddenStateGPU.ts";
+import { MAX_CONTEXT } from "../llm-shared.ts";
 
 // Inline CPU reference, mirroring the head of llmForwardPassByTokens:
 //   hiddenState[token][j] = sqrt(dim) * embeddings[vocabIndex][j] + posEnc[token][j]
@@ -57,6 +58,58 @@ const runGpu = async (
   await gpuContext.device.queue.onSubmittedWorkDone();
 
   return extractMatrixBuffer(hiddenState);
+};
+
+/**
+ * Lay each batch's tokens into its own MAX_CONTEXT-sized row slot (batch b at
+ * rows [b*MAX_CONTEXT, ...)), zero-padding the tail, then run the kernel over
+ * the whole packed buffer — the same layout the batched forward pass uses.
+ */
+const runGpuBatched = async (
+  embeddings: Matrix,
+  batches: number[][],
+): Promise<Matrix> => {
+  const totalRows = batches.length * MAX_CONTEXT;
+  const flatTokenIndices = new Array(totalRows).fill(0);
+  batches.forEach((vocabIndices, batchIndex) => {
+    vocabIndices.forEach((vocabIndex, tokenIndex) => {
+      flatTokenIndices[batchIndex * MAX_CONTEXT + tokenIndex] = vocabIndex;
+    });
+  });
+
+  const embeddingsBuffer = createMatrixBuffer(embeddings);
+  const hiddenState = createMatrixBuffer({
+    vectors: totalRows,
+    dimensions: embeddings.dimensions,
+  });
+  const tokenIndices = makeTokenIndicesBuffer(flatTokenIndices);
+
+  prepareHiddenState(tokenIndices, hiddenState, embeddingsBuffer);
+  await gpuContext.device.queue.onSubmittedWorkDone();
+
+  return extractMatrixBuffer(hiddenState);
+};
+
+/** Each batch's real rows must equal the standalone per-sequence CPU result. */
+const expectBatchesMatchCpu = (
+  actual: Matrix,
+  embeddings: Matrix,
+  batches: number[][],
+  precision = 4,
+) => {
+  const dim = embeddings.dimensions;
+  batches.forEach((vocabIndices, batchIndex) => {
+    const expected = cpuPrepareHiddenState(embeddings, vocabIndices);
+    const rowOffset = batchIndex * MAX_CONTEXT;
+    for (let token = 0; token < vocabIndices.length; token++) {
+      for (let j = 0; j < dim; j++) {
+        const actualValue =
+          actual.values[getFlatIndex(rowOffset + token, j, dim)];
+        const expectedValue = expected.values[getFlatIndex(token, j, dim)]!;
+        expect(actualValue).toBeCloseTo(expectedValue, precision);
+      }
+    }
+  });
 };
 
 describe("prepareHiddenState (GPU)", () => {
@@ -111,5 +164,43 @@ describe("prepareHiddenState (GPU)", () => {
     expect(actual.values[1]!).toBeCloseTo(scalar * 2 + 1, 4);
     expect(actual.values[2]!).toBeCloseTo(scalar * 2 + 0, 4);
     expect(actual.values[3]!).toBeCloseTo(scalar * 2 + 1, 4);
+  });
+
+  it("encodes each batched sequence from its own slot's position 0, not the flattened row", async () => {
+    const vocabSize = 8;
+    const dim = 16;
+    const rand = () => Math.random() * 2 - 1;
+    const embeddings = createMatrix(vocabSize, dim, rand);
+
+    // Different lengths so any position drift surfaces; each batch's positions
+    // must restart at 0 within its slot regardless of the slot's row offset.
+    const batches = [
+      [5, 0, 7],
+      [1, 2, 3, 4],
+      [6],
+    ];
+
+    const actual = await runGpuBatched(embeddings, batches);
+
+    expectBatchesMatchCpu(actual, embeddings, batches);
+  });
+
+  it("gives an identical encoding to the same token sitting at position 0 of every batch slot", async () => {
+    const dim = 4;
+    const embeddings = createMatrix(4, dim, () => Math.random() * 2 - 1);
+
+    // Same token, position 0, in three different slots. If the kernel used the
+    // flattened row (or the batch index) for position, these would diverge.
+    const batches = [[2], [2], [2]];
+
+    const actual = await runGpuBatched(embeddings, batches);
+
+    for (let j = 0; j < dim; j++) {
+      const first = actual.values[getFlatIndex(0 * MAX_CONTEXT, j, dim)]!;
+      const second = actual.values[getFlatIndex(1 * MAX_CONTEXT, j, dim)]!;
+      const third = actual.values[getFlatIndex(2 * MAX_CONTEXT, j, dim)]!;
+      expect(second).toBeCloseTo(first, 4);
+      expect(third).toBeCloseTo(first, 4);
+    }
   });
 });

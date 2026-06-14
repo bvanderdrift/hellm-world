@@ -1,11 +1,12 @@
 import tgpu, { d, type TgpuBuffer, type UniformFlag } from "typegpu";
-import { sqrt } from "typegpu/std";
+import { floor, mod, sqrt } from "typegpu/std";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
   matrixBufferDefinition,
   getFlatIndexOnGPU,
   type MatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const calculateRelevancyParams = tgpu.bindGroupLayout({
   inputK: { storage: matrixBufferDefinition, access: "readonly" },
@@ -21,7 +22,10 @@ const calculateRelevancyKernel = gpuContext.createGuardedComputePipeline(
   (vectorIndex: number, headIndex: number, lookbackIndex: number) => {
     "use gpu";
 
-    if (lookbackIndex > vectorIndex) {
+    const batchVectorIndex = mod(vectorIndex, MAX_CONTEXT);
+    const batchCount = floor(vectorIndex / MAX_CONTEXT);
+
+    if (lookbackIndex > batchVectorIndex) {
       // masked
       return;
     }
@@ -41,13 +45,17 @@ const calculateRelevancyKernel = gpuContext.createGuardedComputePipeline(
           getFlatIndexOnGPU(vectorIndex, headOffset + k, inputQ.dimensions)
         ]! *
         inputK.values[
-          getFlatIndexOnGPU(lookbackIndex, headOffset + k, inputK.dimensions)
+          getFlatIndexOnGPU(
+            batchCount * MAX_CONTEXT + lookbackIndex,
+            headOffset + k,
+            inputK.dimensions,
+          )
         ]!;
     }
 
     const headRelevancyOffset = getFlatIndexOnGPU(
       vectorIndex,
-      headIndex * inputK.vectors,
+      headIndex * MAX_CONTEXT,
       attentionRelevancyOutput.dimensions,
     );
 
@@ -72,5 +80,5 @@ export const calculateRelevancyOnGPU = (
 
   calculateRelevancyKernel
     .with(params)
-    .dispatchThreads(inputK.vectors, headCount, inputK.vectors);
+    .dispatchThreads(inputK.vectors, headCount, MAX_CONTEXT);
 };

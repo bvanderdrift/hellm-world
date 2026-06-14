@@ -1,11 +1,12 @@
 import tgpu, { d, type TgpuBuffer, type UniformFlag } from "typegpu";
-import { floor } from "typegpu/std";
+import { floor, mod } from "typegpu/std";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import {
   matrixBufferDefinition,
   getFlatIndexOnGPU,
   type MatrixBuffer,
 } from "../../shared/matrices-gpu.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const applyWeightedValuesParams = tgpu.bindGroupLayout({
   inputV: { storage: matrixBufferDefinition, access: "readonly" },
@@ -18,13 +19,16 @@ const applyValuesKernel = gpuContext.createGuardedComputePipeline(
   (vectorIndex: number, dimensionIndex: number) => {
     "use gpu";
 
+    const batchVectorIndex = mod(vectorIndex, MAX_CONTEXT);
+    const batchCount = floor(vectorIndex / MAX_CONTEXT);
+
     const headDimensionsCount = applyWeightedValuesParams.$.headDimensionsCount;
     const inputV = applyWeightedValuesParams.$.inputV;
     const output = applyWeightedValuesParams.$.output;
     const matchingKeyProducts = applyWeightedValuesParams.$.matchingKeyProducts;
 
     const h = floor(dimensionIndex / headDimensionsCount);
-    const offset = h * output.vectors;
+    const offset = h * MAX_CONTEXT;
     const outputIndex = getFlatIndexOnGPU(
       vectorIndex,
       dimensionIndex,
@@ -33,7 +37,7 @@ const applyValuesKernel = gpuContext.createGuardedComputePipeline(
 
     let sum = d.f32(0);
 
-    for (let lookback = d.u32(0); lookback < vectorIndex + 1; lookback++) {
+    for (let lookback = d.u32(0); lookback < batchVectorIndex + 1; lookback++) {
       const lookbackTokenWeight =
         matchingKeyProducts.values[
           getFlatIndexOnGPU(
@@ -45,7 +49,11 @@ const applyValuesKernel = gpuContext.createGuardedComputePipeline(
 
       const lookbackTokenValue =
         inputV.values[
-          getFlatIndexOnGPU(lookback, dimensionIndex, inputV.dimensions)
+          getFlatIndexOnGPU(
+            batchCount * MAX_CONTEXT + lookback,
+            dimensionIndex,
+            inputV.dimensions,
+          )
         ]!;
 
       sum += lookbackTokenWeight * lookbackTokenValue;

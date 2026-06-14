@@ -12,6 +12,7 @@ import {
 } from "../shared/matrices-gpu.ts";
 import type { Model, Weights } from "./model-types.ts";
 import type { WgslArray } from "typegpu/data";
+import { MAX_CONTEXT } from "../running/llm-shared.ts";
 
 export interface AttentionGPUBuffers {
   Q: MatrixBuffer;
@@ -108,72 +109,74 @@ export type InferenceBuffers = {
 
 export const allocateInferenceBuffers = (
   contextSize: number,
+  batchCount: number,
   model: Model,
 ): InferenceBuffers => {
   const hiddenDimensionsSize = model.counts.hiddenDimensions;
+  const multiBatchContextSize = batchCount * contextSize;
 
   const hiddenState = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
 
   const attentionInputBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const attentionUpdateBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
 
   const attentionInputKBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const attentionInputVBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const attentionInputQBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const attentionOutBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const attentionRelevancyOutput = createMatrixBuffer({
-    vectors: contextSize,
-    dimensions: contextSize * model.counts.attentionHeads,
+    vectors: multiBatchContextSize,
+    dimensions: MAX_CONTEXT * model.counts.attentionHeads,
   });
   const matchingKeyProducts = createMatrixBuffer({
-    vectors: contextSize,
-    dimensions: contextSize * model.counts.attentionHeads,
+    vectors: multiBatchContextSize,
+    dimensions: MAX_CONTEXT * model.counts.attentionHeads,
   });
   const unembeddedStateBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: model.vocabulary.length,
   });
   const probabilitiesBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: model.vocabulary.length,
   });
 
   const mlpInputBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
   const uppedMlpBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize * model.counts.mlpMultiple,
   });
   const outMlpBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
 
   const postTransformersBuffer = createMatrixBuffer({
-    vectors: contextSize,
+    vectors: multiBatchContextSize,
     dimensions: hiddenDimensionsSize,
   });
 

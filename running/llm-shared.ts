@@ -1,4 +1,4 @@
-export const MAX_CONTEXT = 100;
+export const MAX_CONTEXT = 20;
 
 export const pickToken = (
   probabilities: Float32Array,
