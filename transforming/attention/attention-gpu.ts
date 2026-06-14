@@ -6,7 +6,7 @@ import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
 import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
 import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";
-import { softmaxOnGpu } from "../../shared/softmax-gpu.ts";
+import { maskedSoftmaxOnGpu } from "./maskedSoftmaxOnGPU.ts";
 
 export const runSelfAttentionMechanismOnGPU = (
   input: MatrixBuffer,
@@ -57,7 +57,7 @@ export const runSelfAttentionHeadsOnGPU = (
     attentionRelevancyOutput,
   );
 
-  softmaxOnGpu(attentionRelevancyOutput, matchingKeyProducts, headCount);
+  maskedSoftmaxOnGpu(attentionRelevancyOutput, matchingKeyProducts, headCount);
 
   applyAttentionValuesOnGPU(
     headDimensionsCount,
