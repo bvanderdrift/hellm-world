@@ -6,13 +6,15 @@ import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 
-// normalizeOnGpu mutates the buffer in place; the CPU `normalize` returns a new
-// matrix. We use the CPU version as the oracle and compare the used region.
+// normalizeOnGpu reads from an input buffer and writes into a separate output
+// buffer; the CPU `normalize` returns a new matrix. We use the CPU version as
+// the oracle and compare the used region.
 const runGpu = async (matrix: Matrix): Promise<Matrix> => {
-  const buffer = createMatrixBuffer(matrix);
-  normalizeOnGpu(buffer);
+  const input = createMatrixBuffer(matrix);
+  const output = createMatrixBuffer(matrix);
+  normalizeOnGpu(input, output);
   await gpuContext.device.queue.onSubmittedWorkDone();
-  return extractMatrixBuffer(buffer);
+  return extractMatrixBuffer(output);
 };
 
 describe("normalizeOnGpu", () => {
