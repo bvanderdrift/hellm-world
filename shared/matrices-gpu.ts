@@ -6,6 +6,7 @@ import tgpu, {
 } from "typegpu";
 import { gpuContext } from "./gpu-context.ts";
 import { type Matrix } from "./matrices.ts";
+import { builtin } from "typegpu/data";
 
 const createMatrixBufferDefintionInstance = (
   vectors: number,
@@ -46,26 +47,40 @@ export const getFlatIndexOnGPU = (i: number, j: number, dimensions: number) => {
   return i * dimensions + j;
 };
 
-const dotProductOnGPU = (i: number, j: number) => {
+const dotProductKernel = tgpu.computeFn({
+  in: {
+    globalId: builtin.globalInvocationId,
+  },
+  workgroupSize: [16, 16],
+})((input) => {
   "use gpu";
+
+  const i = input.globalId.x;
+  const j = input.globalId.y;
 
   const m1 = multiplyMatrixParamsLayout.$.m1;
   const m2 = multiplyMatrixParamsLayout.$.m2;
   const mOut = multiplyMatrixParamsLayout.$.mOut;
 
+  if (i >= mOut.vectors || j >= mOut.dimensions) {
+    // Worker is out-of-bounds. Happens since we need to fill a single 16 x 16 tiles and matrices are not always multiples of 16 in size
+    return;
+  }
+
   let summed = d.f32(0);
 
-  for (let k = 0; k < m1.dimensions; k++) {
+  for (let k = d.u32(0); k < m1.dimensions; k++) {
     summed +=
       m1.values[getFlatIndexOnGPU(i, k, m1.dimensions)]! *
       m2.values[getFlatIndexOnGPU(k, j, m2.dimensions)]!;
   }
 
   mOut.values[getFlatIndexOnGPU(i, j, mOut.dimensions)]! = summed;
-};
+});
 
-const dotProductRunner =
-  gpuContext.createGuardedComputePipeline(dotProductOnGPU);
+const dotProductRunner = gpuContext.createComputePipeline({
+  compute: dotProductKernel,
+});
 
 export const multiplyMatricesOnGPU = (
   m1: MatrixBuffer,
@@ -82,7 +97,10 @@ export const multiplyMatricesOnGPU = (
   dotProductRunner
     .with(encoder)
     .with(params)
-    .dispatchThreads(m1.vectors, m2.dimensions);
+    .dispatchWorkgroups(
+      Math.ceil(m1.vectors / 16),
+      Math.ceil(m2.dimensions / 16),
+    );
 };
 
 export const createMatrixBuffer = (
@@ -167,15 +185,28 @@ const addMatricesParamsLayout = tgpu.bindGroupLayout({
   },
 });
 
-const addMatricesKernel = gpuContext.createGuardedComputePipeline(
-  (i: number) => {
-    "use gpu";
-    const m1 = addMatricesParamsLayout.$.m1WillMutate;
-    const m2 = addMatricesParamsLayout.$.m2;
-
-    m1.values[i]! = m1.values[i]! + m2.values[i]!;
+const addMatricesKernel = tgpu.computeFn({
+  workgroupSize: [256],
+  in: {
+    globalId: builtin.globalInvocationId,
   },
-);
+})((input) => {
+  const i = input.globalId.x;
+
+  const m1 = addMatricesParamsLayout.$.m1WillMutate;
+
+  if (i >= m1.vectors * m1.dimensions) {
+    return;
+  }
+
+  const m2 = addMatricesParamsLayout.$.m2;
+
+  m1.values[i]! = m1.values[i]! + m2.values[i]!;
+});
+
+const addMatricesRunner = gpuContext.createComputePipeline({
+  compute: addMatricesKernel,
+});
 
 export const addMatricesOnGPU = (
   m1WillMutate: MatrixBuffer,
@@ -187,22 +218,38 @@ export const addMatricesOnGPU = (
     m2: m2.buffer,
   });
 
-  addMatricesKernel
+  addMatricesRunner
     .with(encoder)
     .with(params)
-    .dispatchThreads(m1WillMutate.vectors * m1WillMutate.dimensions);
+    .dispatchWorkgroups(
+      Math.ceil((m1WillMutate.vectors * m1WillMutate.dimensions) / 256),
+    );
 };
 
-const addVectorAcrossMatrixKernel = gpuContext.createGuardedComputePipeline(
-  (i: number, j: number) => {
-    "use gpu";
-    const m1 = addMatricesParamsLayout.$.m1WillMutate;
-    const m2 = addMatricesParamsLayout.$.m2;
-    const flatIndex = getFlatIndexOnGPU(i, j, m1.dimensions);
-
-    m1.values[flatIndex]! = m1.values[flatIndex]! + m2.values[j]!;
+const addVectorAcrossMatrixKernel = tgpu.computeFn({
+  in: {
+    globalId: builtin.globalInvocationId,
   },
-);
+  workgroupSize: [16, 16],
+})((input) => {
+  const i = input.globalId.x;
+  const j = input.globalId.y;
+
+  const m1 = addMatricesParamsLayout.$.m1WillMutate;
+  const m2 = addMatricesParamsLayout.$.m2;
+
+  if (i >= m1.vectors || j >= m1.dimensions) {
+    return;
+  }
+
+  const flatIndex = getFlatIndexOnGPU(i, j, m1.dimensions);
+
+  m1.values[flatIndex]! = m1.values[flatIndex]! + m2.values[j]!;
+});
+
+const addVectorAcrossMatrixRunner = gpuContext.createComputePipeline({
+  compute: addVectorAcrossMatrixKernel,
+});
 
 export const addVectorAcrossMatrixOnGPU = (
   m1WillMutate: MatrixBuffer,
@@ -214,10 +261,13 @@ export const addVectorAcrossMatrixOnGPU = (
     m2: vector.buffer,
   });
 
-  addVectorAcrossMatrixKernel
+  addVectorAcrossMatrixRunner
     .with(encoder)
     .with(params)
-    .dispatchThreads(m1WillMutate.vectors, m1WillMutate.dimensions);
+    .dispatchWorkgroups(
+      Math.ceil(m1WillMutate.vectors / 16),
+      Math.ceil(m1WillMutate.dimensions / 16),
+    );
 };
 
 export const singleMatrixParamsLayout = tgpu.bindGroupLayout({
