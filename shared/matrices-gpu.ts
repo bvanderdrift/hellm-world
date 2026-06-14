@@ -105,7 +105,7 @@ export const createMatrixBuffer = (
   m: Matrix | Omit<Matrix, "values">,
 ): MatrixBuffer => {
   const init = "values" in m ? m : undefined;
-  const embeddingsBuffer = gpuContext
+  const buffer = gpuContext
     .createBuffer(
       createMatrixBufferDefintionInstance(m.vectors, m.dimensions),
       init,
@@ -113,14 +113,14 @@ export const createMatrixBuffer = (
     .$usage("storage");
 
   if (!("values" in m)) {
-    embeddingsBuffer.patch({
+    buffer.patch({
       vectors: m.vectors,
       dimensions: m.dimensions,
     });
   }
 
   return {
-    buffer: embeddingsBuffer,
+    buffer,
     vectors: m.vectors,
     dimensions: m.dimensions,
   };

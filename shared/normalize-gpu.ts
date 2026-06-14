@@ -7,6 +7,10 @@ import { builtin } from "typegpu/data";
 const normalizeParamsLayout = tgpu.bindGroupLayout({
   hiddenState: {
     storage: matrixBufferDefinition,
+    access: "readonly",
+  },
+  output: {
+    storage: matrixBufferDefinition,
     access: "mutable",
   },
 });
@@ -26,6 +30,7 @@ const normalizeKernel = tgpu.computeFn({
   const vectorIndex = input.groupId.x;
 
   const hiddenState = normalizeParamsLayout.$.hiddenState;
+  const output = normalizeParamsLayout.$.output;
 
   const offset = vectorIndex * hiddenState.dimensions;
   const length = hiddenState.dimensions;
@@ -91,7 +96,7 @@ const normalizeKernel = tgpu.computeFn({
   for (let j = t; j < length; j += WORKGROUP_SIZE) {
     const valueIndex = offset + j;
 
-    hiddenState.values[valueIndex] =
+    output.values[valueIndex] =
       (hiddenState.values[valueIndex]! - average) /
       (standardDeviation +
         // to prevent 0-divisions
@@ -103,9 +108,13 @@ const normalizeVectorRunner = gpuContext.createComputePipeline({
   compute: normalizeKernel,
 });
 
-export const normalizeOnGpu = (hiddenState: MatrixBuffer) => {
+export const normalizeOnGpu = (
+  hiddenState: MatrixBuffer,
+  output: MatrixBuffer,
+) => {
   const bindGroup = gpuContext.createBindGroup(normalizeParamsLayout, {
     hiddenState: hiddenState.buffer,
+    output: output.buffer,
   });
 
   normalizeVectorRunner.with(bindGroup).dispatchWorkgroups(hiddenState.vectors);

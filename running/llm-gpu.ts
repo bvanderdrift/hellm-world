@@ -75,16 +75,10 @@ export const llmForwardPassByTokensOnGPU = async (
     dimensions: hiddenDimensionsSize,
   });
 
-  const uppedMlpBuffer = createMatrixBuffer({
-    vectors: contextSize,
-    dimensions: hiddenDimensionsSize * model.counts.mlpMultiple,
-  });
-
-  const outMlpBuffer = createMatrixBuffer({
+  const attentionInputBuffer = createMatrixBuffer({
     vectors: contextSize,
     dimensions: hiddenDimensionsSize,
   });
-
   const attentionUpdateBuffer = createMatrixBuffer({
     vectors: contextSize,
     dimensions: hiddenDimensionsSize,
@@ -123,6 +117,24 @@ export const llmForwardPassByTokensOnGPU = async (
     dimensions: model.vocabulary.length,
   });
 
+  const mlpInputBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+  const uppedMlpBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize * model.counts.mlpMultiple,
+  });
+  const outMlpBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+
+  const postTransformersBuffer = createMatrixBuffer({
+    vectors: contextSize,
+    dimensions: hiddenDimensionsSize,
+  });
+
   const inputPositionToVocabPositionGPUBuffer = gpuContext
     .createBuffer(
       d.arrayOf(d.f32, inputPositionToVocabPosition.length),
@@ -148,10 +160,10 @@ export const llmForwardPassByTokensOnGPU = async (
     .$usage("uniform");
 
   for (const transformerBuffers of weightBuffers.transformers) {
-    normalizeOnGpu(hiddenState);
+    normalizeOnGpu(hiddenState, attentionInputBuffer);
 
     runSelfAttentionMechanismOnGPU(
-      hiddenState,
+      attentionInputBuffer,
       model.counts.attentionHeads,
       headDimensionsCountBuffer,
       transformerBuffers.attention,
@@ -166,12 +178,12 @@ export const llmForwardPassByTokensOnGPU = async (
 
     addMatricesOnGPU(hiddenState, attentionUpdateBuffer);
 
-    normalizeOnGpu(hiddenState);
+    normalizeOnGpu(hiddenState, mlpInputBuffer);
 
     getMultilayerPerceptronActivationsOnGPU(
       // Normalize input only, don't normalize the intermediateState iself
       // Reason: of this block outputs 0 for a feature, we keep x + 0 = x. But if we normalize the root variable we get norm(x) + 0 = norm(x) so a transform has still happened even if the block said not to
-      hiddenState,
+      mlpInputBuffer,
       uppedMlpBuffer,
       outMlpBuffer,
       transformerBuffers.multilayerPerceptron,
@@ -187,7 +199,7 @@ export const llmForwardPassByTokensOnGPU = async (
     } as any);
   }
 
-  normalizeOnGpu(hiddenState);
+  normalizeOnGpu(hiddenState, postTransformersBuffer);
 
   const missingTransformerActivationsCount =
     model.transformers.length - transformerActivations.length;
@@ -200,7 +212,7 @@ export const llmForwardPassByTokensOnGPU = async (
   }
 
   multiplyMatricesOnGPU(
-    hiddenState,
+    postTransformersBuffer,
     weightBuffers.unembeddings,
     unembeddedStateBuffer,
   );
@@ -210,8 +222,8 @@ export const llmForwardPassByTokensOnGPU = async (
   const probabilities = await extractMatrixBuffer(probabilitiesBuffer);
 
   hiddenState.buffer.destroy();
-  uppedMlpBuffer.buffer.destroy();
-  outMlpBuffer.buffer.destroy();
+
+  attentionInputBuffer.buffer.destroy();
   attentionUpdateBuffer.buffer.destroy();
   attentionInputKBuffer.buffer.destroy();
   attentionInputVBuffer.buffer.destroy();
@@ -219,6 +231,13 @@ export const llmForwardPassByTokensOnGPU = async (
   attentionOutBuffer.buffer.destroy();
   attentionRelevancyOutput.buffer.destroy();
   matchingKeyProducts.buffer.destroy();
+
+  mlpInputBuffer.buffer.destroy();
+  uppedMlpBuffer.buffer.destroy();
+  outMlpBuffer.buffer.destroy();
+
+  postTransformersBuffer.buffer.destroy();
+
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
   headDimensionsCountBuffer.buffer.destroy();
   unembeddedStateBuffer.buffer.destroy();
