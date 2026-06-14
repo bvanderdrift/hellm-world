@@ -15,7 +15,7 @@ import { gpuContext } from "../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { createMatrix, getRawVector, type Matrix } from "../shared/matrices.ts";
-import { getHighestValueIndex } from "./llm-shared.ts";
+import { getHighestValueIndex, MAX_CONTEXT } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
 
@@ -287,6 +287,89 @@ describe("GPU and CPU greedy decoding agree token-for-token", () => {
 
       context = [...context, model.vocabulary[cpuIndex]!];
     }
+  });
+});
+
+const runBatchedForwardPassOnGPU = async (
+  sequences: string[][],
+  model: Model,
+  weightBuffers: WeightGPUBuffers,
+): Promise<Matrix> => {
+  const inferenceBuffers = allocateInferenceBuffers(
+    MAX_CONTEXT,
+    sequences.length,
+    model,
+  );
+
+  const inputPositionToVocabPosition = sequences.flatMap((tokens) =>
+    new Array(MAX_CONTEXT).fill(0).map((_, tokenIndex) => {
+      const token = tokens[tokenIndex];
+      if (!token) return 0;
+      return findTokenIndex(model.vocabulary, token);
+    }),
+  );
+
+  const inputPositionToVocabPositionGPUBuffer = gpuContext
+    .createBuffer(
+      d.arrayOf(d.f32, sequences.length * MAX_CONTEXT),
+      inputPositionToVocabPosition,
+    )
+    .$usage("storage");
+
+  forwardPassOnGPU({
+    weightBuffers,
+    model,
+    withActivations: false,
+    inferenceBuffers,
+    inputPositionToVocabPositionGPUBuffer,
+  });
+
+  const probabilities = await extractMatrixBuffer(
+    inferenceBuffers.probabilitiesBuffer,
+  );
+
+  destroyInferenceBuffers(inferenceBuffers);
+  inputPositionToVocabPositionGPUBuffer.buffer.destroy();
+
+  return probabilities;
+};
+
+describe("forwardPassOnGPU — multi-batch", () => {
+  it("matches the CPU probabilities for every sequence packed in one batch", async () => {
+    const model = makeModel(505, {
+      hidden: 16,
+      heads: 4,
+      layers: 3,
+      mlpMultiple: 4,
+      vocabSize: 6,
+    });
+    const weightBuffers = loadWeightsIntoGpu(model);
+
+    const sequences = [
+      ["t0", "t1", "t2"],
+      ["t1", "t2", "t3", "t4"],
+      ["t0"],
+    ];
+
+    const batched = await runBatchedForwardPassOnGPU(
+      sequences,
+      model,
+      weightBuffers,
+    );
+
+    sequences.forEach((sequence, batchIndex) => {
+      const expected = cpuProbabilities(sequence, model);
+      for (let position = 0; position < sequence.length; position++) {
+        const actualRow = getRawVector(
+          batched,
+          batchIndex * MAX_CONTEXT + position,
+        );
+        const expectedRow = getRawVector(expected, position);
+        for (let token = 0; token < expectedRow.length; token++) {
+          expect(actualRow[token]).toBeCloseTo(expectedRow[token]!, 4);
+        }
+      }
+    });
   });
 });
 
