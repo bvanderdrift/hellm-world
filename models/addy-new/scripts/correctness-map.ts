@@ -196,6 +196,8 @@ const main = async () => {
     model,
   );
 
+  let lastDumpTime = performance.now();
+
   const onResults = async (results: Result[]) => {
     for (const { a, b, correct } of results) {
       // A cell may be re-sampled; only count genuinely new tests so
@@ -214,6 +216,10 @@ const main = async () => {
 
       const intoBatch = testCount % DUMP_EVERY;
       if (intoBatch === 0) {
+        const now = performance.now();
+        const dumpDurationMs = now - lastDumpTime;
+        lastDumpTime = now;
+
         writeProgress(1);
         process.stdout.write("\n");
 
@@ -227,7 +233,7 @@ const main = async () => {
         );
         const accuracy = (correctCount / testCount) * 100;
         console.log(
-          `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · wrote ${outputPath}`,
+          `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · last ${DUMP_EVERY} in ${(dumpDurationMs / 1000).toFixed(2)}s · wrote ${outputPath}`,
         );
         process.stdout.write("\n");
       } else {
