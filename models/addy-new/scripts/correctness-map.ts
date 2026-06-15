@@ -174,17 +174,14 @@ const checkBatch = async (
   });
   const tArgmaxDone = performance.now();
 
-  if (!hasLoggedTiming) {
-    hasLoggedTiming = true;
-    const gpuMs = tGpuDone - tDispatchStart;
-    const readbackMs = tReadbackDone - tGpuDone;
-    const argmaxMs = tArgmaxDone - tReadbackDone;
-    const totalMs = tArgmaxDone - tDispatchStart;
-    const tokensPerSec = (pairs.length * MAX_CONTEXT) / (totalMs / 1000);
-    console.log(
-      `\n[timing] batch=${pairs.length} · gpu=${gpuMs.toFixed(1)}ms (${((gpuMs / totalMs) * 100).toFixed(0)}%) · readback=${readbackMs.toFixed(1)}ms (${((readbackMs / totalMs) * 100).toFixed(0)}%) · argmax=${argmaxMs.toFixed(1)}ms (${((argmaxMs / totalMs) * 100).toFixed(0)}%) · total=${totalMs.toFixed(1)}ms · ${Math.round(tokensPerSec).toLocaleString()} tok/s\n`,
-    );
-  }
+  const gpuMs = tGpuDone - tDispatchStart;
+  const readbackMs = tReadbackDone - tGpuDone;
+  const argmaxMs = tArgmaxDone - tReadbackDone;
+  const totalMs = tArgmaxDone - tDispatchStart;
+  const tokensPerSec = (pairs.length * MAX_CONTEXT) / (totalMs / 1000);
+  console.log(
+    `\n[timing] batch=${pairs.length} · gpu=${gpuMs.toFixed(1)}ms (${((gpuMs / totalMs) * 100).toFixed(0)}%) · readback=${readbackMs.toFixed(1)}ms (${((readbackMs / totalMs) * 100).toFixed(0)}%) · argmax=${argmaxMs.toFixed(1)}ms (${((argmaxMs / totalMs) * 100).toFixed(0)}%) · total=${totalMs.toFixed(1)}ms · ${Math.round(tokensPerSec).toLocaleString()} tok/s\n`,
+  );
 
   return results;
 };
