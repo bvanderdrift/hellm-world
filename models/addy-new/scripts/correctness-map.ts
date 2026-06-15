@@ -57,6 +57,8 @@ type Result = { a: number; b: number; correct: boolean };
 
 const DUMP_EVERY = 1000;
 
+let hasLoggedTiming = false;
+
 const PROGRESS_WIDTH = 30;
 
 /** In-place progress bar towards the next render, e.g. "[------        ]  37%". */
@@ -139,6 +141,8 @@ const checkBatch = async (
     )
     .$usage("storage");
 
+  const tDispatchStart = performance.now();
+
   forwardPassOnGPU({
     weightBuffers,
     model,
@@ -147,13 +151,17 @@ const checkBatch = async (
     inputPositionToVocabPositionGPUBuffer,
   });
 
+  await gpuContext.device.queue.onSubmittedWorkDone();
+  const tGpuDone = performance.now();
+
   const probabilities = await extractMatrixBuffer(
     inferenceBuffers.probabilitiesBuffer,
   );
+  const tReadbackDone = performance.now();
 
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
 
-  return pairs.map(({ a, b }, batchIndex) => {
+  const results = pairs.map(({ a, b }, batchIndex) => {
     const { firstCheckPosition, expected } = checks[batchIndex]!;
 
     const correct = expected.every((expectedIndex, step) => {
@@ -164,6 +172,21 @@ const checkBatch = async (
 
     return { a, b, correct };
   });
+  const tArgmaxDone = performance.now();
+
+  if (!hasLoggedTiming) {
+    hasLoggedTiming = true;
+    const gpuMs = tGpuDone - tDispatchStart;
+    const readbackMs = tReadbackDone - tGpuDone;
+    const argmaxMs = tArgmaxDone - tReadbackDone;
+    const totalMs = tArgmaxDone - tDispatchStart;
+    const tokensPerSec = (pairs.length * MAX_CONTEXT) / (totalMs / 1000);
+    console.log(
+      `\n[timing] batch=${pairs.length} · gpu=${gpuMs.toFixed(1)}ms (${((gpuMs / totalMs) * 100).toFixed(0)}%) · readback=${readbackMs.toFixed(1)}ms (${((readbackMs / totalMs) * 100).toFixed(0)}%) · argmax=${argmaxMs.toFixed(1)}ms (${((argmaxMs / totalMs) * 100).toFixed(0)}%) · total=${totalMs.toFixed(1)}ms · ${Math.round(tokensPerSec).toLocaleString()} tok/s\n`,
+    );
+  }
+
+  return results;
 };
 
 const main = async () => {
