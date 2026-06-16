@@ -1,0 +1,5 @@
+threads=     65,536     1589 GFLOP/s
+threads=    131,072     1595 GFLOP/s
+threads=    262,144     1607 GFLOP/s
+threads=    524,288     1615 GFLOP/s
+threads=  1,048,576     1615 GFLOP/s
