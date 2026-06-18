@@ -7,6 +7,7 @@ import tgpu, {
 import { gpuContext } from "./gpu-context.ts";
 import { type Matrix } from "./matrices.ts";
 import { builtin } from "typegpu/data";
+import { workgroupBarrier } from "typegpu/std";
 
 const createMatrixBufferDefintionInstance = (
   vectors: number,
@@ -47,35 +48,142 @@ export const getFlatIndexOnGPU = (i: number, j: number, dimensions: number) => {
   return i * dimensions + j;
 };
 
+const singleThreadDimensions = 4;
+const singleThreadValueCount = singleThreadDimensions ** 2;
+const outputTileWorkgroupSize = 8;
+
+const singleTileDimensions = singleThreadDimensions * outputTileWorkgroupSize;
+const singleTileValueCount = singleTileDimensions ** 2;
+
+const tileMemoryM1 = tgpu.workgroupVar(d.arrayOf(d.f32, singleTileValueCount));
+
+const tileMemoryM2 = tgpu.workgroupVar(d.arrayOf(d.f32, singleTileValueCount));
+
+const zeroSumsInitArray = new Array(singleThreadValueCount).fill(0);
+
 const dotProductKernel = tgpu.computeFn({
   in: {
-    globalId: builtin.globalInvocationId,
+    workgroupIndex: builtin.workgroupId,
+    innerTileIndex: builtin.localInvocationId,
   },
-  workgroupSize: [16, 16],
+  workgroupSize: [outputTileWorkgroupSize, outputTileWorkgroupSize],
 })((input) => {
   "use gpu";
-
-  const i = input.globalId.x;
-  const j = input.globalId.y;
 
   const m1 = multiplyMatrixParamsLayout.$.m1;
   const m2 = multiplyMatrixParamsLayout.$.m2;
   const mOut = multiplyMatrixParamsLayout.$.mOut;
 
-  if (i >= mOut.vectors || j >= mOut.dimensions) {
-    // Worker is out-of-bounds. Happens since we need to fill a single 16 x 16 tiles and matrices are not always multiples of 16 in size
-    return;
+  const innerStartX = input.innerTileIndex.x * singleThreadDimensions;
+  const innerStartY = input.innerTileIndex.y * singleThreadDimensions;
+
+  const outputStartX =
+    input.workgroupIndex.x * singleTileDimensions + innerStartX;
+  const outputStartY =
+    input.workgroupIndex.y * singleTileDimensions + innerStartY;
+
+  const sums = d.arrayOf(d.f32, singleThreadValueCount)(zeroSumsInitArray);
+
+  for (
+    let tileStride = 0;
+    tileStride < m1.dimensions;
+    tileStride += singleTileDimensions
+  ) {
+    for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
+      for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+        const tileMemoryXIndex = innerStartX + xIndex;
+        const tileMemoryYIndex = innerStartY + yIndex;
+
+        const tileMemoryIndex = getFlatIndexOnGPU(
+          tileMemoryXIndex,
+          tileMemoryYIndex,
+          singleTileDimensions,
+        );
+
+        const m1XIndex = outputStartX + xIndex;
+        const m1YIndex = tileStride + tileMemoryYIndex;
+
+        if (m1XIndex >= m1.vectors || m1YIndex >= m1.dimensions) {
+          tileMemoryM1.$[tileMemoryIndex] = 0;
+        } else {
+          tileMemoryM1.$[tileMemoryIndex] =
+            m1.values[getFlatIndexOnGPU(m1XIndex, m1YIndex, m1.dimensions)]!;
+        }
+
+        const m2XIndex = tileStride + tileMemoryXIndex;
+        const m2YIndex = outputStartY + yIndex;
+
+        if (m2XIndex >= m2.vectors || m2YIndex >= m2.dimensions) {
+          tileMemoryM2.$[tileMemoryIndex] = 0;
+        } else {
+          tileMemoryM2.$[tileMemoryIndex] =
+            m2.values[getFlatIndexOnGPU(m2XIndex, m2YIndex, m2.dimensions)]!;
+        }
+      }
+    }
+
+    workgroupBarrier();
+
+    for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
+      for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+        const tileMemoryM1XIndex = innerStartX + xIndex;
+        const tileMemoryM2YIndex = innerStartY + yIndex;
+
+        const summerIndex = getFlatIndexOnGPU(
+          xIndex,
+          yIndex,
+          singleThreadDimensions,
+        );
+
+        for (let k = 0; k < singleTileDimensions; k++) {
+          const tileMemoryM1Index = getFlatIndexOnGPU(
+            tileMemoryM1XIndex,
+            k,
+            singleTileDimensions,
+          );
+
+          const m1Value = tileMemoryM1.$[tileMemoryM1Index]!;
+
+          const tileMemoryM2Index = getFlatIndexOnGPU(
+            k,
+            tileMemoryM2YIndex,
+            singleTileDimensions,
+          );
+
+          const m2Value = tileMemoryM2.$[tileMemoryM2Index]!;
+
+          sums[summerIndex]! += m1Value * m2Value;
+        }
+      }
+    }
+
+    workgroupBarrier();
   }
 
-  let summed = d.f32(0);
+  for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
+    for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+      const outXIndex = outputStartX + xIndex;
+      const outYIndex = outputStartY + yIndex;
 
-  for (let k = d.u32(0); k < m1.dimensions; k++) {
-    summed +=
-      m1.values[getFlatIndexOnGPU(i, k, m1.dimensions)]! *
-      m2.values[getFlatIndexOnGPU(k, j, m2.dimensions)]!;
+      if (outXIndex >= mOut.vectors || outYIndex >= mOut.dimensions) {
+        continue;
+      }
+
+      const mOutIndex = getFlatIndexOnGPU(
+        outXIndex,
+        outYIndex,
+        mOut.dimensions,
+      );
+
+      const summerIndex = getFlatIndexOnGPU(
+        xIndex,
+        yIndex,
+        singleThreadDimensions,
+      );
+
+      mOut.values[mOutIndex] = sums[summerIndex]!;
+    }
   }
-
-  mOut.values[getFlatIndexOnGPU(i, j, mOut.dimensions)]! = summed;
 });
 
 const dotProductRunner = gpuContext.createComputePipeline({
@@ -96,8 +204,8 @@ export const multiplyMatricesOnGPU = (
   dotProductRunner
     .with(params)
     .dispatchWorkgroups(
-      Math.ceil(m1.vectors / 16),
-      Math.ceil(m2.dimensions / 16),
+      Math.ceil(m1.vectors / singleTileDimensions),
+      Math.ceil(m2.dimensions / singleTileDimensions),
     );
 };
 

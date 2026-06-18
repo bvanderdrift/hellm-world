@@ -91,7 +91,7 @@ describe("multiplyMatricesOnGPU", () => {
     expectMatrixCloseTo(
       await extractMatrixBuffer(out),
       multiplyMatrices(m1, m2),
-      3,
+      4,
     );
   });
 
@@ -107,7 +107,39 @@ describe("multiplyMatricesOnGPU", () => {
     expectMatrixCloseTo(
       await extractMatrixBuffer(out),
       multiplyMatrices(m1, m2),
-      3,
+      4,
+    );
+  });
+
+  it("matches the CPU reference when the shared dimension spans several K-tiles", async () => {
+    const shared = 130;
+    const m1 = randomMatrix(48, shared);
+    const m2 = randomMatrix(shared, 40);
+
+    const out = createMatrixBuffer({ vectors: 48, dimensions: 40 });
+    multiplyMatricesOnGPU(createMatrixBuffer(m1), createMatrixBuffer(m2), out);
+    await flush();
+
+    expectMatrixCloseTo(
+      await extractMatrixBuffer(out),
+      multiplyMatrices(m1, m2),
+      4,
+    );
+  });
+
+  it("matches the CPU reference for a large case with a K-tile remainder", async () => {
+    const shared = 100;
+    const m1 = randomMatrix(70, shared);
+    const m2 = randomMatrix(shared, 66);
+
+    const out = createMatrixBuffer({ vectors: 70, dimensions: 66 });
+    multiplyMatricesOnGPU(createMatrixBuffer(m1), createMatrixBuffer(m2), out);
+    await flush();
+
+    expectMatrixCloseTo(
+      await extractMatrixBuffer(out),
+      multiplyMatrices(m1, m2),
+      4,
     );
   });
 });
