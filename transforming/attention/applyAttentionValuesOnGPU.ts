@@ -5,7 +5,7 @@ import {
   matrixBufferDefinition,
   getFlatIndexOnGPU,
   type MatrixBuffer,
-} from "../../shared/matrices-gpu.ts";
+} from "../../shared/matrices/matrices-gpu.ts";
 import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const applyWeightedValuesParams = tgpu.bindGroupLayout({

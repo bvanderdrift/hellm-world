@@ -1,4 +1,4 @@
-import type { Matrix } from "../shared/matrices.ts";
+import type { Matrix } from "../shared/matrices/matrices.ts";
 
 export type AttentionHeadActivations = {
   inputK: Matrix;

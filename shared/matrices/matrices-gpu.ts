@@ -4,7 +4,7 @@ import tgpu, {
   type TgpuBuffer,
   type UniformFlag,
 } from "typegpu";
-import { gpuContext } from "./gpu-context.ts";
+import { gpuContext } from "../gpu-context.ts";
 import { type Matrix } from "./matrices.ts";
 import { builtin } from "typegpu/data";
 import { workgroupBarrier } from "typegpu/std";

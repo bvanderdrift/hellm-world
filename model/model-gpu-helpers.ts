@@ -9,7 +9,7 @@ import { divideToWhole } from "../shared/math.ts";
 import {
   createMatrixBuffer,
   type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
+} from "../shared/matrices/matrices-gpu.ts";
 import type { Model, Weights } from "./model-types.ts";
 import type { WgslArray } from "typegpu/data";
 import { MAX_CONTEXT } from "../running/llm-shared.ts";

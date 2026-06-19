@@ -13,7 +13,7 @@ import {
   getRawVector,
   sliceVectorsFromMatrix,
   sliceRows,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 import { softmaxBackprop } from "./softmaxBackprop.ts";
 

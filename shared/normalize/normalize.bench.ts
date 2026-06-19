@@ -1,7 +1,7 @@
 import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
-import { compareAcrossSizes } from "../bench-harness.ts";
-import { createMatrixBuffer } from "./matrices-gpu.ts";
+import { compareAcrossSizes } from "../../bench-harness.ts";
+import { createMatrixBuffer } from "../matrices/matrices-gpu.ts";
 
 if (import.meta.main) {
   await compareAcrossSizes({

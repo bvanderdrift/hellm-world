@@ -1,7 +1,7 @@
 import { describe, it } from "bun:test";
 import { gpuContext } from "./gpu-context.ts";
-import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
-import { createMatrix, type Matrix } from "./matrices.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "./matrices/matrices-gpu.ts";
+import { createMatrix, type Matrix } from "./matrices/matrices.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import { softmaxOnGpu } from "./softmax-gpu.ts";
 

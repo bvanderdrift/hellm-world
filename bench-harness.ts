@@ -1,10 +1,10 @@
 import tgpu from "typegpu";
-import { createMatrix, type Matrix } from "./shared/matrices.ts";
+import { createMatrix, type Matrix } from "./shared/matrices/matrices.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
   type MatrixBuffer,
-} from "./shared/matrices-gpu.ts";
+} from "./shared/matrices/matrices-gpu.ts";
 import { gpuContext } from "./shared/gpu-context.ts";
 
 export const WARMUP_ITERS = 3;

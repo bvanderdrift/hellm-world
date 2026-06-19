@@ -12,7 +12,7 @@
 
 import { type Model } from "../../../model/model-types.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
-import { getRawVector } from "../../../shared/matrices.ts";
+import { getRawVector } from "../../../shared/matrices/matrices.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
 import { llmForwardPassByTokens } from "../../../running/llm.ts";
 import { getHighestValueIndex } from "../../../running/llm-shared.ts";

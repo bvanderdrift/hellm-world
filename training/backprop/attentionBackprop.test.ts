@@ -17,7 +17,7 @@ import {
   createMatrix,
   getFlatIndex,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import {
   FINITE_DIFFERENCE_EPSILON,
   FINITE_DIFFERENCE_PRECISION,

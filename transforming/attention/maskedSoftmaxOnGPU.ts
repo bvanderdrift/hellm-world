@@ -4,7 +4,7 @@ import { softmaxGpuFn, softmaxParamsLayout } from "../../shared/softmax-gpu.ts";
 import {
   getFlatIndexOnGPU,
   type MatrixBuffer,
-} from "../../shared/matrices-gpu.ts";
+} from "../../shared/matrices/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import { mod } from "typegpu/std";
 import { MAX_CONTEXT } from "../../running/llm-shared.ts";

@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { llmForwardPassByTokens, runLlm } from "./llm.ts";
-import { addMatrices, multiplyMatrices } from "../shared/matrices.ts";
-import { normalize } from "../shared/normalize.ts";
+import { addMatrices, multiplyMatrices } from "../shared/matrices/matrices.ts";
+import { normalize } from "../shared/normalize/normalize.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { validateModel } from "../model/model-validation.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
@@ -238,7 +238,10 @@ describe("runLlm", () => {
 
     expect(
       Array.from(
-        runLlm(tokenize("hello", eosStoppingModel.vocabulary), eosStoppingModel),
+        runLlm(
+          tokenize("hello", eosStoppingModel.vocabulary),
+          eosStoppingModel,
+        ),
       ),
     ).toEqual([]);
   });

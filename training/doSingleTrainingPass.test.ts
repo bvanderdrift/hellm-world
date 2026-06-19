@@ -4,7 +4,7 @@ import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { softmax } from "../shared/softmax.ts";
-import { getRawVector } from "../shared/matrices.ts";
+import { getRawVector } from "../shared/matrices/matrices.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
 

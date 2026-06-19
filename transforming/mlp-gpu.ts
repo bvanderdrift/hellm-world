@@ -2,7 +2,7 @@ import {
   addVectorAcrossMatrixOnGPU,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
-} from "../shared/matrices-gpu.ts";
+} from "../shared/matrices/matrices-gpu.ts";
 import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
 import { reluOnGpu } from "../shared/relu-gpu.ts";
 

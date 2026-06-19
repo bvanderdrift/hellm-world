@@ -49,8 +49,8 @@ import {
 } from "../../../running/llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../../../shared/const.ts";
 import { gpuContext } from "../../../shared/gpu-context.ts";
-import { extractMatrixBuffer } from "../../../shared/matrices-gpu.ts";
-import { getRawVector } from "../../../shared/matrices.ts";
+import { extractMatrixBuffer } from "../../../shared/matrices/matrices-gpu.ts";
+import { getRawVector } from "../../../shared/matrices/matrices.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
 
 type Result = { a: number; b: number; correct: boolean };

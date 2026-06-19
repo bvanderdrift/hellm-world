@@ -1,5 +1,5 @@
 import { expect } from "vitest";
-import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices.ts";
+import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices/matrices.ts";
 import { TESTING_PRECISION } from "./constants.ts";
 
 export const matrixFrom = (rows: number[][]): Matrix => {

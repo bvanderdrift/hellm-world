@@ -3,7 +3,7 @@ import {
   type Matrix,
   multiplyMatrices,
   transpose,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import { matrixFrom } from "../../testing/testing-utils.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 

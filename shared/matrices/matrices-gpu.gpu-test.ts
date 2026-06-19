@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { d } from "typegpu";
-import { gpuContext } from "./gpu-context.ts";
+import { gpuContext } from "../gpu-context.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
@@ -16,7 +16,7 @@ import {
   addMatrices,
   addVectorAcrossMatrix,
 } from "./matrices.ts";
-import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
+import { matrixFrom, expectMatrixCloseTo } from "../../testing/testing-utils.ts";
 
 const randomMatrix = (vectors: number, dimensions: number): Matrix => ({
   vectors,

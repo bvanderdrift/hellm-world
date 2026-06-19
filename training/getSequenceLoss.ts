@@ -1,6 +1,6 @@
 import type { Model } from "../model/model-types.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
-import { createMatrix, getRawVector } from "../shared/matrices.ts";
+import { createMatrix, getRawVector } from "../shared/matrices/matrices.ts";
 import { safeSumExponatedLogits } from "../shared/softmax.ts";
 import type { TrainingExample } from "./doSingleTrainingPass.ts";
 

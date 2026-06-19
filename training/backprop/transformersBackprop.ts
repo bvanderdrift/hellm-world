@@ -1,6 +1,6 @@
 import type { TransformerActivations } from "../../model/activations-types.ts";
 import type { TransformerWeights } from "../../model/model-types.ts";
-import { addMatrices, type Matrix } from "../../shared/matrices.ts";
+import { addMatrices, type Matrix } from "../../shared/matrices/matrices.ts";
 import { attentionBackprop } from "./attentionBackprop.ts";
 import { backpropMlp } from "./mlpBackprop.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";

@@ -4,7 +4,7 @@ import {
   createMatrix,
   type Matrix,
   getFlatIndex,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import type { AttentionWeights } from "../../model/model-types.ts";
 import type { AttentionActivations } from "../../model/activations-types.ts";
 import { softmax } from "../../shared/softmax.ts";

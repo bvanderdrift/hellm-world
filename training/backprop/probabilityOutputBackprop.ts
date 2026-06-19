@@ -2,7 +2,7 @@ import {
   createMatrix,
   getFlatIndex,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 
 export const probabilityOutputBackprop = (
   unembeddingsOutputLogits: Matrix,

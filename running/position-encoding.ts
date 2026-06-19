@@ -1,4 +1,4 @@
-import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices.ts";
+import { createMatrix, getFlatIndex, type Matrix } from "../shared/matrices/matrices.ts";
 
 export const getPositionEncoding = (
   tokenCount: number,

@@ -1,6 +1,6 @@
 import tgpu, { d } from "typegpu";
-import { matrixBufferDefinition, type MatrixBuffer } from "./matrices-gpu.ts";
-import { gpuContext } from "./gpu-context.ts";
+import { matrixBufferDefinition, type MatrixBuffer } from "../matrices/matrices-gpu.ts";
+import { gpuContext } from "../gpu-context.ts";
 import { sqrt, workgroupBarrier } from "typegpu/std";
 import { builtin } from "typegpu/data";
 

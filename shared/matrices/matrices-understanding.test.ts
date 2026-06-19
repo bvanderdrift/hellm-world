@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { addMatrices, createMatrix, multiplyMatrices } from "./matrices.ts";
-import { matrixFrom } from "../testing/testing-utils.ts";
+import { matrixFrom } from "../../testing/testing-utils.ts";
 
 describe("summing vs concatenation", () => {
   it("is true that M1 @ W1 + M2 @ W2 == Concat_Dimensions(M1, M2) @ Concat_Vectors(W1, W2)", () => {

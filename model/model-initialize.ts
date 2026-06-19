@@ -1,6 +1,6 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { randomNormalDistribution } from "../shared/math.ts";
-import { createMatrix } from "../shared/matrices.ts";
+import { createMatrix } from "../shared/matrices/matrices.ts";
 import { validateModel } from "./model-validation.ts";
 import type { Model, TransformerWeights } from "./model-types.ts";
 

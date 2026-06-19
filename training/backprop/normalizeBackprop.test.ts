@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { getFlatIndex, type Matrix } from "../../shared/matrices.ts";
-import { normalize } from "../../shared/normalize.ts";
+import { getFlatIndex, type Matrix } from "../../shared/matrices/matrices.ts";
+import { normalize } from "../../shared/normalize/normalize.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
 import { matrixFrom } from "../../testing/testing-utils.ts";
-import { FINITE_DIFFERENCE_EPSILON, FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
+import {
+  FINITE_DIFFERENCE_EPSILON,
+  FINITE_DIFFERENCE_PRECISION,
+} from "../../testing/constants.ts";
 
 describe("backpropNormalize", () => {
   const normalizeObjective = (
@@ -28,7 +31,11 @@ describe("backpropNormalize", () => {
 
     const gradients = backpropNormalize(outputGradients, inputActivations);
 
-    for (let valueIndex = 0; valueIndex < inputActivations.dimensions; valueIndex++) {
+    for (
+      let valueIndex = 0;
+      valueIndex < inputActivations.dimensions;
+      valueIndex++
+    ) {
       const increased = matrixFrom([[1, 2, 4]]);
       const decreased = matrixFrom([[1, 2, 4]]);
 
@@ -57,8 +64,16 @@ describe("backpropNormalize", () => {
     ]);
     const gradients = backpropNormalize(outputGradients, inputActivations);
 
-    for (let vectorIndex = 0; vectorIndex < inputActivations.vectors; vectorIndex++) {
-      for (let valueIndex = 0; valueIndex < inputActivations.dimensions; valueIndex++) {
+    for (
+      let vectorIndex = 0;
+      vectorIndex < inputActivations.vectors;
+      vectorIndex++
+    ) {
+      for (
+        let valueIndex = 0;
+        valueIndex < inputActivations.dimensions;
+        valueIndex++
+      ) {
         const increased = matrixFrom([
           [1, 2, 4],
           [10, 15, 30],
@@ -68,7 +83,11 @@ describe("backpropNormalize", () => {
           [10, 15, 30],
         ]);
 
-        const idx = getFlatIndex(vectorIndex, valueIndex, inputActivations.dimensions);
+        const idx = getFlatIndex(
+          vectorIndex,
+          valueIndex,
+          inputActivations.dimensions,
+        );
         increased.values[idx]! += FINITE_DIFFERENCE_EPSILON;
         decreased.values[idx]! -= FINITE_DIFFERENCE_EPSILON;
 
@@ -78,7 +97,9 @@ describe("backpropNormalize", () => {
           (2 * FINITE_DIFFERENCE_EPSILON);
 
         expect(
-          gradients.values[getFlatIndex(vectorIndex, valueIndex, gradients.dimensions)],
+          gradients.values[
+            getFlatIndex(vectorIndex, valueIndex, gradients.dimensions)
+          ],
         ).toBeCloseTo(numericalGradient, FINITE_DIFFERENCE_PRECISION);
       }
     }

@@ -3,8 +3,8 @@ import { gpuContext } from "../shared/gpu-context.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
-} from "../shared/matrices-gpu.ts";
-import type { Matrix } from "../shared/matrices.ts";
+} from "../shared/matrices/matrices-gpu.ts";
+import type { Matrix } from "../shared/matrices/matrices.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
 import {

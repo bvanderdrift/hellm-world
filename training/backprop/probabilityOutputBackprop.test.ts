@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { softmax } from "../../shared/softmax.ts";
-import { getFlatIndex, getRawVector } from "../../shared/matrices.ts";
+import { getFlatIndex, getRawVector } from "../../shared/matrices/matrices.ts";
 import {
   FINITE_DIFFERENCE_EPSILON,
   FINITE_DIFFERENCE_PRECISION,

@@ -3,7 +3,7 @@ import { getHighestValueIndex } from "./llm-shared.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { validateModel } from "../model/model-validation.ts";
 import type { Model } from "../model/model-types.ts";
-import { getRawVector, type Matrix } from "../shared/matrices.ts";
+import { getRawVector, type Matrix } from "../shared/matrices/matrices.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import {
   benchmark,
@@ -21,7 +21,7 @@ import {
   type WeightGPUBuffers,
 } from "../model/model-gpu-helpers.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
-import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
+import { extractMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { d } from "typegpu";
 import { readFileSync, writeFileSync } from "node:fs";
 

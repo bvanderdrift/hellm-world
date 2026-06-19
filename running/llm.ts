@@ -5,7 +5,7 @@ import {
   getRawVector,
   multiplyMatrices,
   type Matrix,
-} from "../shared/matrices.ts";
+} from "../shared/matrices/matrices.ts";
 import { getMultilayerPerceptronActivations as getMultilayerPerceptronActivations } from "../transforming/mlp.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { runSelfAttentionMechanism } from "../transforming/attention/attention.ts";
@@ -17,7 +17,7 @@ import type {
   TransformerActivations,
 } from "../model/activations-types.ts";
 import { softmax } from "../shared/softmax.ts";
-import { normalize } from "../shared/normalize.ts";
+import { normalize } from "../shared/normalize/normalize.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 
 export const runLlm = function* (inputTokens: string[], model: Model) {

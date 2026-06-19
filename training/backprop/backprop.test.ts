@@ -3,12 +3,12 @@ import type { Activations } from "../../model/activations-types.ts";
 import type { Model, ModelTrainingState } from "../../model/model-types.ts";
 import { sum } from "../../shared/math.ts";
 import { safeSumExponatedLogits, softmax } from "../../shared/softmax.ts";
-import type { Matrix } from "../../shared/matrices.ts";
+import type { Matrix } from "../../shared/matrices/matrices.ts";
 import {
   createMatrix,
   getFlatIndex,
   getRawVector,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import {
   expectMatrixCloseTo,
   matrixFrom,

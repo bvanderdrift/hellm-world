@@ -1,10 +1,10 @@
 import { describe, it, expect } from "bun:test";
-import { gpuContext } from "./gpu-context.ts";
-import { createMatrix, type Matrix } from "./matrices.ts";
-import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
+import { gpuContext } from "../gpu-context.ts";
+import { createMatrix, type Matrix } from "../matrices/matrices.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "../matrices/matrices-gpu.ts";
 import { normalize } from "./normalize.ts";
 import { normalizeOnGpu } from "./normalize-gpu.ts";
-import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
+import { expectMatrixCloseTo } from "../../testing/testing-utils.ts";
 
 // normalizeOnGpu reads from an input buffer and writes into a separate output
 // buffer; the CPU `normalize` returns a new matrix. We use the CPU version as

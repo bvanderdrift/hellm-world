@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculateStandardDeviation } from "./math.ts";
+import { calculateStandardDeviation } from "../math.ts";
 import {
   addMatrices,
   addVectorsInMatrix,
@@ -13,11 +13,11 @@ import {
   sliceRows,
   sliceToEqualSizes,
 } from "./matrices.ts";
-import { normalize } from "./normalize.ts";
+import { normalize } from "../normalize/normalize.ts";
 import {
   expectMatrixCloseTo,
   matrixFrom,
-} from "../testing/testing-utils.ts";
+} from "../../testing/testing-utils.ts";
 
 describe("createMatrix", () => {
   it("creates a matrix with the requested vector and dimension counts", () => {

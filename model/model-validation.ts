@@ -1,6 +1,6 @@
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { divideToWhole } from "../shared/math.ts";
-import { type Matrix } from "../shared/matrices.ts";
+import { type Matrix } from "../shared/matrices/matrices.ts";
 import type { Model, Weights } from "./model-types.ts";
 
 export const validateModel = (model: Model) => {

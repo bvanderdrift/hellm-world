@@ -4,12 +4,12 @@ import { gpuContext } from "../../shared/gpu-context.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
-} from "../../shared/matrices-gpu.ts";
+} from "../../shared/matrices/matrices-gpu.ts";
 import {
   createMatrix,
   getFlatIndex,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import {
   matrixFrom,
   expectMatrixCloseTo,

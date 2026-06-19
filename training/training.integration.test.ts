@@ -13,7 +13,7 @@ import { backprop } from "./backprop/backprop.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
-import { getRawVector } from "../shared/matrices.ts";
+import { getRawVector } from "../shared/matrices/matrices.ts";
 
 const zeroTransformer: TransformerWeights = {
   attention: {

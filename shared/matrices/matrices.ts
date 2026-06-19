@@ -1,4 +1,4 @@
-import { divideToWhole } from "./math.ts";
+import { divideToWhole } from "../math.ts";
 
 export const createMatrix = (
   vectorCount: number,

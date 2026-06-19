@@ -1,9 +1,9 @@
 import {
   addMatricesOnGPU,
   multiplyMatricesOnGPU,
-} from "../shared/matrices-gpu.ts";
+} from "../shared/matrices/matrices-gpu.ts";
 import type { TransformerActivations } from "../model/activations-types.ts";
-import { normalizeOnGpu } from "../shared/normalize-gpu.ts";
+import { normalizeOnGpu } from "../shared/normalize/normalize-gpu.ts";
 import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";

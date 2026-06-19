@@ -3,12 +3,12 @@ import tgpu, { d } from "typegpu";
 import { builtin } from "typegpu/data";
 import * as std from "typegpu/std";
 import { gpuContext } from "../shared/gpu-context.ts";
-import { createMatrix } from "../shared/matrices.ts";
+import { createMatrix } from "../shared/matrices/matrices.ts";
 import {
   createMatrixBuffer,
   dotProductKernel,
   multiplyMatricesOnGPU,
-} from "../shared/matrices-gpu.ts";
+} from "../shared/matrices/matrices-gpu.ts";
 import { maybeDumpWgsl } from "../bench-harness.ts";
 
 const rand = () => Math.random() * 2 - 1;

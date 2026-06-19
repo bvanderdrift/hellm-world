@@ -12,9 +12,9 @@ import {
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
-import { extractMatrixBuffer } from "../shared/matrices-gpu.ts";
+import { extractMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import { createMatrix, getRawVector, type Matrix } from "../shared/matrices.ts";
+import { createMatrix, getRawVector, type Matrix } from "../shared/matrices/matrices.ts";
 import { getHighestValueIndex, MAX_CONTEXT } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";

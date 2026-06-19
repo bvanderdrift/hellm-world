@@ -3,8 +3,8 @@ import {
   createMatrix,
   multiplyMatrices,
   type Matrix,
-} from "../../shared/matrices.ts";
-import { createMatrixBuffer } from "../../shared/matrices-gpu.ts";
+} from "../../shared/matrices/matrices.ts";
+import { createMatrixBuffer } from "../../shared/matrices/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import { divideToWhole } from "../../shared/math.ts";
 import { runSelfAttentionHead } from "./attention.ts";

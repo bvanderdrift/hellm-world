@@ -4,7 +4,7 @@ import {
   getFlatIndex,
   getRawVector,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 
 /**
  * Normalize function is f(h_vi) where h_vi is input activation of vector v at index i

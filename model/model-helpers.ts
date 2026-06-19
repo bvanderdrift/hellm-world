@@ -1,7 +1,7 @@
 import {
   getMatrixParameterCount,
   operateOnMatrices,
-} from "../shared/matrices.ts";
+} from "../shared/matrices/matrices.ts";
 import { validateSameWeightsShape } from "./model-validation.ts";
 import type { TransformerWeights, Model, Weights } from "./model-types.ts";
 

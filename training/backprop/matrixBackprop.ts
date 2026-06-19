@@ -2,7 +2,7 @@ import {
   transpose,
   multiplyMatrices,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 
 export const matrixBackprop = (
   weights: Matrix,

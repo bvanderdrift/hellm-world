@@ -5,7 +5,7 @@ import { probabilityOutputBackprop } from "./probabilityOutputBackprop.ts";
 import { matrixBackprop } from "./matrixBackprop.ts";
 import { backpropNormalize } from "./normalizeBackprop.ts";
 import { transformersBackprop } from "./transformersBackprop.ts";
-import type { Matrix } from "../../shared/matrices.ts";
+import type { Matrix } from "../../shared/matrices/matrices.ts";
 
 export const backprop = (
   model: Model,

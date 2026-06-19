@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { gpuContext } from "./gpu-context.ts";
-import { createMatrixBuffer, extractMatrixBuffer } from "./matrices-gpu.ts";
-import type { Matrix } from "./matrices.ts";
+import { createMatrixBuffer, extractMatrixBuffer } from "./matrices/matrices-gpu.ts";
+import type { Matrix } from "./matrices/matrices.ts";
 import { reluOnGpu } from "./relu-gpu.ts";
 
 // reluOnGpu is host-callable (runs its own pipeline), so we can test directly.

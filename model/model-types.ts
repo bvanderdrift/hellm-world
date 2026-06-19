@@ -1,5 +1,5 @@
 import z from "zod";
-import type { Matrix } from "../shared/matrices.ts";
+import type { Matrix } from "../shared/matrices/matrices.ts";
 
 export interface AttentionWeights {
   Q: Matrix;

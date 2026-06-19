@@ -4,11 +4,11 @@ import {
   createMatrix,
   getFlatIndex,
   type Matrix,
-} from "../../shared/matrices.ts";
+} from "../../shared/matrices/matrices.ts";
 import {
   createMatrixBuffer,
   extractMatrixBuffer,
-} from "../../shared/matrices-gpu.ts";
+} from "../../shared/matrices/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import { expectMatrixCloseTo } from "../../testing/testing-utils.ts";
 import { getPositionEncoding } from "../position-encoding.ts";

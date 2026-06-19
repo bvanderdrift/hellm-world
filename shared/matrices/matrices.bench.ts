@@ -5,13 +5,13 @@ import {
   type MatrixBuffer,
 } from "./matrices-gpu.ts";
 import { createMatrix, multiplyMatrices, type Matrix } from "./matrices.ts";
-import { gpuContext } from "./gpu-context.ts";
+import { gpuContext } from "../gpu-context.ts";
 import {
   benchmark,
   compareAcrossSizes,
   fmtMs,
   rand,
-} from "../bench-harness.ts";
+} from "../../bench-harness.ts";
 
 type Operands = { b: Matrix; bBuf: MatrixBuffer; out: MatrixBuffer };
 

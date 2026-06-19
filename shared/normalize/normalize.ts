@@ -1,5 +1,5 @@
-import { calculateStandardDeviation } from "./math.ts";
-import { type Matrix, createMatrix, getFlatIndex } from "./matrices.ts";
+import { calculateStandardDeviation } from "../math.ts";
+import { type Matrix, createMatrix, getFlatIndex } from "../matrices/matrices.ts";
 
 export const normalize = (matrix: Matrix): Matrix => {
   const output = createMatrix(matrix.vectors, matrix.dimensions);

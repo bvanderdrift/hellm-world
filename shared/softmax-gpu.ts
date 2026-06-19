@@ -3,7 +3,7 @@ import {
   getFlatIndexOnGPU,
   matrixBufferDefinition,
   type MatrixBuffer,
-} from "./matrices-gpu.ts";
+} from "./matrices/matrices-gpu.ts";
 import { gpuContext } from "./gpu-context.ts";
 import { builtin } from "typegpu/data";
 import { exp, max } from "typegpu/std";

@@ -1,5 +1,5 @@
-import { createMatrix } from "../shared/matrices.ts";
-import { createMatrixBuffer } from "../shared/matrices-gpu.ts";
+import { createMatrix } from "../shared/matrices/matrices.ts";
+import { createMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "./mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";

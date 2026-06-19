@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
-import { createMatrix, type Matrix } from "../shared/matrices.ts";
+import { createMatrix, type Matrix } from "../shared/matrices/matrices.ts";
 import { findTokenIndex, operateCombinedWeights } from "./model-helpers.ts";
 import type { Model, ModelTrainingState } from "./model-types.ts";
 

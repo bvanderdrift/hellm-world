@@ -16,7 +16,7 @@ import {
   type TransformerWeights,
   type Weights,
 } from "./model-types.ts";
-import type { Matrix } from "../shared/matrices.ts";
+import type { Matrix } from "../shared/matrices/matrices.ts";
 import { getModelParameterCount } from "./model-helpers.ts";
 
 const CHECKPOINT_FOLDER_PREFIX = "checkpoint_";

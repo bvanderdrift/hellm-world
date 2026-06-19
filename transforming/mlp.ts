@@ -3,7 +3,7 @@ import {
   addVectorAcrossMatrix,
   multiplyMatrices,
   type Matrix,
-} from "../shared/matrices.ts";
+} from "../shared/matrices/matrices.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
 import type { MultilayerPerceptronActivations } from "../model/activations-types.ts";
 

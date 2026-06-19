@@ -4,9 +4,9 @@ import {
   getFlatIndexOnGPU,
   singleMatrixParamsLayout,
   type MatrixBuffer,
-} from "./matrices-gpu.ts";
+} from "./matrices/matrices-gpu.ts";
 import { builtin } from "typegpu/data";
-import { getFlatIndex } from "./matrices.ts";
+import { getFlatIndex } from "./matrices/matrices.ts";
 
 const reluKernel = tgpu.computeFn({
   in: {

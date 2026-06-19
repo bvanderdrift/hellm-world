@@ -1,6 +1,6 @@
 import type { TransformerActivations } from "../../model/activations-types.ts";
 import type { TransformerWeights } from "../../model/model-types.ts";
-import { addMatrices } from "../../shared/matrices.ts";
+import { addMatrices } from "../../shared/matrices/matrices.ts";
 import { matrixFrom } from "../../testing/testing-utils.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

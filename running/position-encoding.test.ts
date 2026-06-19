@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getFlatIndex, type Matrix } from "../shared/matrices.ts";
+import { getFlatIndex, type Matrix } from "../shared/matrices/matrices.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { TESTING_PRECISION } from "../testing/constants.ts";
 
