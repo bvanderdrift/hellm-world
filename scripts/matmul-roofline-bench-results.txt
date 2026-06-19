@@ -1,13 +1,33 @@
-matmul roofline bench (current tiled multiplyMatricesOnGPU)
+matmul roofline bench — current vs edge-safe tuned-SGEMM ceiling
 
-  square matmul sweep (M=K=N)
-       N    ms/dispatch     GFLOP/s    % of peak    % of BW-roofline
-     128        0.255ms         16        1.4%        118%
-     256        0.652ms         51        4.3%        370%
-     512        1.521ms        177       14.7%       1268%
-    1024       11.619ms        185       15.4%       1328%
-    2048       92.568ms        186       15.5%       1333%
+  edge-safe correctness (max abs err vs CPU):
+    100x77 @ 77x53         maxErr=0.00e+0
+    200x256 @ 256x13       maxErr=0.00e+0
+    1000x1000 @ 1000x1000  maxErr=0.00e+0
 
-  best matmul: 186 GFLOP/s FP32
-  compute-peak probe: 1198 GFLOP/s (matmul reaches 15.5%)
-  streaming bandwidth: 56 GB/s -> naive 0.25 FLOP/byte roofline ~= 14 GFLOP/s
+  square sweep (M=K=N, tile-aligned)   current  opt-ceil   cur%
+    256x256x256                107     284       37.8%
+    512x512x512                166     538       30.8%
+    1024x1024x1024             181     654       27.7%
+    2048x2048x2048             181     678       26.8%
+
+  real model-layer shapes (hidden=256 mlp=1024 vocab=13), M = batch*tokens
+    layer (MxKxN)          current  opt-ceil   cur%
+    --- M=512 ---
+    proj K256 N256             139     434       31.9%
+    mlp-up K256 N1024          158     571       27.7%
+    mlp-down K1024 N256        145     521       27.8%
+    logits K256 N13             21      34       62.3%
+    --- M=4096 ---
+    proj K256 N256             174     616       28.2%
+    mlp-up K256 N1024          180     651       27.7%
+    mlp-down K1024 N256        178     654       27.2%
+    logits K256 N13             54      98       55.1%
+    --- M=1000 (ragged) ---
+    proj K256 N256             145     475       30.6%
+    mlp-up K256 N1024          173     605       28.6%
+    mlp-down K1024 N256        169     554       30.5%
+    logits K256 N13             36      32      111.8%
+
+  ideal ceiling (large aligned square): 678 GFLOP/s
+  streaming bandwidth: 54 GB/s -> naive 0.25 FLOP/byte roofline ~= 14 GFLOP/s
