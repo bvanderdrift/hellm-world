@@ -1,5 +1,9 @@
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
-import { createMatrix, multiplyMatrices } from "../../shared/matrices.ts";
+import {
+  createMatrix,
+  multiplyMatrices,
+  type Matrix,
+} from "../../shared/matrices.ts";
 import { createMatrixBuffer } from "../../shared/matrices-gpu.ts";
 import { gpuContext } from "../../shared/gpu-context.ts";
 import { divideToWhole } from "../../shared/math.ts";
@@ -8,8 +12,20 @@ import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
 import type { AttentionWeights } from "../../model/model-types.ts";
 import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
 import { compareAcrossSizes, rand } from "../../bench-harness.ts";
+import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
 const HEAD_DIM = 32;
+
+const sliceRows = (matrix: Matrix, start: number, count: number): Matrix => {
+  const slice = createMatrix(count, matrix.dimensions);
+  slice.values.set(
+    matrix.values.subarray(
+      start * matrix.dimensions,
+      (start + count) * matrix.dimensions,
+    ),
+  );
+  return slice;
+};
 
 type AttentionCtx = {
   headsCount: number;
@@ -69,14 +85,24 @@ if (import.meta.main) {
       };
     },
     cpu: ({ matrix }, { weights, headsCount, headDimensionsCount }) => {
-      const head = runSelfAttentionHead(
-        multiplyMatrices(matrix, weights.Q),
-        multiplyMatrices(matrix, weights.K),
-        multiplyMatrices(matrix, weights.V),
-        headsCount,
-        headDimensionsCount,
-      );
-      return multiplyMatrices(head.output, weights.out);
+      const inputQ = multiplyMatrices(matrix, weights.Q);
+      const inputK = multiplyMatrices(matrix, weights.K);
+      const inputV = multiplyMatrices(matrix, weights.V);
+
+      const headsOutput = createMatrix(matrix.vectors, matrix.dimensions);
+      for (let start = 0; start < matrix.vectors; start += MAX_CONTEXT) {
+        const count = Math.min(MAX_CONTEXT, matrix.vectors - start);
+        const head = runSelfAttentionHead(
+          sliceRows(inputQ, start, count),
+          sliceRows(inputK, start, count),
+          sliceRows(inputV, start, count),
+          headsCount,
+          headDimensionsCount,
+        );
+        headsOutput.values.set(head.output.values, start * matrix.dimensions);
+      }
+
+      return multiplyMatrices(headsOutput, weights.out);
     },
     gpu: (
       { buffer },

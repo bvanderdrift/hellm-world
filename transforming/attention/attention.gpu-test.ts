@@ -101,6 +101,38 @@ describe("runSelfAttentionMechanismOnGPU", () => {
     expectMatrixCloseTo(actual, expected.output, 4);
   });
 
+  it("processes a contiguous sequence longer than MAX_CONTEXT as independent MAX_CONTEXT batches", async () => {
+    const vectors = MAX_CONTEXT + 5;
+    const hiddenDimensions = 8;
+    const headsCount = 1;
+
+    const input = randomMatrix(vectors, hiddenDimensions);
+    const attentionWeights = randomWeights(hiddenDimensions);
+
+    const expected = createMatrix(vectors, hiddenDimensions);
+    for (let start = 0; start < vectors; start += MAX_CONTEXT) {
+      const count = Math.min(MAX_CONTEXT, vectors - start);
+      const batch: Matrix = {
+        vectors: count,
+        dimensions: hiddenDimensions,
+        values: input.values.slice(
+          start * hiddenDimensions,
+          (start + count) * hiddenDimensions,
+        ),
+      };
+      const batchOutput = runSelfAttentionMechanism(
+        batch,
+        headsCount,
+        attentionWeights,
+      ).output;
+      expected.values.set(batchOutput.values, start * hiddenDimensions);
+    }
+
+    const actual = await runGpu(input, headsCount, attentionWeights);
+
+    expectMatrixCloseTo(actual, expected, 4);
+  });
+
   it("matches the CPU mechanism across the full pipeline for a random multi-head case", async () => {
     const vectors = 7;
     const hiddenDimensions = 8;
