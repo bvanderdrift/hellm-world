@@ -1,3 +1,4 @@
+import tgpu from "typegpu";
 import { createMatrix, type Matrix } from "./shared/matrices.ts";
 import {
   createMatrixBuffer,
@@ -10,6 +11,28 @@ export const WARMUP_ITERS = 3;
 export const MEASURE_ITERS = 10;
 
 export const rand = () => Math.random() * 2 - 1;
+
+export const DUMP_WGSL = process.argv.includes("--dump-wgsl");
+
+type Resolvable = Parameters<typeof tgpu.resolve>[0] extends (infer T)[]
+  ? T
+  : never;
+
+export const dumpWgsl = (kernels: Record<string, Resolvable>): void => {
+  for (const [name, kernel] of Object.entries(kernels)) {
+    console.log(`// ========== ${name} ==========`);
+    console.log(tgpu.resolve([kernel], { names: "strict" }));
+    console.log("");
+  }
+};
+
+export const maybeDumpWgsl = (
+  kernels: Record<string, Resolvable>,
+): boolean => {
+  if (!DUMP_WGSL) return false;
+  dumpWgsl(kernels);
+  return true;
+};
 
 export type BenchSize = {
   label: string;
@@ -135,6 +158,7 @@ export type Comparison<Ctx = undefined> = {
   candidateLabel?: string;
   tolerance?: number;
   relativeTolerance?: number;
+  kernels?: Record<string, Resolvable>;
   setup?: (size: BenchSize) => Ctx;
   cpu: (input: BenchInput, ctx: Ctx) => Matrix;
   gpu: (
@@ -166,6 +190,8 @@ export const compareAcrossSizes = async <Ctx>(
   const candidateLabel = cmp.candidateLabel ?? "GPU";
   const tolerance = cmp.tolerance ?? 1e-3;
   const relativeTolerance = cmp.relativeTolerance ?? 1e-4;
+
+  if (cmp.kernels && maybeDumpWgsl(cmp.kernels)) return true;
 
   console.log(cmp.name);
   console.log(`  warmup=${WARMUP_ITERS}, measure=${MEASURE_ITERS} iters`);

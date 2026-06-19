@@ -1,5 +1,6 @@
 import {
   createMatrixBuffer,
+  dotProductKernel,
   multiplyMatricesOnGPU,
   type MatrixBuffer,
 } from "./matrices-gpu.ts";
@@ -48,6 +49,7 @@ if (import.meta.main) {
   await compareAcrossSizes<Operands>({
     name: "matmul CPU vs GPU benchmark (A[v×d] * B[d×d])",
     tolerance: 1e-4,
+    kernels: { dotProductKernel },
     setup: ({ vectors, dimensions }) => {
       const b = createMatrix(dimensions, dimensions, rand);
       return {

@@ -6,8 +6,10 @@ import { gpuContext } from "../shared/gpu-context.ts";
 import { createMatrix } from "../shared/matrices.ts";
 import {
   createMatrixBuffer,
+  dotProductKernel,
   multiplyMatricesOnGPU,
 } from "../shared/matrices-gpu.ts";
+import { maybeDumpWgsl } from "../bench-harness.ts";
 
 const rand = () => Math.random() * 2 - 1;
 
@@ -165,6 +167,10 @@ const measurePeak = async (threads: number, innerIters: number) => {
 };
 
 const main = async () => {
+  if (maybeDumpWgsl({ dotProductKernel, saxpyKernel, peakKernel })) {
+    process.exit(0);
+  }
+
   console.log("matmul roofline bench (current tiled multiplyMatricesOnGPU)\n");
 
   const gbs = await measureBandwidth(16 * 1024 * 1024);

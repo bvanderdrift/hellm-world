@@ -61,7 +61,7 @@ const tileMemoryM2 = tgpu.workgroupVar(d.arrayOf(d.f32, singleTileValueCount));
 
 const zeroSumsInitArray = new Array(singleThreadValueCount).fill(0);
 
-const dotProductKernel = tgpu.computeFn({
+export const dotProductKernel = tgpu.computeFn({
   in: {
     workgroupIndex: builtin.workgroupId,
     innerTileIndex: builtin.localInvocationId,
