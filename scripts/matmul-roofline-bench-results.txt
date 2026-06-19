@@ -2,12 +2,12 @@ matmul roofline bench (current tiled multiplyMatricesOnGPU)
 
   square matmul sweep (M=K=N)
        N    ms/dispatch     GFLOP/s    % of peak    % of BW-roofline
-     128        0.158ms         27        2.2%        191%
-     256        0.520ms         65        5.4%        464%
-     512        2.597ms        103        8.6%        743%
-    1024       19.503ms        110        9.2%        792%
-    2048      154.393ms        111        9.3%        800%
+     128        0.255ms         16        1.4%        118%
+     256        0.652ms         51        4.3%        370%
+     512        1.521ms        177       14.7%       1268%
+    1024       11.619ms        185       15.4%       1328%
+    2048       92.568ms        186       15.5%       1333%
 
-  best matmul: 111 GFLOP/s FP32
-  compute-peak probe: 1198 GFLOP/s (matmul reaches 9.3%)
+  best matmul: 186 GFLOP/s FP32
+  compute-peak probe: 1198 GFLOP/s (matmul reaches 15.5%)
   streaming bandwidth: 56 GB/s -> naive 0.25 FLOP/byte roofline ~= 14 GFLOP/s

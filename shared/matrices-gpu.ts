@@ -125,24 +125,24 @@ const dotProductKernel = tgpu.computeFn({
     workgroupBarrier();
 
     for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
-      for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
-        const tileMemoryM1XIndex = innerStartX + xIndex;
-        const tileMemoryM2YIndex = innerStartY + yIndex;
-
-        const summerIndex = getFlatIndexOnGPU(
-          xIndex,
-          yIndex,
-          singleThreadDimensions,
+      const tileMemoryM1XIndex = innerStartX + xIndex;
+      for (let k = 0; k < singleTileDimensions; k++) {
+        const tileMemoryM1Index = getFlatIndexOnGPU(
+          tileMemoryM1XIndex,
+          k,
+          singleTileDimensions,
         );
 
-        for (let k = 0; k < singleTileDimensions; k++) {
-          const tileMemoryM1Index = getFlatIndexOnGPU(
-            tileMemoryM1XIndex,
-            k,
-            singleTileDimensions,
-          );
+        const m1Value = tileMemoryM1.$[tileMemoryM1Index]!;
 
-          const m1Value = tileMemoryM1.$[tileMemoryM1Index]!;
+        for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+          const tileMemoryM2YIndex = innerStartY + yIndex;
+
+          const summerIndex = getFlatIndexOnGPU(
+            xIndex,
+            yIndex,
+            singleThreadDimensions,
+          );
 
           const tileMemoryM2Index = getFlatIndexOnGPU(
             k,

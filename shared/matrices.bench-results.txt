@@ -2,55 +2,55 @@ matmul CPU vs GPU benchmark (A[v×d] * B[d×d])
   warmup=3, measure=10 iters
 
   tiny   8x32
-    CPU        mean=0.031ms median=0.031ms min=0.031ms stddev=0.001ms
-    GPU        mean=0.394ms median=0.403ms min=0.355ms stddev=0.030ms
-    -> GPU is 12.94x slower (median)
+    CPU        mean=0.032ms median=0.032ms min=0.031ms stddev=0.001ms
+    GPU        mean=0.332ms median=0.323ms min=0.300ms stddev=0.032ms
+    -> GPU is 10.02x slower (median)
 
   small  32x128
-    CPU        mean=0.461ms median=0.455ms min=0.452ms stddev=0.013ms
-    GPU        mean=0.731ms median=0.673ms min=0.605ms stddev=0.129ms
-    -> GPU is 1.48x slower (median)
+    CPU        mean=0.504ms median=0.471ms min=0.452ms stddev=0.079ms
+    GPU        mean=0.519ms median=0.517ms min=0.468ms stddev=0.045ms
+    -> GPU is 1.10x slower (median)
 
   med    128x256
-    CPU        mean=7.090ms median=7.073ms min=7.054ms stddev=0.037ms
-    GPU        mean=1.065ms median=1.049ms min=1.010ms stddev=0.058ms
-    -> GPU is 6.74x faster (median)
+    CPU        mean=7.184ms median=7.162ms min=7.102ms stddev=0.075ms
+    GPU        mean=0.788ms median=0.764ms min=0.736ms stddev=0.057ms
+    -> GPU is 9.38x faster (median)
 
   large  256x512
-    CPU        mean=56.852ms median=56.641ms min=56.000ms stddev=0.833ms
-    GPU        mean=2.413ms median=2.299ms min=1.753ms stddev=0.488ms
-    -> GPU is 24.64x faster (median)
+    CPU        mean=57.419ms median=57.107ms min=56.174ms stddev=1.022ms
+    GPU        mean=2.365ms median=2.471ms min=1.795ms stddev=0.538ms
+    -> GPU is 23.11x faster (median)
 
   xlarge 512x512
-    CPU        mean=114.696ms median=114.680ms min=112.959ms stddev=1.237ms
-    GPU        mean=2.912ms median=2.903ms min=2.851ms stddev=0.055ms
-    -> GPU is 39.51x faster (median)
+    CPU        mean=120.493ms median=117.872ms min=113.956ms stddev=11.085ms
+    GPU        mean=2.357ms median=2.416ms min=1.855ms stddev=0.363ms
+    -> GPU is 48.79x faster (median)
 
 --- crossover search (binary search on square dimension) ---
-  probe n=272 (params=147968): cpu=17.176ms gpu=1.596ms
-  probe n=152 (params=46208): cpu=3.024ms gpu=0.747ms
-  probe n=92 (params=16928): cpu=0.696ms gpu=0.539ms
-  probe n=62 (params=7688): cpu=0.216ms gpu=0.482ms
-  probe n=77 (params=11858): cpu=0.412ms gpu=0.537ms
-  probe n=85 (params=14450): cpu=0.554ms gpu=0.549ms
-  probe n=81 (params=13122): cpu=0.456ms gpu=0.544ms
-  probe n=83 (params=13778): cpu=0.528ms gpu=0.539ms
-  probe n=84 (params=14112): cpu=0.516ms gpu=0.541ms
+  probe n=272 (params=147968): cpu=17.428ms gpu=1.343ms
+  probe n=152 (params=46208): cpu=3.087ms gpu=0.546ms
+  probe n=92 (params=16928): cpu=0.711ms gpu=0.432ms
+  probe n=62 (params=7688): cpu=0.221ms gpu=0.387ms
+  probe n=77 (params=11858): cpu=0.408ms gpu=0.435ms
+  probe n=85 (params=14450): cpu=0.568ms gpu=0.446ms
+  probe n=81 (params=13122): cpu=0.451ms gpu=0.439ms
+  probe n=79 (params=12482): cpu=0.432ms gpu=0.434ms
+  probe n=80 (params=12800): cpu=0.462ms gpu=0.406ms
 
-  crossover at n=85 (square 85x85), parameter count=14450
+  crossover at n=80 (square 80x80), parameter count=12800
 
 --- shape comparison (same ~param count, different shapes) ---
-  target param count ≈ 14450
+  target param count ≈ 12800
 
-  1×P * P×1 (dot product)  (1×7225 * 7225×1, output=1 cells)
-    cpu=0.038ms gpu=6.006ms (156.35x CPU wins)
-  4×K * K×4  (4×1806 * 1806×4, output=16 cells)
-    cpu=0.078ms gpu=1.745ms (22.50x CPU wins)
-  16×K * K×16  (16×452 * 452×16, output=256 cells)
-    cpu=0.099ms gpu=0.644ms (6.50x CPU wins)
-  64×K * K×64  (64×113 * 113×64, output=4096 cells)
-    cpu=0.395ms gpu=0.386ms (1.02x GPU wins)
-  85² (square)  (85×85 * 85×85, output=7225 cells)
-    cpu=0.564ms gpu=0.358ms (1.57x GPU wins)
-  wide 1×K * K×256  (1×56 * 56×256, output=256 cells)
-    cpu=0.012ms gpu=0.332ms (27.14x CPU wins)
+  1×P * P×1 (dot product)  (1×6400 * 6400×1, output=1 cells)
+    cpu=0.034ms gpu=2.923ms (85.66x CPU wins)
+  4×K * K×4  (4×1600 * 1600×4, output=16 cells)
+    cpu=0.073ms gpu=0.943ms (12.91x CPU wins)
+  16×K * K×16  (16×400 * 400×16, output=256 cells)
+    cpu=0.091ms gpu=0.445ms (4.87x CPU wins)
+  64×K * K×64  (64×100 * 100×64, output=4096 cells)
+    cpu=0.351ms gpu=0.328ms (1.07x GPU wins)
+  80² (square)  (80×80 * 80×80, output=6400 cells)
+    cpu=0.465ms gpu=0.327ms (1.42x GPU wins)
+  wide 1×K * K×256  (1×50 * 50×256, output=256 cells)
+    cpu=0.011ms gpu=0.336ms (30.51x CPU wins)
