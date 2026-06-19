@@ -1,10 +1,16 @@
 import tgpu from "typegpu";
 import { gpuContext } from "./gpu-context.ts";
-import { singleMatrixParamsLayout, type MatrixBuffer } from "./matrices-gpu.ts";
+import {
+  getFlatIndexOnGPU,
+  singleMatrixParamsLayout,
+  type MatrixBuffer,
+} from "./matrices-gpu.ts";
 import { builtin } from "typegpu/data";
+import { getFlatIndex } from "./matrices.ts";
 
 const reluKernel = tgpu.computeFn({
   in: {
+    globalId: builtin.globalInvocationId,
     localId: builtin.localInvocationId,
     numWorkgroups: builtin.numWorkgroups,
   },
@@ -12,12 +18,9 @@ const reluKernel = tgpu.computeFn({
 })((input) => {
   "use gpu";
 
-  const i1 = input.localId.x;
-  const i2 = input.localId.y;
-
-  const i = i1 * input.numWorkgroups.x + i2;
-
   const m = singleMatrixParamsLayout.$.m;
+
+  const i = getFlatIndexOnGPU(input.globalId.x, input.globalId.y, m.dimensions);
 
   if (i >= m.vectors * m.dimensions) {
     return;
