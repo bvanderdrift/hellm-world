@@ -14,9 +14,13 @@ echo "Running ${#benches[@]} benchmark(s) in series..."
 
 for bench in "${benches[@]}"; do
   results="${bench%.ts}-results.txt"
+  args=()
+  if [[ "${bench}" == *"/llm.bench.ts" ]]; then
+    args+=(--gpu-only)
+  fi
   echo ""
-  echo "==> ${bench} -> ${results}"
-  bun "${bench}" | tee "${results}"
+  echo "==> ${bench} ${args[*]} -> ${results}"
+  bun "${bench}" ${args[@]+"${args[@]}"} | tee "${results}"
 done
 
 echo ""
