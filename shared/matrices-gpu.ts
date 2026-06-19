@@ -7,7 +7,7 @@ import tgpu, {
 import { gpuContext } from "./gpu-context.ts";
 import { type Matrix } from "./matrices.ts";
 import { builtin } from "typegpu/data";
-import { add, mul, workgroupBarrier } from "typegpu/std";
+import { workgroupBarrier } from "typegpu/std";
 
 const createMatrixBufferDefintionInstance = (
   vectors: number,
@@ -59,6 +59,8 @@ const tileMemoryM1 = tgpu.workgroupVar(d.arrayOf(d.f32, singleTileValueCount));
 
 const tileMemoryM2 = tgpu.workgroupVar(d.arrayOf(d.f32, singleTileValueCount));
 
+const zeroSumsInitArray = new Array(singleThreadValueCount).fill(0);
+
 export const dotProductKernel = tgpu.computeFn({
   in: {
     workgroupIndex: builtin.workgroupId,
@@ -80,11 +82,7 @@ export const dotProductKernel = tgpu.computeFn({
   const outputStartY =
     input.workgroupIndex.y * singleTileDimensions + innerStartY;
 
-  // Hardcoded to match 16 elements. Watch out though that this doesn't get unsynced
-  let sums1 = d.vec4f();
-  let sums2 = d.vec4f();
-  let sums3 = d.vec4f();
-  let sums4 = d.vec4f();
+  const sums = d.arrayOf(d.f32, singleThreadValueCount)(zeroSumsInitArray);
 
   for (
     let tileStride = 0;
@@ -125,78 +123,67 @@ export const dotProductKernel = tgpu.computeFn({
     }
 
     workgroupBarrier();
-    for (let k = 0; k < singleTileDimensions; k++) {
-      const m1LocalBase = getFlatIndexOnGPU(
-        innerStartX,
-        k,
-        singleTileDimensions,
-      );
-      // Get values at `k` for 4 different vectors
-      const m1LocalValues = d.vec4f(
-        tileMemoryM1.$[m1LocalBase]!,
-        tileMemoryM1.$[m1LocalBase + 1 * singleTileDimensions]!,
-        tileMemoryM1.$[m1LocalBase + 2 * singleTileDimensions]!,
-        tileMemoryM1.$[m1LocalBase + 3 * singleTileDimensions]!,
-      );
 
-      const m2LocalBase = getFlatIndexOnGPU(
-        k,
-        innerStartY,
-        singleTileDimensions,
-      );
-      // Get values at `k` for 4 different dimensions
-      const m2LocalValue = d.vec4f(
-        tileMemoryM2.$[m2LocalBase]!,
-        tileMemoryM2.$[m2LocalBase + 1]!,
-        tileMemoryM2.$[m2LocalBase + 2]!,
-        tileMemoryM2.$[m2LocalBase + 3]!,
-      );
+    for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
+      const tileMemoryM1XIndex = innerStartX + xIndex;
+      for (let k = 0; k < singleTileDimensions; k++) {
+        const tileMemoryM1Index = getFlatIndexOnGPU(
+          tileMemoryM1XIndex,
+          k,
+          singleTileDimensions,
+        );
 
-      sums1 = add(sums1, mul(m1LocalValues.x, m2LocalValue));
-      sums2 = add(sums2, mul(m1LocalValues.y, m2LocalValue));
-      sums3 = add(sums3, mul(m1LocalValues.z, m2LocalValue));
-      sums4 = add(sums4, mul(m1LocalValues.w, m2LocalValue));
+        const m1Value = tileMemoryM1.$[tileMemoryM1Index]!;
+
+        for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+          const tileMemoryM2YIndex = innerStartY + yIndex;
+
+          const summerIndex = getFlatIndexOnGPU(
+            xIndex,
+            yIndex,
+            singleThreadDimensions,
+          );
+
+          const tileMemoryM2Index = getFlatIndexOnGPU(
+            k,
+            tileMemoryM2YIndex,
+            singleTileDimensions,
+          );
+
+          const m2Value = tileMemoryM2.$[tileMemoryM2Index]!;
+
+          sums[summerIndex]! += m1Value * m2Value;
+        }
+      }
     }
 
     workgroupBarrier();
   }
 
-  const base1 = getFlatIndexOnGPU(outputStartX, outputStartY, mOut.dimensions);
-  const base2 = getFlatIndexOnGPU(
-    outputStartX + 1,
-    outputStartY,
-    mOut.dimensions,
-  );
-  const base3 = getFlatIndexOnGPU(
-    outputStartX + 2,
-    outputStartY,
-    mOut.dimensions,
-  );
-  const base4 = getFlatIndexOnGPU(
-    outputStartX + 3,
-    outputStartY,
-    mOut.dimensions,
-  );
+  for (let xIndex = 0; xIndex < singleThreadDimensions; xIndex++) {
+    for (let yIndex = 0; yIndex < singleThreadDimensions; yIndex++) {
+      const outXIndex = outputStartX + xIndex;
+      const outYIndex = outputStartY + yIndex;
 
-  mOut.values[base1] = sums1.x;
-  mOut.values[base1 + 1] = sums1.y;
-  mOut.values[base1 + 2] = sums1.z;
-  mOut.values[base1 + 3] = sums1.w;
+      if (outXIndex >= mOut.vectors || outYIndex >= mOut.dimensions) {
+        continue;
+      }
 
-  mOut.values[base2] = sums2.x;
-  mOut.values[base2 + 1] = sums2.y;
-  mOut.values[base2 + 2] = sums2.z;
-  mOut.values[base2 + 3] = sums2.w;
+      const mOutIndex = getFlatIndexOnGPU(
+        outXIndex,
+        outYIndex,
+        mOut.dimensions,
+      );
 
-  mOut.values[base3] = sums3.x;
-  mOut.values[base3 + 1] = sums3.y;
-  mOut.values[base3 + 2] = sums3.z;
-  mOut.values[base3 + 3] = sums3.w;
+      const summerIndex = getFlatIndexOnGPU(
+        xIndex,
+        yIndex,
+        singleThreadDimensions,
+      );
 
-  mOut.values[base4] = sums4.x;
-  mOut.values[base4 + 1] = sums4.y;
-  mOut.values[base4 + 2] = sums4.z;
-  mOut.values[base4 + 3] = sums4.w;
+      mOut.values[mOutIndex] = sums[summerIndex]!;
+    }
+  }
 });
 
 const dotProductRunner = gpuContext.createComputePipeline({
