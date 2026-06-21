@@ -120,14 +120,13 @@ describe("doSingleTrainingPass", () => {
     };
     const betaIndex = findTokenIndex(model.vocabulary, "beta");
 
-    const { adjustedWeights } = await doSingleTrainingPass(
+    const { weightAdjustments } = await doSingleTrainingPass(
       model,
       [{ sequence: ["alpha", "beta"], maskBeforeIndex: null }],
       () => {},
     );
 
-    expect(getRawVector(adjustedWeights.embeddings, betaIndex)).toEqual(
-      getRawVector(model.embeddings, betaIndex),
-    );
+    const betaAdjustment = getRawVector(weightAdjustments.embeddings, betaIndex)!;
+    expect(Array.from(betaAdjustment).every((value) => value === 0)).toBe(true);
   });
 });

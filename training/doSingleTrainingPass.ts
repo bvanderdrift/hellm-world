@@ -17,7 +17,7 @@ export type TrainingExample = {
 
 export type TrainingPassOutput = {
   losses: number[];
-  adjustedWeights: Weights;
+  weightAdjustments: Weights;
 };
 
 export const doSingleTrainingPass = async (
@@ -75,18 +75,15 @@ export const doSingleTrainingPass = async (
     }),
   );
 
-  const averageGradient = operateSingleWeights(
+  const weightAdjustments = operateSingleWeights(
     summedLossWithGradients.gradients,
-    (v1) => v1 / summedLossWithGradients.flatTrainingSize,
+    (value) =>
+      // Subtraction since we need to go DOWNHILL
+      -TRAINING_ALPHA * (value / summedLossWithGradients.flatTrainingSize),
   );
 
   return {
     losses: summedLossWithGradients.losses,
-    adjustedWeights: operateCombinedWeights(
-      model,
-      averageGradient,
-      // Subtraction since we need to go DOWNHILL
-      (v1, v2) => v1 - TRAINING_ALPHA * v2,
-    ),
+    weightAdjustments,
   };
 };

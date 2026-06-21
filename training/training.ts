@@ -14,6 +14,7 @@ import type {
 import {
   doSingleTrainingPass,
   type TrainingExample,
+  type TrainingPassOutput,
 } from "./doSingleTrainingPass.ts";
 import { createStateStore, type StateStore } from "./training-state.ts";
 import { startKeyboardListening } from "./keyboard-listener.ts";
@@ -30,23 +31,26 @@ import {
 const VALIDATION_INTERVAL = 20;
 
 export const runTrainingCycleCPU = async (
-  model: Model,
+  modelInitialSnapshot: Model,
   workersCount: number,
 ) => {
   const trainingData = prepareExampleData(
-    readRawTrainingData(model.name),
-    model.vocabulary,
-    model.trainingMaskSeparator ?? null,
+    readRawTrainingData(modelInitialSnapshot.name),
+    modelInitialSnapshot.vocabulary,
+    modelInitialSnapshot.trainingMaskSeparator ?? null,
   );
 
-  let modelUnderTraining = model;
+  let modelUnderTraining = modelInitialSnapshot;
 
-  const trainingState = model.trainingState;
+  const trainingState = modelInitialSnapshot.trainingState;
 
   const onSave = () => {
-    writeTrainingState(getModelFolderPath(model.name), trainingState);
+    writeTrainingState(
+      getModelFolderPath(modelInitialSnapshot.name),
+      trainingState,
+    );
     writeCheckpoint(
-      model.name,
+      modelInitialSnapshot.name,
       trainingState.trainingLosses.length,
       modelUnderTraining,
     );
@@ -75,7 +79,7 @@ export const runTrainingCycleCPU = async (
       const prefix = `(step ${state.trainingState.trainingLosses.length})`;
       console.log(`${prefix} - Starting validation test`);
       averageValidationLoss = await runValidationCheck(
-        model.name,
+        modelInitialSnapshot.name,
         modelUnderTraining,
       );
 
@@ -86,13 +90,19 @@ export const runTrainingCycleCPU = async (
       ({ trainingData }) => trainingData,
     );
 
-    const { losses, adjustedWeights } = await runTrainingPasses(
+    const { losses, weightAdjustments } = await runTrainingPasses(
       modelUnderTraining,
       pickedTrainingData,
       workersCount,
     );
 
     runNaNGuard(losses, pickedTrainingData);
+
+    const adjustedWeights = operateCombinedWeights(
+      modelUnderTraining,
+      weightAdjustments,
+      (v1, v2) => v1 + v2,
+    );
 
     modelUnderTraining = {
       ...modelUnderTraining,
@@ -178,10 +188,7 @@ const runTrainingPasses = async (
   model: Model,
   trainingData: TrainingExample[],
   workersCount: number,
-): Promise<{
-  losses: number[];
-  adjustedWeights: Weights;
-}> => {
+): Promise<TrainingPassOutput> => {
   const effectiveCpuCount = Math.min(workersCount, cpuCount);
 
   const onStepComplete = (durationMs: number) =>
@@ -219,13 +226,13 @@ const runTrainingPasses = async (
     losses.push(...result.losses);
     summedWeightAdjustements = operateCombinedWeights(
       summedWeightAdjustements,
-      result.adjustedWeights,
+      result.weightAdjustments,
       (v1, v2) => v1 + v2 * batchSize,
     );
   }
 
   return {
-    adjustedWeights: operateSingleWeights(
+    weightAdjustments: operateSingleWeights(
       summedWeightAdjustements,
       (v) => v / trainingData.length,
     ),

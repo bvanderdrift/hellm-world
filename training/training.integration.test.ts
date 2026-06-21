@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { findTokenIndex } from "../model/model-helpers.ts";
+import {
+  findTokenIndex,
+  operateCombinedWeights,
+} from "../model/model-helpers.ts";
 import type {
   Model,
   TransformerWeights,
@@ -159,14 +162,17 @@ describe("training/backprop integration readiness", () => {
     expect(flattenWeights(gradients).some((value) => value !== 0)).toBe(true);
 
     const beforeTargetLoss = lossForNextToken(model, promptOnlyInput, target);
-    const { losses, adjustedWeights } = await doSingleTrainingPass(
+    const { losses, weightAdjustments } = await doSingleTrainingPass(
       model,
       [{ sequence: trainingSequence, maskBeforeIndex: null }],
       () => {},
     );
     const averageLoss =
       losses.flat().reduce((a, b) => a + b, 0) / losses.flat().length;
-    const trainedModel: Model = { ...model, ...adjustedWeights };
+    const trainedModel: Model = {
+      ...model,
+      ...operateCombinedWeights(model, weightAdjustments, (v1, v2) => v1 + v2),
+    };
     const afterTargetLoss = lossForNextToken(
       trainedModel,
       promptOnlyInput,
@@ -174,8 +180,8 @@ describe("training/backprop integration readiness", () => {
     );
 
     expect(Number.isFinite(averageLoss)).toBe(true);
-    expectWeightsToBeFinite(adjustedWeights);
-    expectAnyWeightChanged(model, adjustedWeights);
+    expectWeightsToBeFinite(weightAdjustments);
+    expectAnyWeightChanged(model, trainedModel);
     expect(afterTargetLoss).toBeLessThan(beforeTargetLoss);
   });
 });
