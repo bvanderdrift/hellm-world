@@ -41,7 +41,7 @@ const makeData = (count: number): TrainingExample[] =>
 
 describe("createStateStore - updateModelWithNewWeights", () => {
   it("records the mean of the batch losses as the step's training loss", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
 
     store.updateModelWithNewWeights(
       NO_WEIGHTS,
@@ -59,7 +59,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("appends one training loss per call and advances stepsInThisRun", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
 
     store.updateModelWithNewWeights(
       NO_WEIGHTS,
@@ -78,7 +78,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("records validation loss tagged with the current step index", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
 
     store.updateModelWithNewWeights(
       NO_WEIGHTS,
@@ -97,7 +97,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("does not record a validation loss when none is provided", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
 
     store.updateModelWithNewWeights(
       NO_WEIGHTS,
@@ -110,9 +110,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
 
   it("writes each example's loss into the loss-weighted sampler record by global index", () => {
     const lossRecord: LossRecord = {};
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord }),
     );
 
@@ -132,9 +130,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
 
   it("overwrites a previously recorded loss for a re-sampled example", () => {
     const lossRecord: LossRecord = { 7: 9.9 };
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord }),
     );
 
@@ -148,7 +144,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("does not throw or record losses when sampling uniformly", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
 
     expect(() =>
       store.updateModelWithNewWeights(
@@ -162,7 +158,7 @@ describe("createStateStore - updateModelWithNewWeights", () => {
 
 describe("createStateStore - sampleBatch (uniform)", () => {
   it("returns a full contiguous window of MAX_TRAINING_DATA_PER_PASS examples", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
     const data = makeData(120);
 
     const batch = store.sampleBatch(data);
@@ -180,9 +176,7 @@ describe("createStateStore - sampleBatch (uniform)", () => {
 describe("createStateStore - sampleBatch (loss-weighted)", () => {
   it("returns MAX_TRAINING_DATA_PER_PASS distinct in-range indices", () => {
     const lossRecord: LossRecord = {};
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord }),
     );
     const data = makeData(120);
@@ -199,9 +193,7 @@ describe("createStateStore - sampleBatch (loss-weighted)", () => {
   });
 
   it("returns the example that lives at each sampled global index", () => {
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord: {} }),
     );
     const data = makeData(120);
@@ -218,9 +210,7 @@ describe("createStateStore - sampleBatch (loss-weighted)", () => {
     for (let i = 0; i < 120; i++) {
       lossRecord[i] = i === 0 ? 1000 : 0.001;
     }
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord }),
     );
     const data = makeData(120);
@@ -244,7 +234,7 @@ describe("createStateStore - sampleBatch index integrity", () => {
   const DATASET_SIZE = 120;
 
   it("uniform: originalIndex equals the example's true global index", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
     const data = makeData(DATASET_SIZE);
 
     const batch = store.sampleBatch(data);
@@ -257,7 +247,7 @@ describe("createStateStore - sampleBatch index integrity", () => {
   });
 
   it("uniform: every originalIndex is an integer", () => {
-    const store = createStateStore(null, "test", makeModel({ type: "uniform" }));
+    const store = createStateStore("test", makeModel({ type: "uniform" }));
     const data = makeData(DATASET_SIZE);
 
     const batch = store.sampleBatch(data);
@@ -268,9 +258,7 @@ describe("createStateStore - sampleBatch index integrity", () => {
   });
 
   it("loss-weighted: throws when the dataset is smaller than one batch", () => {
-    const store = createStateStore(
-      null,
-      "test",
+    const store = createStateStore("test",
       makeModel({ type: "loss-weighted", lossRecord: {} }),
     );
     // Only 50 examples but a batch wants MAX_TRAINING_DATA_PER_PASS (100).

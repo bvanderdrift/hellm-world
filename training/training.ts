@@ -25,34 +25,17 @@ import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 
 const VALIDATION_INTERVAL = 20;
 
-export type EndDefinition = { type: "minutes" | "steps"; count: number };
-
-export const doTrainingLoopAndStoreCheckpoint = async (
+export const runTrainingCycle = async (
   modelName: string,
-  endDefinition: EndDefinition | null,
   workersCount: number,
 ) => {
   const modelLoaded = getLatestCheckpointModel(modelName);
 
-  if (endDefinition && endDefinition.count <= 0) {
-    throw new Error(
-      `End count has to be a positive integer, received: ${endDefinition.count}`,
-    );
-  }
+  console.log(
+    "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
+  );
 
-  if (!endDefinition) {
-    console.log(
-      "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
-    );
-  } else if (endDefinition.type === "steps") {
-    console.log(`Going to run training for ${endDefinition.count} steps`);
-  } else {
-    console.log(
-      `Going to run training for ${endDefinition.count} minutes (~${(endDefinition.count / 60).toFixed(1)} hours)`,
-    );
-  }
-
-  const stateStore = createStateStore(endDefinition, modelName, modelLoaded);
+  const stateStore = createStateStore(modelName, modelLoaded);
 
   const trainingData = prepareExampleData(
     readRawTrainingData(modelName),

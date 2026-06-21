@@ -1,61 +1,32 @@
-import { writeCheckpoint, writeTrainingState } from "../model/model-checkpoint-io.ts";
 import {
-  getModelFolderPath,
-} from "../model/model-io.ts";
+  writeCheckpoint,
+  writeTrainingState,
+} from "../model/model-checkpoint-io.ts";
+import { getModelFolderPath } from "../model/model-io.ts";
 import type { Model, Weights } from "../model/model-types.ts";
 import type { TrainingExample } from "./doSingleTrainingPass.ts";
 import {
   computeSamplingWeights,
   sampleIndices,
 } from "./sampling/loss-weighted-sampling.ts";
-import type { EndDefinition } from "./training.ts";
 
 const MAX_TRAINING_DATA_PER_PASS = 100;
 
 const STORE_INTERVAL = 500;
 
-export const createStateStore = (
-  endDefinition: EndDefinition | null,
-  modelName: string,
-  incomingModel: Model,
-) => {
+export const createStateStore = (modelName: string, incomingModel: Model) => {
   const startTime = Date.now();
   let index = 0;
   let modelUnderTraining = incomingModel;
   const trainingState = incomingModel.trainingState;
 
-  const getPercentComplete = (def: EndDefinition) => {
-    if (def.type === "steps") {
-      return index / def.count;
-    }
-
-    const timeLapsed = Date.now() - startTime;
-
-    const minutesLapsed = timeLapsed / (1000 * 60);
-
-    return minutesLapsed / def.count;
-  };
-
   const getState = () => {
-    if (!endDefinition) {
-      return {
-        model: modelUnderTraining,
-        history: trainingState,
-        startTime,
-        isDone: false,
-        percentDone: null,
-        stepsInThisRun: index,
-      };
-    }
-
-    const percentDone = getPercentComplete(endDefinition);
-
     return {
       model: modelUnderTraining,
       history: trainingState,
       startTime,
-      isDone: percentDone >= 1,
-      percentDone,
+      isDone: false,
+      percentDone: null,
       stepsInThisRun: index,
     };
   };

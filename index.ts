@@ -1,10 +1,7 @@
 import { program } from "commander";
 import { input, number } from "@inquirer/prompts";
 import { runLlm } from "./running/llm.ts";
-import {
-  doTrainingLoopAndStoreCheckpoint,
-  type EndDefinition,
-} from "./training/training.ts";
+import { runTrainingCycle } from "./training/training.ts";
 import { writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
@@ -94,23 +91,7 @@ program
         );
       }
 
-      const endDefinition: EndDefinition | null = opts.steps
-        ? {
-            type: "steps",
-            count: opts.steps,
-          }
-        : opts.time
-          ? {
-              type: "minutes",
-              count: opts.time,
-            }
-          : null;
-
-      await doTrainingLoopAndStoreCheckpoint(
-        modelName,
-        endDefinition,
-        opts.multiThread ?? 1,
-      );
+      await runTrainingCycle(modelName, opts.multiThread ?? 1);
     },
   );
 
