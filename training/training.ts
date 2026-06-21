@@ -22,6 +22,7 @@ import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
 import { cpus } from "os";
 import { splitAcrossWorkers } from "./workers/batching.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
+import { sampleBatch } from "./sampling/sampling.ts";
 
 const VALIDATION_INTERVAL = 20;
 
@@ -48,15 +49,18 @@ export const runTrainingCycle = async (
   startKeyboardListening(stateStore);
 
   while (!(state = stateStore.getState()).isDone) {
-    const trainingDataToWorkWith = stateStore.sampleBatch(trainingData);
+    const trainingDataToWorkWith = sampleBatch(
+      state.model.trainingState,
+      trainingData,
+    );
 
     const shouldRunValidation =
-      state.history.trainingLosses.length % VALIDATION_INTERVAL === 0;
+      state.trainingState.trainingLosses.length % VALIDATION_INTERVAL === 0;
 
     let averageValidationLoss: number | null = null;
 
     if (shouldRunValidation) {
-      const prefix = `(step ${state.history.trainingLosses.length})`;
+      const prefix = `(step ${state.trainingState.trainingLosses.length})`;
       console.log(`${prefix} - Starting validation test`);
       averageValidationLoss = await runValidationCheck(modelName, state.model);
 
@@ -111,7 +115,7 @@ const logStateProgress = (store: StateStore) => {
     stepsInThisRun,
     percentDone: newPercentDone,
     startTime,
-    history,
+    trainingState: history,
   } = store.getState();
 
   const lastLoss = history.trainingLosses[history.trainingLosses.length - 1]!;
