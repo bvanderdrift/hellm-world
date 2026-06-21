@@ -18,8 +18,6 @@ export const createStateStore = (modelName: string, incomingModel: Model) => {
       model: modelUnderTraining,
       trainingState,
       startTime,
-      isDone: false,
-      percentDone: null,
       stepsInThisRun: index,
     };
   };

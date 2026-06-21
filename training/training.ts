@@ -48,7 +48,9 @@ export const runTrainingCycle = async (
 
   startKeyboardListening({ onSave: () => stateStore.writeNewCheckpoint() });
 
-  while (!(state = stateStore.getState()).isDone) {
+  while (true) {
+    state = stateStore.getState();
+
     const trainingDataToWorkWith = sampleBatch(
       state.model.trainingState,
       trainingData,
@@ -98,7 +100,10 @@ export const runTrainingCycle = async (
   console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
-const runNaNGuard = (losses: number[], dataPoints: TrainingExample[]) => {
+export const runNaNGuard = (
+  losses: number[],
+  dataPoints: TrainingExample[],
+) => {
   const firstNaN = losses.findIndex((l) => !Number.isFinite(l));
   if (firstNaN === -1) {
     return;
@@ -110,17 +115,13 @@ const runNaNGuard = (losses: number[], dataPoints: TrainingExample[]) => {
   throw new Error("NaN detected");
 };
 
-const logStateProgress = (store: StateStore) => {
-  const {
-    stepsInThisRun,
-    percentDone: newPercentDone,
-    startTime,
-    trainingState: history,
-  } = store.getState();
+export const logStateProgress = (store: StateStore) => {
+  const { stepsInThisRun, startTime, trainingState } = store.getState();
 
-  const lastLoss = history.trainingLosses[history.trainingLosses.length - 1]!;
+  const lastLoss =
+    trainingState.trainingLosses[trainingState.trainingLosses.length - 1]!;
 
-  const currentStep = history.trainingLosses.length + 1;
+  const currentStep = trainingState.trainingLosses.length + 1;
 
   const currentStepPadded = currentStep
     .toString()
@@ -129,15 +130,10 @@ const logStateProgress = (store: StateStore) => {
   const totalDuration = Date.now() - startTime;
   const avgDuration = totalDuration / stepsInThisRun;
 
-  const percentFormatted =
-    newPercentDone === null
-      ? ""
-      : `(${(newPercentDone * 100).toFixed(2)}% complete) `;
-
   const stepFormatted = `(step ${currentStepPadded}) - `;
 
   console.log(
-    `${stepFormatted}${percentFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
+    `${stepFormatted}Training pass done - average loss: ${lastLoss} - avg duration: ${Math.round(avgDuration)} ms`,
   );
 };
 
