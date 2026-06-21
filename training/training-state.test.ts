@@ -1,43 +1,27 @@
 import { describe, expect, it } from "vitest";
 import type {
   LossRecord,
-  Model,
+  ModelTrainingState,
   SamplerState,
-  Weights,
 } from "../model/model-types.ts";
 import { createStateStore } from "./training-state.ts";
 
-// createStateStore only ever reads `trainingState` and spreads in `weights`, so
-// a structurally-minimal model is enough for these unit tests. The filesystem is
-// never touched as long as we stay under STORE_INTERVAL (500) calls and never
-// call writeNewCheckpoint().
-const makeModel = (samplerState: SamplerState): Model =>
-  ({
-    vocabulary: [],
-    counts: {
-      transformers: 1,
-      attentionHeads: 1,
-      hiddenDimensions: 1,
-      mlpMultiple: 1,
-    },
-    embeddings: { vectors: 0, dimensions: 0, values: new Float32Array() },
-    unembeddings: { vectors: 0, dimensions: 0, values: new Float32Array() },
-    transformers: [],
-    trainingState: {
-      trainingLosses: [],
-      validationLosses: [],
-      samplerState,
-    },
-  }) as unknown as Model;
+// createStateStore only reads and mutates the training state. The filesystem is
+// never touched as long as we stay under STORE_INTERVAL (500) calls, so a no-op
+// onSave callback is enough for these unit tests.
+const makeTrainingState = (samplerState: SamplerState): ModelTrainingState => ({
+  trainingLosses: [],
+  validationLosses: [],
+  samplerState,
+});
 
-const NO_WEIGHTS = {} as Weights;
+const noopSave = () => {};
 
-describe("createStateStore - updateModelWithNewWeights", () => {
+describe("createStateStore - notifyCycleComplete", () => {
   it("records the mean of the batch losses as the step's training loss", () => {
-    const store = createStateStore("test", makeModel({ type: "uniform" }));
+    const store = createStateStore(noopSave, makeTrainingState({ type: "uniform" }));
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
+    store.notifyCycleComplete(
       [
         { trainingDataIndex: 0, loss: 0.2 },
         { trainingDataIndex: 1, loss: 0.4 },
@@ -55,18 +39,10 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("appends one training loss per call and advances stepsInThisRun", () => {
-    const store = createStateStore("test", makeModel({ type: "uniform" }));
+    const store = createStateStore(noopSave, makeTrainingState({ type: "uniform" }));
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 0, loss: 1 }],
-      null,
-    );
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 0, loss: 2 }],
-      null,
-    );
+    store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 1 }], null);
+    store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 2 }], null);
 
     const { trainingState: history, stepsInThisRun } = store.getState();
     expect(history.trainingLosses).toEqual([1, 2]);
@@ -74,18 +50,10 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("records validation loss tagged with the current step index", () => {
-    const store = createStateStore("test", makeModel({ type: "uniform" }));
+    const store = createStateStore(noopSave, makeTrainingState({ type: "uniform" }));
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 0, loss: 1 }],
-      null,
-    );
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 0, loss: 1 }],
-      0.5,
-    );
+    store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 1 }], null);
+    store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 1 }], 0.5);
 
     expect(store.getState().trainingState.validationLosses).toEqual([
       { loss: 0.5, stepIndex: 2 },
@@ -93,13 +61,9 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   });
 
   it("does not record a validation loss when none is provided", () => {
-    const store = createStateStore("test", makeModel({ type: "uniform" }));
+    const store = createStateStore(noopSave, makeTrainingState({ type: "uniform" }));
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 0, loss: 1 }],
-      null,
-    );
+    store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 1 }], null);
 
     expect(store.getState().trainingState.validationLosses).toEqual([]);
   });
@@ -107,12 +71,11 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   it("writes each example's loss into the loss-weighted sampler record by global index", () => {
     const lossRecord: LossRecord = {};
     const store = createStateStore(
-      "test",
-      makeModel({ type: "loss-weighted", lossRecord }),
+      noopSave,
+      makeTrainingState({ type: "loss-weighted", lossRecord }),
     );
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
+    store.notifyCycleComplete(
       [
         { trainingDataIndex: 5, loss: 1.5 },
         { trainingDataIndex: 42, loss: 0.25 },
@@ -128,28 +91,20 @@ describe("createStateStore - updateModelWithNewWeights", () => {
   it("overwrites a previously recorded loss for a re-sampled example", () => {
     const lossRecord: LossRecord = { 7: 9.9 };
     const store = createStateStore(
-      "test",
-      makeModel({ type: "loss-weighted", lossRecord }),
+      noopSave,
+      makeTrainingState({ type: "loss-weighted", lossRecord }),
     );
 
-    store.updateModelWithNewWeights(
-      NO_WEIGHTS,
-      [{ trainingDataIndex: 7, loss: 0.1 }],
-      null,
-    );
+    store.notifyCycleComplete([{ trainingDataIndex: 7, loss: 0.1 }], null);
 
     expect(lossRecord[7]).toBe(0.1);
   });
 
   it("does not throw or record losses when sampling uniformly", () => {
-    const store = createStateStore("test", makeModel({ type: "uniform" }));
+    const store = createStateStore(noopSave, makeTrainingState({ type: "uniform" }));
 
     expect(() =>
-      store.updateModelWithNewWeights(
-        NO_WEIGHTS,
-        [{ trainingDataIndex: 0, loss: 1 }],
-        null,
-      ),
+      store.notifyCycleComplete([{ trainingDataIndex: 0, loss: 1 }], null),
     ).not.toThrow();
   });
 });

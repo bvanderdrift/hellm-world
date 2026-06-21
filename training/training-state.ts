@@ -1,40 +1,25 @@
-import {
-  writeCheckpoint,
-  writeTrainingState,
-} from "../model/model-checkpoint-io.ts";
-import { getModelFolderPath } from "../model/model-io.ts";
-import type { Model, Weights } from "../model/model-types.ts";
+import type { ModelTrainingState } from "../model/model-types.ts";
 
 const STORE_INTERVAL = 500;
 
-export const createStateStore = (modelName: string, incomingModel: Model) => {
+export const createStateStore = (
+  onSave: () => Promise<void> | void,
+  trainingState: ModelTrainingState,
+) => {
   const startTime = Date.now();
   let index = 0;
-  let modelUnderTraining = incomingModel;
-  const trainingState = incomingModel.trainingState;
 
   const getState = () => {
     return {
-      model: modelUnderTraining,
       trainingState,
       startTime,
       stepsInThisRun: index,
     };
   };
 
-  const writeNewCheckpointAndHistory = () => {
-    writeTrainingState(getModelFolderPath(modelName), trainingState);
-    writeCheckpoint(
-      modelName,
-      trainingState.trainingLosses.length,
-      modelUnderTraining,
-    );
-  };
-
   return {
     getState,
-    updateModelWithNewWeights: (
-      weights: Weights,
+    notifyCycleComplete: async (
       losses: {
         trainingDataIndex: number;
         loss: number;
@@ -62,17 +47,12 @@ export const createStateStore = (modelName: string, incomingModel: Model) => {
       }
 
       index++;
-      modelUnderTraining = {
-        ...modelUnderTraining,
-        ...weights,
-      };
 
       if (index % STORE_INTERVAL === 0) {
         // Auto-safe
-        writeNewCheckpointAndHistory();
+        await onSave();
       }
     },
-    writeNewCheckpoint: writeNewCheckpointAndHistory,
   };
 };
 

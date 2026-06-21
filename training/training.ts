@@ -4,7 +4,7 @@ import {
   operateCombinedWeights,
   operateSingleWeights,
 } from "../model/model-helpers.ts";
-import { readRawTrainingData } from "../model/model-io.ts";
+import { getModelFolderPath, readRawTrainingData } from "../model/model-io.ts";
 import { prepareExampleData } from "./prepareExampleData.ts";
 import type {
   InputMessagePayload,
@@ -21,38 +21,48 @@ import { runValidationCheck } from "./validation.ts";
 import { getWorkers, terminateWorkers } from "./workers/worker-mangement.ts";
 import { cpus } from "os";
 import { splitAcrossWorkers } from "./workers/batching.ts";
-import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { sampleBatch } from "./sampling/sampling.ts";
+import {
+  writeTrainingState,
+  writeCheckpoint,
+} from "../model/model-checkpoint-io.ts";
 
 const VALIDATION_INTERVAL = 20;
 
-export const runTrainingCycle = async (
-  modelName: string,
+export const runTrainingCycleCPU = async (
+  model: Model,
   workersCount: number,
 ) => {
-  const modelLoaded = getLatestCheckpointModel(modelName);
-
-  console.log(
-    "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
-  );
-
-  const stateStore = createStateStore(modelName, modelLoaded);
-
   const trainingData = prepareExampleData(
-    readRawTrainingData(modelName),
-    modelLoaded.vocabulary,
-    modelLoaded.trainingMaskSeparator ?? null,
+    readRawTrainingData(model.name),
+    model.vocabulary,
+    model.trainingMaskSeparator ?? null,
   );
+
+  let modelUnderTraining = model;
+
+  const trainingState = model.trainingState;
+
+  const onSave = () => {
+    writeTrainingState(getModelFolderPath(model.name), trainingState);
+    writeCheckpoint(
+      model.name,
+      trainingState.trainingLosses.length,
+      modelUnderTraining,
+    );
+  };
+
+  const stateStore = createStateStore(onSave, trainingState);
 
   let state = stateStore.getState();
 
-  startKeyboardListening({ onSave: () => stateStore.writeNewCheckpoint() });
+  startKeyboardListening({ onSave });
 
   while (true) {
     state = stateStore.getState();
 
     const trainingDataToWorkWith = sampleBatch(
-      state.model.trainingState,
+      modelUnderTraining.trainingState,
       trainingData,
     );
 
@@ -64,7 +74,10 @@ export const runTrainingCycle = async (
     if (shouldRunValidation) {
       const prefix = `(step ${state.trainingState.trainingLosses.length})`;
       console.log(`${prefix} - Starting validation test`);
-      averageValidationLoss = await runValidationCheck(modelName, state.model);
+      averageValidationLoss = await runValidationCheck(
+        model.name,
+        modelUnderTraining,
+      );
 
       console.log(`${prefix} - validation loss: ${averageValidationLoss}`);
     }
@@ -74,15 +87,19 @@ export const runTrainingCycle = async (
     );
 
     const { losses, adjustedWeights } = await runTrainingPasses(
-      state.model,
+      modelUnderTraining,
       pickedTrainingData,
       workersCount,
     );
 
     runNaNGuard(losses, pickedTrainingData);
 
-    stateStore.updateModelWithNewWeights(
-      adjustedWeights,
+    modelUnderTraining = {
+      ...modelUnderTraining,
+      ...adjustedWeights,
+    };
+
+    stateStore.notifyCycleComplete(
       losses.map((loss, index) => ({
         loss,
         trainingDataIndex: trainingDataToWorkWith[index]!.originalIndex,
@@ -92,12 +109,6 @@ export const runTrainingCycle = async (
 
     logStateProgress(stateStore);
   }
-
-  stateStore.writeNewCheckpoint();
-
-  terminateWorkers();
-
-  console.log(`✅ Succesfully ran training loop for model ${modelName}`);
 };
 
 export const runNaNGuard = (

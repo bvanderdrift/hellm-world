@@ -1,7 +1,7 @@
 import { program } from "commander";
 import { input, number } from "@inquirer/prompts";
 import { runLlm } from "./running/llm.ts";
-import { runTrainingCycle } from "./training/training.ts";
+import { runTrainingCycleCPU } from "./training/training.ts";
 import { writeNewModel } from "./model/model-io.ts";
 import { decodeVocab, initializeModel } from "./model/model-initialize.ts";
 import { describeModelToConsole } from "./model/model-helpers.ts";
@@ -91,7 +91,13 @@ program
         );
       }
 
-      await runTrainingCycle(modelName, opts.multiThread ?? 1);
+      const model = getLatestCheckpointModel(modelName);
+
+      console.log(
+        "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
+      );
+
+      await runTrainingCycleCPU(model, opts.multiThread ?? 1);
     },
   );
 
