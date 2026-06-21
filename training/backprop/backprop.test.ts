@@ -25,6 +25,7 @@ const emptyHistory: ModelTrainingState = {
 describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {
     const model: Model = {
+      name: "test-model",
       vocabulary: ["alpha", "beta", "gamma", "delta"],
       trainingState: emptyHistory,
       counts: {
@@ -150,6 +151,7 @@ describe("backprop", () => {
 
   it("stays finite when the correct token logit is far below the dominant logit", () => {
     const model: Model = {
+      name: "test-model",
       vocabulary: ["dominant", "tiny"],
       trainingState: emptyHistory,
       counts: {

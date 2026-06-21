@@ -16,6 +16,7 @@ const emptyHistory: ModelTrainingState = {
 };
 
 const testModel: Model = {
+  name: "test-model",
   vocabulary: ["hello", "world", " ", "beer", "!", END_OF_SEQUENCE_TOKEN],
   trainingState: emptyHistory,
   counts: {
@@ -44,6 +45,7 @@ const hiddenDimensionsSize = testModel.counts.hiddenDimensions;
 const vocabSize = testModel.vocabulary.length;
 
 const attentionOnlyModel: Model = {
+  name: "test-model",
   vocabulary: ["hello", "world", "beer"],
   trainingState: emptyHistory,
   counts: {
@@ -213,6 +215,7 @@ describe("llmForwardPassByTokens", () => {
 describe("runLlm", () => {
   it("stops generation when the model predicts EOS and does not include it in the output", () => {
     const eosStoppingModel: Model = {
+      name: "test-model",
       vocabulary: ["hello", END_OF_SEQUENCE_TOKEN],
       trainingState: {
         trainingLosses: [3],
@@ -277,6 +280,7 @@ describe("llm pipeline contracts", () => {
 describe("weights validation contract", () => {
   it("fails fast when loaded weights have wrong total parameter count", () => {
     const malformedModel: Model = {
+      name: "test-model",
       vocabulary: [...testModel.vocabulary],
       trainingState: emptyHistory,
       counts: testModel.counts,

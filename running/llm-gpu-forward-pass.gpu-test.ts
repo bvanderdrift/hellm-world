@@ -99,6 +99,7 @@ const makeModel = (seed: number, config: ModelConfig): Model => {
   });
 
   return {
+    name: "test-model",
     vocabulary: [
       ...Array.from({ length: vocabSize - 1 }, (_, i) => `t${i}`),
       END_OF_SEQUENCE_TOKEN,

@@ -17,6 +17,7 @@ const emptyHistory: ModelTrainingState = {
 describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {
     const model: Model = {
+      name: "test-model",
       vocabulary: ["hello", "world", END_OF_SEQUENCE_TOKEN],
       trainingState: emptyHistory,
       counts: {
@@ -48,6 +49,7 @@ describe("doSingleTrainingPass", () => {
 
   it("uses each context position to predict the following token", async () => {
     const model: Model = {
+      name: "test-model",
       vocabulary: ["alpha", "beta", END_OF_SEQUENCE_TOKEN],
       trainingState: emptyHistory,
       counts: {
@@ -102,6 +104,7 @@ describe("doSingleTrainingPass", () => {
 
   it("does not update the target token embedding when it is not in the context", async () => {
     const model: Model = {
+      name: "test-model",
       vocabulary: ["alpha", "beta"],
       trainingState: emptyHistory,
       counts: {

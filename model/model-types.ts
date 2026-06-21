@@ -82,4 +82,4 @@ export type ModelMetadata = z.infer<typeof modelMetadataSchema>;
 export type ModelTrainingState = z.infer<typeof modelTrainingStateSchema>;
 
 export type Model = ModelMetadata &
-  Weights & { trainingState: ModelTrainingState };
+  Weights & { name: string, trainingState: ModelTrainingState };

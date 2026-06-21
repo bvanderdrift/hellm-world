@@ -9,11 +9,13 @@ export const decodeVocab = (input: string) => {
 };
 
 export const initializeModel = ({
+  name,
   headsCount,
   hiddenDimensionCount,
   transformerCount,
   vocabulary: vocabularyWithoutEosMaybe,
 }: {
+  name: string;
   headsCount: number;
   hiddenDimensionCount: number;
   transformerCount: number;
@@ -28,6 +30,7 @@ export const initializeModel = ({
   const weightRandomNumberGenerator = () => randomNormalDistribution(0, 0.02);
 
   const model: Model = {
+    name,
     vocabulary,
     counts: {
       attentionHeads: headsCount,

@@ -59,6 +59,7 @@ const emptyHistory: ModelTrainingState = {
 };
 
 const model: Model = {
+  name: "test-model",
   vocabulary: ["prompt", "answer", END_OF_SEQUENCE_TOKEN],
   trainingState: emptyHistory,
   counts: {

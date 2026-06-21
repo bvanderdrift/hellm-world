@@ -9,6 +9,7 @@ import type { Model, TransformerWeights } from "../model/model-types.ts";
 
 const testModel = (): Model =>
   initializeModel({
+    name: "test-model",
     headsCount: 2,
     hiddenDimensionCount: 8,
     transformerCount: 3,

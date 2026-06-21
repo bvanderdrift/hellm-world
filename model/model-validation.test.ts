@@ -25,6 +25,7 @@ const emptyHistory: ModelTrainingState = {
 };
 
 const validModel: Model = {
+  name: "test-model",
   vocabulary: ["hello", "world", "beer", END_OF_SEQUENCE_TOKEN],
   trainingState: emptyHistory,
   counts: {

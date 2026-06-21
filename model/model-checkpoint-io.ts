@@ -48,6 +48,7 @@ export const getCheckpointModel = (
   );
 
   return {
+    name: modelName,
     ...metadata,
     ...weights,
     trainingState: history,

@@ -153,6 +153,7 @@ program
     const vocabulary = decodeVocab(vocabularySingleString);
 
     const newModel = initializeModel({
+      name: modelName,
       headsCount,
       hiddenDimensionCount,
       transformerCount,
