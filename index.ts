@@ -14,6 +14,7 @@ import {
 import { runLlmOnGPU } from "./running/llm-gpu.ts";
 import { validateModel } from "./model/model-validation.ts";
 import { tokenize } from "./shared/tokenizer.ts";
+import { runTrainingCycleGPU } from "./training-gpu/training-gpu.ts";
 
 program
   .name("llm")
@@ -79,7 +80,7 @@ program
     "-t, --time <time>",
     "Amount of minutes before storing another checkpoint",
   )
-  .option("-m, --multi-thread <workers>", "Whether to multithread")
+  .option("-m, --multi-thread <workers>", "Whether to use CPU and which parallelism")
   .action(
     async (
       modelName: string,
@@ -97,7 +98,11 @@ program
         "Going to run training indefinitly. S to save checkpoint, Ctrl+C to exit",
       );
 
-      await runTrainingCycleCPU(model, opts.multiThread ?? 1);
+      if (opts.multiThread === undefined) {
+        await runTrainingCycleGPU(model);
+      } else {
+        await runTrainingCycleCPU(model, opts.multiThread);
+      }
     },
   );
 

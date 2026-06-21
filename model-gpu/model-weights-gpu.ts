@@ -49,10 +49,13 @@ export type WeightGPUBuffers = {
   transformers: TransformerGPUBuffers[];
 };
 
-export const loadWeightsIntoGpu = (model: Model): WeightGPUBuffers => {
+export const loadWeightsIntoGpu = (
+  counts: Model["counts"],
+  weights: Weights,
+): WeightGPUBuffers => {
   const headDimensionsCount = divideToWhole(
-    model.counts.hiddenDimensions,
-    model.counts.attentionHeads,
+    counts.hiddenDimensions,
+    counts.attentionHeads,
   );
 
   const headDimensionsCountBuffer = gpuContext
@@ -61,9 +64,9 @@ export const loadWeightsIntoGpu = (model: Model): WeightGPUBuffers => {
 
   return {
     headDimensionsCountBuffer,
-    embeddings: createMatrixBuffer(model.embeddings),
-    unembeddings: createMatrixBuffer(model.unembeddings),
-    transformers: model.transformers.map(
+    embeddings: createMatrixBuffer(weights.embeddings),
+    unembeddings: createMatrixBuffer(weights.unembeddings),
+    transformers: weights.transformers.map(
       (t): TransformerGPUBuffers => ({
         attention: {
           K: createMatrixBuffer(t.attention.K),
