@@ -46,7 +46,7 @@ export const runTrainingCycle = async (
 
   let state = stateStore.getState();
 
-  startKeyboardListening(stateStore);
+  startKeyboardListening({ onSave: () => stateStore.writeNewCheckpoint() });
 
   while (!(state = stateStore.getState()).isDone) {
     const trainingDataToWorkWith = sampleBatch(
