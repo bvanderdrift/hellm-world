@@ -5,15 +5,10 @@ import { addMatrices, multiplyMatrices } from "../shared/matrices/matrices.ts";
 import { normalize } from "../shared/normalize/normalize.ts";
 import { tokenize } from "../shared/tokenizer.ts";
 import { validateModel } from "../model/model-validation.ts";
-import type { Model, ModelTrainingState } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import { getPositionEncoding } from "./position-encoding.ts";
 import { matrixFrom, expectMatrixCloseTo } from "../testing/testing-utils.ts";
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
-};
+import { emptyTrainingState as emptyHistory } from "../testing/model-fixtures.ts";
 
 const testModel: Model = {
   name: "test-model",

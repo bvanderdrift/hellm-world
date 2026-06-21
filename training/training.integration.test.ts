@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type {
   Model,
-  ModelTrainingState,
   TransformerWeights,
   Weights,
 } from "../model/model-types.ts";
@@ -14,6 +13,7 @@ import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
 import { getRawVector } from "../shared/matrices/matrices.ts";
+import { emptyTrainingState as emptyHistory } from "../testing/model-fixtures.ts";
 
 const zeroTransformer: TransformerWeights = {
   attention: {
@@ -50,12 +50,6 @@ const zeroTransformer: TransformerWeights = {
       biasVector: matrixFrom([[0, 0]]),
     },
   },
-};
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
 };
 
 const model: Model = {

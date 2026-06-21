@@ -19,11 +19,12 @@ import {
 } from "../shared/matrices/matrices.ts";
 import { getHighestValueIndex, MAX_CONTEXT } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
-import type { Model, ModelTrainingState } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import {
   allocateInferenceBuffers,
   type InferenceBuffers,
 } from "../model-gpu/model-activations.gpu.ts";
+import { emptyTrainingState as emptyHistory } from "../testing/model-fixtures.ts";
 
 const destroyInferenceBuffers = (buffers: InferenceBuffers) => {
   for (const matrixBuffer of Object.values(buffers)) {
@@ -66,12 +67,6 @@ const llmForwardPassByTokensOnGPU = async (
   inputPositionToVocabPositionGPUBuffer.buffer.destroy();
 
   return probabilities;
-};
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
 };
 
 const seededRandom = (seed: number) => () => {

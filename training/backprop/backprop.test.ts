@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Activations } from "../../model/activations-types.ts";
-import type { Model, ModelTrainingState } from "../../model/model-types.ts";
+import type { Model } from "../../model/model-types.ts";
 import { sum } from "../../shared/math.ts";
 import { safeSumExponatedLogits, softmax } from "../../shared/softmax.ts";
 import type { Matrix } from "../../shared/matrices/matrices.ts";
@@ -15,12 +15,7 @@ import {
 } from "../../testing/testing-utils.ts";
 import { backprop } from "./backprop.ts";
 import { FINITE_DIFFERENCE_PRECISION } from "../../testing/constants.ts";
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
-};
+import { emptyTrainingState as emptyHistory } from "../../testing/model-fixtures.ts";
 
 describe("backprop", () => {
   it("uses every trained position for loss and unembedding gradients", () => {

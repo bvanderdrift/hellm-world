@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Model, ModelTrainingState } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { llmForwardPassByTokens } from "../running/llm.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
@@ -7,12 +7,7 @@ import { softmax } from "../shared/softmax.ts";
 import { getRawVector } from "../shared/matrices/matrices.ts";
 import { doSingleTrainingPass } from "./doSingleTrainingPass.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
-};
+import { emptyTrainingState as emptyHistory } from "../testing/model-fixtures.ts";
 
 describe("doSingleTrainingPass", () => {
   it("averages loss over predictions, not raw token count", async () => {

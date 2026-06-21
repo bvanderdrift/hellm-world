@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { Model, ModelTrainingState } from "../model/model-types.ts";
+import type { Model } from "../model/model-types.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { getSequenceLoss } from "./getSequenceLoss.ts";
 import { matrixFrom } from "../testing/testing-utils.ts";
-
-const emptyHistory: ModelTrainingState = {
-  trainingLosses: [],
-  validationLosses: [],
-  samplerState: { type: "uniform" },
-};
+import { emptyTrainingState as emptyHistory } from "../testing/model-fixtures.ts";
 
 const model: Model = {
   name: "test-model",
