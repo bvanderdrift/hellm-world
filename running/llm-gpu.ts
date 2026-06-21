@@ -1,8 +1,5 @@
 import { d } from "typegpu";
-import {
-  allocateInferenceBuffers,
-  loadWeightsIntoGpu,
-} from "../model/model-gpu-helpers.ts";
+import { loadWeightsIntoGpu } from "../model-gpu/model-weights-gpu.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import type { Model } from "../model/model-types.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
@@ -11,6 +8,7 @@ import { getRawVector } from "../shared/matrices/matrices.ts";
 import { MAX_CONTEXT, pickToken } from "./llm-shared.ts";
 import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
+import { allocateInferenceBuffers } from "../model-gpu/model-activations.gpu.ts";
 
 export const runLlmOnGPU = async function* (batches: string[][], model: Model) {
   const weightBuffers = loadWeightsIntoGpu(model);

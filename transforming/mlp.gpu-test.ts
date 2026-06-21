@@ -6,7 +6,7 @@ import {
 } from "../shared/matrices/matrices-gpu.ts";
 import type { Matrix } from "../shared/matrices/matrices.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
-import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
+import type { MultilayerPerceptronGPUBuffers } from "../model-gpu/model-weights-gpu.ts";
 import {
   matrixFrom,
   vectorFrom,

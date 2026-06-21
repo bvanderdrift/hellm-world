@@ -35,11 +35,9 @@ import {
 import { dumpImage } from "./correctness-chart.ts";
 import { getCheckpointModel } from "../../../model/model-checkpoint-io.ts";
 import {
-  allocateInferenceBuffers,
   loadWeightsIntoGpu,
-  type InferenceBuffers,
   type WeightGPUBuffers,
-} from "../../../model/model-gpu-helpers.ts";
+} from "../../../model-gpu/model-weights-gpu.ts";
 import { findTokenIndex } from "../../../model/model-helpers.ts";
 import type { Model } from "../../../model/model-types.ts";
 import { forwardPassOnGPU } from "../../../running/llm-gpu-forward-pass.ts";
@@ -52,12 +50,14 @@ import { gpuContext } from "../../../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../../../shared/matrices/matrices-gpu.ts";
 import { getRawVector } from "../../../shared/matrices/matrices.ts";
 import { tokenize } from "../../../shared/tokenizer.ts";
+import {
+  allocateInferenceBuffers,
+  type InferenceBuffers,
+} from "../../../model-gpu/model-activations.gpu.ts";
 
 type Result = { a: number; b: number; correct: boolean };
 
 const DUMP_EVERY = 1000;
-
-let hasLoggedTiming = false;
 
 const PROGRESS_WIDTH = 30;
 

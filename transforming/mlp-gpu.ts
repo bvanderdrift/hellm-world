@@ -3,7 +3,7 @@ import {
   multiplyMatricesOnGPU,
   type MatrixBuffer,
 } from "../shared/matrices/matrices-gpu.ts";
-import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
+import type { MultilayerPerceptronGPUBuffers } from "../model-gpu/model-weights-gpu.ts";
 import { reluOnGpu } from "../shared/relu-gpu.ts";
 
 export const getMultilayerPerceptronActivationsOnGPU = (

@@ -15,15 +15,17 @@ import {
 } from "../bench-harness.ts";
 import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
 import {
-  allocateInferenceBuffers,
   loadWeightsIntoGpu,
-  type InferenceBuffers,
   type WeightGPUBuffers,
-} from "../model/model-gpu-helpers.ts";
+} from "../model-gpu/model-weights-gpu.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { extractMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { d } from "typegpu";
 import { readFileSync, writeFileSync } from "node:fs";
+import {
+  allocateInferenceBuffers,
+  type InferenceBuffers,
+} from "../model-gpu/model-activations.gpu.ts";
 
 const destroyInferenceBuffers = (buffers: InferenceBuffers) => {
   for (const matrixBuffer of Object.values(buffers)) {

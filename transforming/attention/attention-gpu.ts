@@ -2,7 +2,7 @@ import {
   multiplyMatricesOnGPU,
   type MatrixBuffer,
 } from "../../shared/matrices/matrices-gpu.ts";
-import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
+import type { AttentionGPUBuffers } from "../../model-gpu/model-weights-gpu.ts";
 import { d, type TgpuBuffer, type UniformFlag } from "typegpu";
 import { applyAttentionValuesOnGPU } from "./applyAttentionValuesOnGPU.ts";
 import { calculateRelevancyOnGPU } from "./calculateRelevancyOnGPU.ts";

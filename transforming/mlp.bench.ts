@@ -3,7 +3,7 @@ import { createMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { getMultilayerPerceptronActivations } from "./mlp.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "./mlp-gpu.ts";
 import type { MultilayerPerceptronWeights } from "../model/model-types.ts";
-import type { MultilayerPerceptronGPUBuffers } from "../model/model-gpu-helpers.ts";
+import type { MultilayerPerceptronGPUBuffers } from "../model-gpu/model-weights-gpu.ts";
 import { compareAcrossSizes, rand } from "../bench-harness.ts";
 
 const MLP_MULTIPLE = 4;

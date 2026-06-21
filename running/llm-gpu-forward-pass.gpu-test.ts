@@ -4,20 +4,26 @@ import { END_OF_SEQUENCE_TOKEN } from "../shared/const.ts";
 import { llmForwardPassByTokens } from "./llm.ts";
 import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
 import {
-  allocateInferenceBuffers,
   loadWeightsIntoGpu,
-  type InferenceBuffers,
   type WeightGPUBuffers,
-} from "../model/model-gpu-helpers.ts";
+} from "../model-gpu/model-weights-gpu.ts";
 import { findTokenIndex } from "../model/model-helpers.ts";
 import { getLatestCheckpointModel } from "../model/model-checkpoint-io.ts";
 import { gpuContext } from "../shared/gpu-context.ts";
 import { extractMatrixBuffer } from "../shared/matrices/matrices-gpu.ts";
 import { tokenize } from "../shared/tokenizer.ts";
-import { createMatrix, getRawVector, type Matrix } from "../shared/matrices/matrices.ts";
+import {
+  createMatrix,
+  getRawVector,
+  type Matrix,
+} from "../shared/matrices/matrices.ts";
 import { getHighestValueIndex, MAX_CONTEXT } from "./llm-shared.ts";
 import { expectMatrixCloseTo } from "../testing/testing-utils.ts";
 import type { Model, ModelTrainingState } from "../model/model-types.ts";
+import {
+  allocateInferenceBuffers,
+  type InferenceBuffers,
+} from "../model-gpu/model-activations.gpu.ts";
 
 const destroyInferenceBuffers = (buffers: InferenceBuffers) => {
   for (const matrixBuffer of Object.values(buffers)) {
@@ -345,11 +351,7 @@ describe("forwardPassOnGPU — multi-batch", () => {
     });
     const weightBuffers = loadWeightsIntoGpu(model);
 
-    const sequences = [
-      ["t0", "t1", "t2"],
-      ["t1", "t2", "t3", "t4"],
-      ["t0"],
-    ];
+    const sequences = [["t0", "t1", "t2"], ["t1", "t2", "t3", "t4"], ["t0"]];
 
     const batched = await runBatchedForwardPassOnGPU(
       sequences,

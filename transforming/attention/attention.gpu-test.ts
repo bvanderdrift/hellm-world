@@ -15,7 +15,7 @@ import {
   expectMatrixCloseTo,
 } from "../../testing/testing-utils.ts";
 import type { AttentionWeights } from "../../model/model-types.ts";
-import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
+import type { AttentionGPUBuffers } from "../../model-gpu/model-weights-gpu.ts";
 import { runSelfAttentionMechanism } from "./attention.ts";
 import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
 import { MAX_CONTEXT } from "../../running/llm-shared.ts";
@@ -232,10 +232,16 @@ describe("runSelfAttentionMechanismOnGPU — multi-batch", () => {
 
     const packed = packBatches([batchA, batchB]);
 
-    const expectedA = runSelfAttentionMechanism(batchA, headsCount, weights)
-      .output;
-    const expectedB = runSelfAttentionMechanism(batchB, headsCount, weights)
-      .output;
+    const expectedA = runSelfAttentionMechanism(
+      batchA,
+      headsCount,
+      weights,
+    ).output;
+    const expectedB = runSelfAttentionMechanism(
+      batchB,
+      headsCount,
+      weights,
+    ).output;
 
     const actual = await runGpu(packed, headsCount, weights);
 
@@ -252,10 +258,16 @@ describe("runSelfAttentionMechanismOnGPU — multi-batch", () => {
 
     const packed = packBatches([batchA, batchB]);
 
-    const expectedA = runSelfAttentionMechanism(batchA, headsCount, weights)
-      .output;
-    const expectedB = runSelfAttentionMechanism(batchB, headsCount, weights)
-      .output;
+    const expectedA = runSelfAttentionMechanism(
+      batchA,
+      headsCount,
+      weights,
+    ).output;
+    const expectedB = runSelfAttentionMechanism(
+      batchB,
+      headsCount,
+      weights,
+    ).output;
 
     const actual = await runGpu(packed, headsCount, weights);
 

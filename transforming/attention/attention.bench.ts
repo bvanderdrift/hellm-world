@@ -10,7 +10,7 @@ import { divideToWhole } from "../../shared/math.ts";
 import { runSelfAttentionHead } from "./attention.ts";
 import { runSelfAttentionMechanismOnGPU } from "./attention-gpu.ts";
 import type { AttentionWeights } from "../../model/model-types.ts";
-import type { AttentionGPUBuffers } from "../../model/model-gpu-helpers.ts";
+import type { AttentionGPUBuffers } from "../../model-gpu/model-weights-gpu.ts";
 import { compareAcrossSizes, rand } from "../../bench-harness.ts";
 import { MAX_CONTEXT } from "../../running/llm-shared.ts";
 
@@ -104,10 +104,7 @@ if (import.meta.main) {
 
       return multiplyMatrices(headsOutput, weights.out);
     },
-    gpu: (
-      { buffer },
-      { headsCount, headDimensions, gpuWeights, scratch },
-    ) => {
+    gpu: ({ buffer }, { headsCount, headDimensions, gpuWeights, scratch }) => {
       runSelfAttentionMechanismOnGPU(
         buffer,
         headsCount,

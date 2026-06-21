@@ -8,13 +8,11 @@ import { softmaxOnGpu } from "../shared/softmax-gpu.ts";
 import { runSelfAttentionMechanismOnGPU } from "../transforming/attention/attention-gpu.ts";
 import { getMultilayerPerceptronActivationsOnGPU } from "../transforming/mlp-gpu.ts";
 import { prepareHiddenState } from "./gpu-logic/prepareHiddenStateGPU.ts";
-import type {
-  InferenceBuffers,
-  WeightGPUBuffers,
-} from "../model/model-gpu-helpers.ts";
+import type { WeightGPUBuffers } from "../model-gpu/model-weights-gpu.ts";
 import type { Model } from "../model/model-types.ts";
 import type { StorageFlag, TgpuBuffer } from "typegpu";
 import type { F32, WgslArray } from "typegpu/data";
+import type { InferenceBuffers } from "../model-gpu/model-activations.gpu.ts";
 
 export const forwardPassOnGPU = ({
   weightBuffers,
