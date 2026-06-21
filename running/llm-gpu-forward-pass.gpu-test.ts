@@ -196,7 +196,7 @@ describe("forwardPassOnGPU matches the CPU forward pass", () => {
   for (const { name, config } of configs) {
     it(name, async () => {
       const model = makeModel(101, config);
-      const weightBuffers = loadWeightsIntoGpu(model);
+      const weightBuffers = loadWeightsIntoGpu(model.counts, model);
       const input = ["t0", "t1", "t2", "t3"];
 
       const gpu = await llmForwardPassByTokensOnGPU(
@@ -223,7 +223,7 @@ describe("forwardPassOnGPU across context lengths", () => {
   for (let length = 1; length <= 6; length++) {
     it(`context length ${length}`, async () => {
       const model = makeModel(202, config);
-      const weightBuffers = loadWeightsIntoGpu(model);
+      const weightBuffers = loadWeightsIntoGpu(model.counts, model);
       const input = Array.from(
         { length },
         (_, i) => `t${i % (config.vocabSize - 1)}`,
@@ -253,7 +253,7 @@ describe("forwardPassOnGPU keeps the residual un-normalized", () => {
     for (let i = 0; i < model.embeddings.values.length; i++) {
       model.embeddings.values[i] = model.embeddings.values[i]! * 12 + 8;
     }
-    const weightBuffers = loadWeightsIntoGpu(model);
+    const weightBuffers = loadWeightsIntoGpu(model.counts, model);
     const input = ["t0", "t1", "t2", "t3"];
 
     const gpu = await llmForwardPassByTokensOnGPU(
@@ -276,7 +276,7 @@ describe("GPU and CPU greedy decoding agree token-for-token", () => {
       mlpMultiple: 4,
       vocabSize: 6,
     });
-    const weightBuffers = loadWeightsIntoGpu(model);
+    const weightBuffers = loadWeightsIntoGpu(model.counts, model);
 
     let context = ["t0", "t1"];
     for (let step = 0; step < 6; step++) {
@@ -345,7 +345,7 @@ describe("forwardPassOnGPU — multi-batch", () => {
       mlpMultiple: 4,
       vocabSize: 6,
     });
-    const weightBuffers = loadWeightsIntoGpu(model);
+    const weightBuffers = loadWeightsIntoGpu(model.counts, model);
 
     const sequences = [["t0", "t1", "t2"], ["t1", "t2", "t3", "t4"], ["t0"]];
 
@@ -374,7 +374,7 @@ describe("forwardPassOnGPU — multi-batch", () => {
 describe("real addy model regression", () => {
   it("reproduces the CPU answer for 500+510= on GPU", async () => {
     const model = getLatestCheckpointModel("addy");
-    const weightBuffers = loadWeightsIntoGpu(model);
+    const weightBuffers = loadWeightsIntoGpu(model.counts, model);
     const prompt = tokenize("500+510=", model.vocabulary);
 
     let cpuContext = [...prompt];

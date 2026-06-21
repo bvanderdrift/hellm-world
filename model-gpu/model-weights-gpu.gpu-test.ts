@@ -51,7 +51,7 @@ describe("loadWeightsIntoGpu / extractWeightsFromGpu", () => {
   it("round-trips the embeddings and unembeddings unchanged", async () => {
     const model = testModel();
 
-    const buffers = loadWeightsIntoGpu(model);
+    const buffers = loadWeightsIntoGpu(model.counts, model);
     const result = await extractWeightsFromGpu(buffers);
 
     expectMatrixCloseTo(result.embeddings, model.embeddings, 5);
@@ -61,7 +61,7 @@ describe("loadWeightsIntoGpu / extractWeightsFromGpu", () => {
   it("round-trips every transformer's weights unchanged", async () => {
     const model = testModel();
 
-    const buffers = loadWeightsIntoGpu(model);
+    const buffers = loadWeightsIntoGpu(model.counts, model);
     const result = await extractWeightsFromGpu(buffers);
 
     expect(result.transformers.length).toBe(model.transformers.length);

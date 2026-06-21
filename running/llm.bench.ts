@@ -172,7 +172,7 @@ const main = async () => {
       cpuCache[String(tokenCount)] = cpuStats;
     }
 
-    const weightsBuffer = loadWeightsIntoGpu(model);
+    const weightsBuffer = loadWeightsIntoGpu(model.counts, model);
 
     assertSensibleOutput(
       "GPU",

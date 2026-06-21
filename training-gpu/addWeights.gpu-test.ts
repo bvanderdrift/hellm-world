@@ -111,8 +111,13 @@ const expectIsSum = (
 
 describe("addWeights", () => {
   it("adds the adjustments into the base weights in place", async () => {
-    const baseBuffers = loadWeightsIntoGpu(testModel("base"));
-    const adjustmentBuffers = loadWeightsIntoGpu(testModel("adjustments"));
+    const baseModel = testModel("base");
+    const adjustmentModel = testModel("adjustments");
+    const baseBuffers = loadWeightsIntoGpu(baseModel.counts, baseModel);
+    const adjustmentBuffers = loadWeightsIntoGpu(
+      adjustmentModel.counts,
+      adjustmentModel,
+    );
 
     const base = await extractWeightsFromGpu(baseBuffers);
     const adjustments = await extractWeightsFromGpu(adjustmentBuffers);
@@ -126,8 +131,13 @@ describe("addWeights", () => {
   });
 
   it("leaves the adjustment buffers untouched", async () => {
-    const baseBuffers = loadWeightsIntoGpu(testModel("base"));
-    const adjustmentBuffers = loadWeightsIntoGpu(testModel("adjustments"));
+    const baseModel = testModel("base");
+    const adjustmentModel = testModel("adjustments");
+    const baseBuffers = loadWeightsIntoGpu(baseModel.counts, baseModel);
+    const adjustmentBuffers = loadWeightsIntoGpu(
+      adjustmentModel.counts,
+      adjustmentModel,
+    );
 
     const adjustmentsBefore = await extractWeightsFromGpu(adjustmentBuffers);
 

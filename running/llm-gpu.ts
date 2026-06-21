@@ -11,7 +11,7 @@ import { forwardPassOnGPU } from "./llm-gpu-forward-pass.ts";
 import { allocateInferenceBuffers } from "../model-gpu/model-activations.gpu.ts";
 
 export const runLlmOnGPU = async function* (batches: string[][], model: Model) {
-  const weightBuffers = loadWeightsIntoGpu(model);
+  const weightBuffers = loadWeightsIntoGpu(model.counts, model);
 
   const inferenceBuffers = allocateInferenceBuffers(
     MAX_CONTEXT,

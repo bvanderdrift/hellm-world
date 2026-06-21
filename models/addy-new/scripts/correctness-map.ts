@@ -209,7 +209,7 @@ const main = async () => {
   console.log("Sampling forever — Ctrl-C to stop.\n");
 
   const model = getCheckpointModel(MODEL_NAME, checkpointId);
-  const weightBuffers = loadWeightsIntoGpu(model);
+  const weightBuffers = loadWeightsIntoGpu(model.counts, model);
   const inferenceBuffers = allocateInferenceBuffers(
     MAX_CONTEXT,
     batchSize,
