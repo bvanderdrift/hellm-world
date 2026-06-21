@@ -137,6 +137,29 @@ export const logStateProgress = (store: StateStore) => {
   );
 };
 
+let stepsCompleted = 0;
+
+export const logSingleStepProgress = (
+  durationMs: number,
+  stepsExpected: number,
+) => {
+  stepsCompleted++;
+  const localCycleStepsCompleted = stepsCompleted % stepsExpected;
+
+  const progressPct = localCycleStepsCompleted / stepsExpected;
+  const progressBarComplete = Math.floor(progressPct * PROGRESS_BAR_LENGTH);
+
+  const progressBar =
+    "[" +
+    "-".repeat(progressBarComplete) +
+    " ".repeat(PROGRESS_BAR_LENGTH - progressBarComplete) +
+    "]";
+
+  process.stdout.write(
+    `\r${progressBar} (${(progressPct * 100).toFixed(0)}%) - Duration: ${durationMs}ms`,
+  );
+};
+
 const cpuCount = cpus().length;
 const PROGRESS_BAR_LENGTH = 20;
 
@@ -150,23 +173,8 @@ const runTrainingPasses = async (
 }> => {
   const effectiveCpuCount = Math.min(workersCount, cpuCount);
 
-  let stepsCompleted = 0;
-  const onStepComplete = (durationMs: number) => {
-    stepsCompleted++;
-
-    const progressPct = stepsCompleted / trainingData.length;
-    const progressBarComplete = Math.floor(progressPct * PROGRESS_BAR_LENGTH);
-
-    const progressBar =
-      "[" +
-      "-".repeat(progressBarComplete) +
-      " ".repeat(PROGRESS_BAR_LENGTH - progressBarComplete) +
-      "]";
-
-    process.stdout.write(
-      `\r${progressBar} (${(progressPct * 100).toFixed(0)}%) - Duration: ${durationMs}ms`,
-    );
-  };
+  const onStepComplete = (durationMs: number) =>
+    logSingleStepProgress(durationMs, trainingData.length);
 
   if (effectiveCpuCount === 1) {
     return doSingleTrainingPass(model, trainingData, onStepComplete);
