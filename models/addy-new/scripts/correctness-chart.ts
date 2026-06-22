@@ -7,9 +7,13 @@
  *   - "heatmap" (default): green = all correct, red = any mistake, black = untested.
  *   - "faultmap": white = any wrong answer, black = everything else.
  * The testing script (`correctness-map.ts`) calls `dumpImage` every 1000 tests;
- * this file can also be run on its own to (re)chart an already-saved grid.
+ * this file can also be run on its own to (re)chart an already-saved grid —
+ * either an `addy-new` checkpoint, or an OpenAI-endpoint benchmark grid (the
+ * ones written by `correctness-map-openai.ts`) via `--model <name>`.
  *
- * Usage: bun run models/addy-new/scripts/correctness-chart.ts <checkpointId> [type]
+ * Usage:
+ *   bun run models/addy-new/scripts/correctness-chart.ts <checkpointId> [type]
+ *   bun run models/addy-new/scripts/correctness-chart.ts --model <name> [type]
  */
 
 import { join } from "path";
@@ -22,6 +26,11 @@ import {
   gridPath,
   loadGrid,
 } from "./correctness-grid.ts";
+import {
+  benchmarkFolderPath,
+  benchmarkGridPath,
+  loadBenchmarkGrid,
+} from "./correctness-grid-benchmark.ts";
 
 const NULL = 0;
 const TRUE = 2;
@@ -104,7 +113,7 @@ const margin = { top: 96, right: 40, bottom: 70, left: 80 };
 
 const buildSvg = async (
   grid: Uint8Array,
-  checkpointId: number,
+  label: string,
   testCount: number,
   correctCount: number,
   type: RenderType,
@@ -147,7 +156,7 @@ const buildSvg = async (
     type === "faultmap"
       ? `each pixel = ${BOX}×${BOX} pairs (white = any wrong answer, black = correct/untested)`
       : `each pixel = ${BOX}×${BOX} pairs (red = any mistake, black = untested)`;
-  const title = `${MODEL_NAME} checkpoint ${checkpointId} — ${mapLabel}`;
+  const title = `${label} — ${mapLabel}`;
   const subtitle = `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · ${summary}`;
 
   const legend =
@@ -182,6 +191,32 @@ const buildSvg = async (
 };
 
 /**
+ * Render a grid to `correctness-<type>.png` inside `outputDir`, titled with
+ * `label`. The reusable core shared by the checkpoint charts and external
+ * benchmarks; defaults to the "heatmap" rendering.
+ */
+export const renderCorrectnessImage = async ({
+  grid,
+  outputDir,
+  label,
+  testCount,
+  correctCount,
+  type = "heatmap",
+}: {
+  grid: Uint8Array;
+  outputDir: string;
+  label: string;
+  testCount: number;
+  correctCount: number;
+  type?: RenderType;
+}) => {
+  const svg = await buildSvg(grid, label, testCount, correctCount, type);
+  const outputPath = join(outputDir, `correctness-${type}.png`);
+  await sharp(Buffer.from(svg)).png().toFile(outputPath);
+  return outputPath;
+};
+
+/**
  * Render the grid to `correctness-<type>.png` in the checkpoint folder.
  * Defaults to the "heatmap" rendering.
  */
@@ -191,35 +226,85 @@ export const dumpImage = async (
   testCount: number,
   correctCount: number,
   type: RenderType = "heatmap",
-) => {
-  const svg = await buildSvg(grid, checkpointId, testCount, correctCount, type);
-  const outputPath = join(
-    checkpointFolderPath(checkpointId),
-    `correctness-${type}.png`,
-  );
-  await sharp(Buffer.from(svg)).png().toFile(outputPath);
-  return outputPath;
-};
+) =>
+  renderCorrectnessImage({
+    grid,
+    outputDir: checkpointFolderPath(checkpointId),
+    label: `${MODEL_NAME} checkpoint ${checkpointId}`,
+    testCount,
+    correctCount,
+    type,
+  });
+
+const USAGE = [
+  "Usage:",
+  "  bun run models/addy-new/scripts/correctness-chart.ts <checkpointId> [type]",
+  "  bun run models/addy-new/scripts/correctness-chart.ts --model <name> [type]",
+  `  type: ${RENDER_TYPES.join(" | ")} (default: heatmap)`,
+].join("\n");
 
 const main = async () => {
-  const checkpointArg = process.argv[2];
-  if (checkpointArg === undefined || Number.isNaN(Number(checkpointArg))) {
-    console.error(
-      "Usage: bun run models/addy-new/scripts/correctness-chart.ts <checkpointId> [type]",
-    );
-    console.error(`  type: ${RENDER_TYPES.join(" | ")} (default: heatmap)`);
-    process.exit(1);
+  // Split `--model <name>` (chart an OpenAI-endpoint benchmark) from the
+  // positional args (checkpoint mode); whatever's left is the optional type.
+  const args = process.argv.slice(2);
+  let model: string | undefined;
+  const positional: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--model") {
+      model = args[++i];
+    } else {
+      positional.push(args[i]!);
+    }
   }
-  const checkpointId = Number(checkpointArg);
 
-  const typeArg = process.argv[3] ?? "heatmap";
+  // In model mode the lone positional is the type; in checkpoint mode it's the
+  // checkpoint id followed by an optional type.
+  const typeArg = (model !== undefined ? positional[0] : positional[1]) ?? "heatmap";
   if (!RENDER_TYPES.includes(typeArg as RenderType)) {
     console.error(
       `Unknown type "${typeArg}" — expected one of: ${RENDER_TYPES.join(", ")}`,
     );
+    console.error(USAGE);
     process.exit(1);
   }
   const type = typeArg as RenderType;
+
+  if (model !== undefined) {
+    if (model.length === 0) {
+      console.error("--model requires a model name.");
+      console.error(USAGE);
+      process.exit(1);
+    }
+
+    const { grid, testCount, correctCount } = loadBenchmarkGrid(model);
+    if (testCount === 0) {
+      console.error(
+        `No grid data at ${benchmarkGridPath(model)} — run the benchmark script first.`,
+      );
+      process.exit(1);
+    }
+
+    const outputPath = await renderCorrectnessImage({
+      grid,
+      outputDir: benchmarkFolderPath(model),
+      label: model,
+      testCount,
+      correctCount,
+      type,
+    });
+    const accuracy = (correctCount / testCount) * 100;
+    console.log(
+      `${testCount.toLocaleString()} tests · ${accuracy.toFixed(2)}% correct · wrote ${outputPath}`,
+    );
+    return;
+  }
+
+  const checkpointArg = positional[0];
+  if (checkpointArg === undefined || Number.isNaN(Number(checkpointArg))) {
+    console.error(USAGE);
+    process.exit(1);
+  }
+  const checkpointId = Number(checkpointArg);
 
   const { grid, testCount, correctCount } = loadGrid(checkpointId);
   if (testCount === 0) {
